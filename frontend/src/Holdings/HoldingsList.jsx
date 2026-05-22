@@ -1,17 +1,15 @@
 import HoldingsItem from "./HoldingsItem.jsx";
 import {useState} from "react";
 
+
 function HoldingsList({holdings}) {
-    const [selectedSymbol, setSelectedSymbol] = useState(null);
 
     return (
-        <div>
+        <div className="holdings-list-items">
             {holdings.map(t => (
                 <HoldingsItem
                     key={t.id}
-                    holding={t}
-                    isOpen={selectedSymbol === t.symbol}
-                    onClick={() => setSelectedSymbol(t.symbol)}/>
+                    holding={t}/>
             ))}
         </div>
     )

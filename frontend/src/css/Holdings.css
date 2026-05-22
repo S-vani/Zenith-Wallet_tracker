@@ -1,0 +1,66 @@
+.loading-holdings,
+.error-holdings {
+    text-transform: uppercase;
+    font-size: 1.1rem;
+}
+
+.holdings{
+    margin-left: 9.5rem;
+    margin-top: 2rem;
+    width: 85%;
+    height: auto;
+    background: linear-gradient(
+            145deg,
+            #2b2b2b,
+            #1f1f1f
+    );
+
+    border-radius: 1.5rem;
+    border: 0.1rem solid #3d3d3d;
+
+}
+
+.table-header{
+    padding-bottom: 0.3rem;
+    padding-right: 0;
+    padding-top: 1.2rem;
+    padding-left: 1.5rem;
+    display: grid;
+
+    grid-template-columns:
+        2fr
+        1fr
+        1fr
+        1fr
+        0.8fr;
+
+    font-size: 1.15rem;
+    border-bottom: 0.1rem solid #4a4a4a;
+
+}
+
+.holdings-header{
+    margin-left: 10rem;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+
+.holdings-list-items{
+    display: flex;
+    flex-direction: column;
+}
+
+.holding-item-wrapper {
+    cursor: pointer;
+
+    transition: background 0.2s ease;
+    padding: 2.2rem 1.5rem;
+}
+
+.holding-item-wrapper:hover{
+    background: linear-gradient(
+            145deg,
+            #363636,
+            #2a2a2a
+    );
+}

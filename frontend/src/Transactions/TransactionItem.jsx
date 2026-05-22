@@ -23,7 +23,7 @@ function TransactionItem({transaction, index}) {
                         {(transaction.price_of_one * transaction.quantity).toFixed(2)} CAD
                     </span>
 
-                    <span className="expand-icon">
+                    <span>
                         {expanded ? "▲" : "▼"}
                     </span>
 
