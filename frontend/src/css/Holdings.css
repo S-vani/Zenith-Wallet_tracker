@@ -2,9 +2,17 @@
 .error-holdings {
     text-transform: uppercase;
     font-size: 1.1rem;
+    padding-left: 2rem;
 }
 
-.holdings{
+.loading-chart{
+    margin-left: 2rem;
+    margin-top: 6rem;
+    text-transform: uppercase;
+    font-size: 1.1rem;
+}
+
+.holdings {
     margin-left: 9.5rem;
     margin-top: 2rem;
     width: 85%;
@@ -20,47 +28,151 @@
 
 }
 
-.table-header{
-    padding-bottom: 0.3rem;
+.table-header {
+    padding-bottom: 0.5rem;
     padding-right: 0;
     padding-top: 1.2rem;
     padding-left: 1.5rem;
     display: grid;
 
     grid-template-columns:
-        2fr
+        1.5fr
         1fr
         1fr
         1fr
-        0.8fr;
+        0.75fr;
 
-    font-size: 1.15rem;
+    font-size: 1.2rem;
     border-bottom: 0.1rem solid #4a4a4a;
 
 }
 
-.holdings-header{
+
+.holdings-header {
     margin-left: 10rem;
     margin-top: 2rem;
     margin-bottom: 1rem;
 }
 
-.holdings-list-items{
+.holdings-list-items {
     display: flex;
     flex-direction: column;
 }
+
 
 .holding-item-wrapper {
     cursor: pointer;
 
     transition: background 0.2s ease;
     padding: 2.2rem 1.5rem;
+    padding-top: 1.25rem;
 }
 
-.holding-item-wrapper:hover{
+.holding-item-wrapper:hover {
     background: linear-gradient(
             145deg,
             #363636,
             #2a2a2a
     );
+
+}
+
+.holding-item-wrapper:last-child:hover {
+    border-bottom-left-radius: 1.5rem;
+    border-bottom-right-radius: 1.5rem;
+}
+
+.holding-item {
+    display: grid;
+    padding-left: 0.5rem;
+    margin-bottom: 1rem;
+
+    grid-template-columns:
+        1.5fr
+        1fr
+        1fr
+        1fr
+        0.7fr
+        auto;
+
+    align-items: center;
+    font-size: 1.08rem;
+}
+
+.position-column{
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.quantity-item{
+    transform: translateX(1rem);
+}
+
+.chart-wrapper {
+    width: 100%;
+    height: 25rem;
+
+    background: linear-gradient(145deg, #2b2b2b, #1f1f1f);
+    border: 1px solid #3d3d3d;
+    border-radius: 1.5rem;
+
+    padding: 1rem 1.25rem;
+
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.chart-header {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.range-buttons {
+    display: flex;
+    gap: 0.5rem;
+    background: #1a1a1a;
+    padding: 0.35rem;
+    border-radius: 0.75rem;
+    border: 1px solid #3d3d3d;
+}
+
+.range-btn {
+    background: transparent;
+    border: none;
+    color: #a0a0a0;
+
+    padding: 0.35rem 0.6rem;
+    border-radius: 0.5rem;
+
+    cursor: pointer;
+    font-size: 0.85rem;
+
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.range-btn:hover {
+    background: #2a2a2a;
+    color: #f5f7ff;
+}
+
+.range-btn.active {
+    background: #363636;
+    color: #f5f7ff;
+}
+
+.chart-body {
+    flex: 1;
+    width: 100%;
+}
+
+.loading {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    color: #888;
+    font-size: 0.9rem;
 }

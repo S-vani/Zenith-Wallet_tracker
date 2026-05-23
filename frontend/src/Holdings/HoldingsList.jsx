@@ -1,5 +1,4 @@
 import HoldingsItem from "./HoldingsItem.jsx";
-import {useState} from "react";
 
 
 function HoldingsList({holdings}) {

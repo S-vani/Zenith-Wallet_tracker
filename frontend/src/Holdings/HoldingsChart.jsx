@@ -24,30 +24,93 @@ function HoldingChart({symbol, type}) {
         };
 
         load();
-    }, [symbol, range]);
+    }, [symbol, range, type]);
+
+    const ranges = ["1D", "1W", "1M", "1Y", "5Y"];
 
     return (
-        <div style={{height: 300}}>
-            <div>
-                <button onClick={() => setRange("1D")}>1D</button>
-                <button onClick={() => setRange("1W")}>1W</button>
-                <button onClick={() => setRange("1M")}>1M</button>
-                <button onClick={() => setRange("1Y")}>1Y</button>
-                <button onClick={() => setRange("5Y")}>5Y</button>
+        <div className="chart-wrapper">
+            <div className="chart-header">
+                <div className="range-buttons">
+                    {ranges.map(r => (
+                        <button
+                            key={r}
+                            onClick={() => setRange(r)}
+                            className={`range-btn ${range === r ? "active" : ""}`}
+                        >
+                            {r}
+                        </button>
+                    ))}
+                </div>
             </div>
 
-            {loading ? (
-                <p>Loading...</p>
-            ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={data}>
-                        <XAxis dataKey="time"/>
-                        <YAxis/>
-                        <Tooltip/>
-                        <Line type="monotone" dataKey="price"/>
-                    </LineChart>
-                </ResponsiveContainer>
-            )}
+            <div className="chart-body">
+                {loading ? (
+                    <div className="loading-chart">Loading...</div>
+                ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart
+                            data={data}
+                            margin={{ top: 10, right: 20, left: 30, bottom: 20 }}
+                        >
+                            <XAxis
+                                dataKey="time"
+                                axisLine={false}
+                                tickLine={false}
+                                stroke="#8a8a8a"
+                                tickFormatter={(v) =>
+                                    new Date(v).toLocaleDateString(undefined, {
+                                        month: "short",
+                                        day: "numeric"
+                                    })
+                                }
+                                ticks={data
+                                    .filter((_, i) => i % Math.ceil(data.length / 6) === 0)
+                                    .map(d => d.time)
+                                }
+                                interval="preserveStartEnd"
+                                minTickGap={40}
+                                tickMargin={20}
+                            />
+                            <YAxis
+                                domain={["dataMin", "dataMax"]}
+                                tickFormatter={(value) => value.toFixed(2)}
+                                axisLine={false}
+                                tickLine={false}
+                                stroke="#8a8a8a"
+                                tickMargin={30}
+                                width={100}
+                            />
+                            <Tooltip
+                                contentStyle={{
+                                    backgroundColor: "#1f1f1f",
+                                    border: "1px solid #3d3d3d",
+                                    borderRadius: "12px",
+                                    color: "#f5f7ff"
+                                }}
+                                labelFormatter={(value) => {
+                                    const date = new Date(value);
+                                    return date.toLocaleDateString(undefined, {
+                                        month: "short",
+                                        day: "numeric",
+                                        year: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                        hour12: true
+                                    });
+                                }}
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey="price"
+                                stroke="#3b82f6"
+                                strokeWidth={2.5}
+                                dot={false}
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
+                )}
+            </div>
         </div>
     );
 }

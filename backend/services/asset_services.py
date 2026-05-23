@@ -502,9 +502,9 @@ async def get_history_of_prices(
     now = datetime.now(timezone.utc)
 
     if type == "crypto":
-        s = str(symbol) + "-CAD"
+        s = f"{symbol}-USD"
     else:
-        s = str(symbol)
+        s = symbol
 
     # Translate it into a form that yahoo finance can understand
     if range == "1D":
@@ -525,6 +525,9 @@ async def get_history_of_prices(
 
     ticker = yf.Ticker(s)  # create object representing the specific stock or crypto
 
+    currency = ticker.info.get("currency")
+    conversion = await get_usd_to_cad()
+
     hist = ticker.history(
         period=period,
         interval=interval
@@ -540,9 +543,14 @@ async def get_history_of_prices(
     data = []  # A list with each entry being a dictionary in the form {"time": str, "price": float}
 
     for index, row in hist.iterrows():  # iterate row by row with index being the specific row label (date)
+        price = float(row["Close"])
+
+        if currency == "USD" or type == "crypto":
+            price *= conversion
+
         data.append({
             "time": str(index),
-            "price": float(row["Close"])
+            "price": price
             # "Closing" price on that interval, for example if time is 10:15:00, then it fetches price at 10:15:59
         })
 

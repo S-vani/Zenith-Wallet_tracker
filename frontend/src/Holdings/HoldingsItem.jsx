@@ -10,18 +10,41 @@ function HoldingsItem({holding}) {
         setExpanded(!expanded)
     }
 
+    const data = {
+        "symbol": holding.symbol,
+        "type": holding.type,
+        "current_total_price": holding.current_price.toFixed(2),
+        "quantity": holding.quantity,
+        "return": (holding.current_price - holding.price_paid).toFixed(2),
+        "return_pct": (100 * ((holding.current_price - holding.price_paid)/holding.price_paid)).toFixed(2)
+    }
+
+    let classReturn = "change-pct"
+    if (data.return_pct > 0){
+        classReturn += " positive"
+    }
+    else{
+        classReturn += " negative"
+    }
+
     return (
         <div className="holding-item-wrapper">
-            <div onClick={onclick}>
-                <span>{holding.symbol}</span>
-                <span>{holding.current_price}</span>
-                <span>{holding.current_price - holding.price_paid}</span>
-                <span>{holding.quantity}</span>
-                <span>{holding.type}</span>
+            <div className="holding-item" onClick={onclick}>
+                <div className="position-column">
+                    <p>{data.symbol}</p>
+                    <p>{data.type}</p>
+                </div>
+
+                <span>$ {data.current_total_price} CAD</span>
+                <span className="quantity-item">{data.quantity} </span>
+                <span className={classReturn}>$ {data.return} CAD</span>
+                <span className={classReturn}>{data.return_pct}%</span>
+
                 <span className="expand-icon">
                     {expanded ? "▲" : "▼"}
                 </span>
             </div>
+
 
             {isOpen && (
                 <div>
