@@ -1,10 +1,17 @@
-function DashboardStats({stats}) {
+function DashboardStats({ stats }) {
     return (
-        <div>
-            <h3>{stats.value}</h3>
-            <h3>{stats.curr_timeperiod}</h3>
+        <div className="dashboard-stats">
+            <div className="stat-card">
+                <div className="stat-label">Portfolio Value</div>
+                <div className="stat-value">$ {stats.value.toFixed(2)}</div>
+            </div>
+
+            <div className="stat-card">
+                <div className="stat-label">Period Return</div>
+                <div className="stat-value">$ {stats.curr_timeperiod.toFixed(2)}</div>
+            </div>
         </div>
-    )
+    );
 }
 
-export default DashboardStats
+export default DashboardStats;

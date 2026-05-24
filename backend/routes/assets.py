@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import requests
 
 from fastapi import HTTPException, Depends, APIRouter, Query
+from numpy.distutils.fcompiler import none
 from sqlalchemy import select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -203,7 +204,7 @@ async def get_current_holdings(
 
 @router.get("/dashboard")
 async def portfolio_stats(
-        current_timeperiod: Optional[Literal["day", "week", "month", "year"]] = None,
+        current_timeperiod: Optional[Literal["day", "week", "month", "year", "all"]] = None,
 
         session: AsyncSession = Depends(get_async_session),
         current_user: User = Depends(current_active_user)
@@ -222,7 +223,6 @@ async def portfolio_stats(
 
     curr_prices = await get_curr_holdings_prices(
         holdings)  # return dictionary mapping api_id to the current price of that holding
-    print(curr_prices)
 
     total_value = 0.0
     unrealized_profit = 0.0
@@ -236,7 +236,7 @@ async def portfolio_stats(
         total_value += position_value
         unrealized_profit += (position_value - (avg * qty))  # Price right now minus the price paid
 
-    if current_timeperiod is None:  # If the timeperiod is all time profit
+    if current_timeperiod == "all":  # If the timeperiod is all time profit
         realized_profit = await get_total_realized_profit(session,
                                                           current_user.id)  # This function goes through all the users sell transactions and adds up the profit variable
 
@@ -441,3 +441,16 @@ async def search_assets_crypto(asset: str):
         })
 
     return final
+
+
+@router.get("/user")
+async def return_user_information(
+        current_user: User = Depends(current_active_user)
+):
+    information = {
+        "id": current_user.id,
+        "name": current_user.name,
+        "email": current_user.email
+    }
+
+    return information

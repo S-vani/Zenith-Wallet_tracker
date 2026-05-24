@@ -191,7 +191,17 @@ export async function searchCrypto(symbol) {
     const res = await fetch(`${BASE_URL}/assets/search/crypto?asset=${symbol}`);
 
     if (!res.ok) {
-        throw new Error("search stock error")
+        throw new Error("search crypto error")
+    }
+
+    return res.json()
+}
+
+export async function getUser(){
+    const res = await fetch(`${BASE_URL}/user`, {headers: getAuthHeaders()});
+
+    if (!res.ok){
+        throw new Error("error fetching user information")
     }
 
     return res.json()

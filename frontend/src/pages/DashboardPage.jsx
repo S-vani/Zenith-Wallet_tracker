@@ -1,26 +1,33 @@
-import {useEffect, useState} from "react";
-import {getDashboardStats, getTransactions} from "../services/api.js";
+import { useEffect, useState } from "react";
+import { getDashboardStats, getUser } from "../services/api.js";
 import DashboardStats from "../Dashboard/DashboardStats.jsx";
-import {useNavigate} from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import DashboardChart from "../Dashboard/DashboardChart.jsx";
 
+import "../css/Dashboard.css";
+
+const TIME_RANGES = [
+    { label: "1D", value: "day" },
+    { label: "1W", value: "week" },
+    { label: "1M", value: "month" },
+    { label: "1Y", value: "year" },
+    { label: "All", value: "all" },
+];
 
 function DashboardPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-    const [stats, setStats] = useState({
-        "value": 0.0,
-        "curr_timeperiod": 0.0,
-    });
+    const [user, setUser] = useState({});
+    const [activeRange, setActiveRange] = useState("day");
+    const [stats, setStats] = useState({ value: 0.0, curr_timeperiod: 0.0 });
     const navigate = useNavigate();
 
     const loadDashboard = async (time_span) => {
         try {
             setLoading(true);
             setError(null);
-
             const data = await getDashboardStats(time_span);
-            setStats(data)
+            setStats(data);
         } catch (err) {
             setError(err.message);
         } finally {
@@ -28,37 +35,64 @@ function DashboardPage() {
         }
     };
 
+    const loadUser = async () => {
+        const userInfo = await getUser();
+        setUser(userInfo);
+    };
+
     useEffect(() => {
-        loadDashboard();
+        loadUser();
+        loadDashboard("day");
     }, []);
 
+    const handleRangeClick = (value) => {
+        setActiveRange(value);
+        loadDashboard(value);
+    };
+
+    const greeting = () => {
+        const h = new Date().getHours();
+        if (h < 12) return "Good morning";
+        if (h < 17) return "Good afternoon";
+        return "Good evening";
+    };
+
     return (
-        <div>
-            <h1>Dashboard</h1>
-            {loading && <p>Loading...</p>}
-            {error && <p>{error}</p>}
-            <DashboardStats stats={stats}/>
-            <button onClick={() => loadDashboard("day")}>
-                1 day
-            </button>
-            <button onClick={() => loadDashboard("week")}>
-                week
-            </button>
-            <button onClick={() => loadDashboard("month")}>
-                month
-            </button>
-            <button onClick={() => loadDashboard("year")}>
-                year
-            </button>
-            <button onClick={() => loadDashboard()}>
-                all time
-            </button>
-            <button onClick={() => navigate("/Holdings")}>
-                holdings
-            </button>
-            <DashboardChart/>
+        <div className="dashboard-page">
+            <h1 className="page-headers" id="dashboard-header">
+                {greeting()}, {user.name}
+            </h1>
+
+            {error && <p className="error">{error}</p>}
+
+            <DashboardStats stats={stats} />
+
+            <div className="dashboard-controls">
+                {TIME_RANGES.map(({ label, value }) => (
+                    <button
+                        key={label}
+                        className={`chart-range-btn${activeRange === (value ?? "all") ? " active" : ""}`}
+                        onClick={() => handleRangeClick(value)}
+                    >
+                        {label}
+                    </button>
+                ))}
+
+                <button
+                    className="dashboard-nav-btn"
+                    onClick={() => navigate("/Holdings")}
+                >
+                    Holdings →
+                </button>
+            </div>
+
+            {loading ? (
+                <p className="loading">Loading…</p>
+            ) : (
+                <DashboardChart range={activeRange}/>
+            )}
         </div>
-    )
+    );
 }
 
-export default DashboardPage
+export default DashboardPage;

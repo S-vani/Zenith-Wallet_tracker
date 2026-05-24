@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timedelta, timezone
 
 import httpx
@@ -205,141 +206,53 @@ async def get_usd_to_cad():
 
     return float(cad)
 
-
-# async def get_crypto_prices_at(api_ids: list[str], timestamp: datetime):
-#     """
-#     Get crypto prices for api_ids at a specific time using Yahoo Finance.
-#     """
-#     if not api_ids:
-#         return {}
-#
-#     prices = {}  # maps an api_id to its price at timestamp
-#
-#     # Get a small window around the timestamp for an accurate measure
-#     now = datetime.now(timezone.utc)
-#
-#     start = timestamp - timedelta(minutes=5)
-#     end = min(timestamp + timedelta(minutes=5), now)
-#
-#     for api_id in api_ids:
-#         # Convert crypto symbol to Yahoo format will modify the api_ids later to not manually do this
-#         ticker_symbol = f"{api_id.upper()}-CAD"
-#
-#         ticker = yf.Ticker(ticker_symbol)
-#
-#         # fetch minute-level data around the timestamp
-#         hist = ticker.history(
-#             start=start,
-#             end=end,
-#             interval="1m"
-#         )
-#
-#         if not hist.empty:
-#             closest_row = hist.iloc[np.abs(hist.index - timestamp).argmin()]
-#             price = float(closest_row["Close"])
-#         else:  # If market is closed then we go for a wider range
-#             fallback_start = timestamp - timedelta(days=5)  # go back up to 5 days
-#             fallback_end = min(timestamp, now)
-#
-#             hist_fallback = ticker.history(
-#                 start=fallback_start,
-#                 end=fallback_end,
-#                 interval="1d"
-#             )  # get daily closing prices/candlesticks rather than minute intervals
-#
-#             hist_before = hist_fallback[hist_fallback.index <= timestamp]  # fall back to latest available price
-#             price = float(hist_before.iloc[-1]["Close"])
-#
-#         prices[api_id] = price
-#
-#     return prices
-
 async def get_crypto_prices_at(api_ids: list[str], timestamp: datetime):
-    """
-    Get crypto prices for api_ids at a specific time using Yahoo Finance.
-    """
     if not api_ids:
         return {}
 
-    prices = {}  # maps an api_id to its price at timestamp
-
-    # Get a small window around the timestamp for an accurate measure
-    now = datetime.now(timezone.utc)
-
-    start = timestamp - timedelta(minutes=5)
-    end = min(timestamp + timedelta(minutes=5), now)
-
-    for api_id in api_ids:
-        # Convert crypto symbol to Yahoo format will modify the api_ids later to not manually do this
+    async def fetch_one(api_id):
         ticker_symbol = f"{api_id.upper()}-CAD"
-
         ticker = yf.Ticker(ticker_symbol)
+        now = datetime.now(timezone.utc)
+        start = timestamp - timedelta(minutes=5)
+        end = min(timestamp + timedelta(minutes=5), now)
 
-        # fetch minute-level data around the timestamp
-        hist = ticker.history(
-            start=start,
-            end=end,
-            interval="1m"
-        )
-
+        hist = ticker.history(start=start, end=end, interval="1m")
         if hist.empty:
-            prices[api_id] = None
-            continue
-
-        # find the candle closest to the requested timestamp
+            return api_id, None
         closest_row = hist.iloc[np.abs(hist.index - timestamp).argmin()]
+        return api_id, float(closest_row["Close"])
 
-        close_price = closest_row["Close"]
-
-        prices[api_id] = float(close_price)
-
-    return prices
-
+    results = await asyncio.gather(*[fetch_one(api_id) for api_id in api_ids])
+    return dict(results)
 
 async def get_stock_prices_at(symbols: list[str], timestamp: datetime):
-    """
-    Get stock prices for symbols at a specific time using Yahoo Finance.
-    Falls back to the last available closing price if the market is closed.
-    """
     if not symbols:
         return {}
 
-    prices = {}
-    now = datetime.now(timezone.utc)
-
-    narrow_start = timestamp - timedelta(minutes=5)
-    narrow_end = min(timestamp + timedelta(minutes=5), now)
-
     conversion = await get_usd_to_cad()
 
-    for symbol in symbols:
+    async def fetch_one(symbol):
         ticker = yf.Ticker(symbol)
+        now = datetime.now(timezone.utc)
+        narrow_start = timestamp - timedelta(minutes=5)
+        narrow_end = min(timestamp + timedelta(minutes=5), now)
 
-        hist = ticker.history(
-            start=narrow_start,
-            end=narrow_end,
-            interval="1m"
-        )  # Only works when market is open and data is very accurately available
-
-        if not hist.empty:  # If we get the data properly
+        hist = ticker.history(start=narrow_start, end=narrow_end, interval="1m")
+        if not hist.empty:
             closest_row = hist.iloc[np.abs(hist.index - timestamp).argmin()]
             price = float(closest_row["Close"])
-        else:  # If market is closed then we go for a wider range
-            fallback_start = timestamp - timedelta(days=5)  # go back up to 5 days
+        else:
+            fallback_start = timestamp - timedelta(days=5)
             fallback_end = min(timestamp, now)
-
-            hist_fallback = ticker.history(
-                start=fallback_start,
-                end=fallback_end,
-                interval="1d"
-            )  # get daily closing prices/candlesticks rather than minute intervals
-
-            hist_before = hist_fallback[hist_fallback.index <= timestamp]  # fall back to latest available price
+            hist_fallback = ticker.history(start=fallback_start, end=fallback_end, interval="1d")
+            hist_before = hist_fallback[hist_fallback.index <= timestamp]
             price = float(hist_before.iloc[-1]["Close"])
 
-        prices[symbol] = price * conversion
+        return symbol, price * conversion
 
-    return prices
+    results = await asyncio.gather(*[fetch_one(symbol) for symbol in symbols])
+    return dict(results)
 
 
 async def calculate_profit_for_one_transaction(db: AsyncSession, user_id: UUID, data: CreateTransaction):
