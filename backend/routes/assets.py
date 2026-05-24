@@ -425,9 +425,9 @@ async def search_assets_crypto(asset: str):
     final = []
     for coin in data_1:
         if (
-            coin.get("current_price") is None
-            or coin.get("price_change_24h") is None
-            or coin.get("price_change_percentage_24h") is None
+                coin.get("current_price") is None
+                or coin.get("price_change_24h") is None
+                or coin.get("price_change_percentage_24h") is None
         ):
             continue
         final.append({

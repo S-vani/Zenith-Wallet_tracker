@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import { getPortfolioHistory } from "../services/api.js";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import {useEffect, useState} from "react";
+import {getPortfolioHistory} from "../services/api.js";
+import {LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer} from "recharts";
 
-const RANGE_DAYS = { day: 1, week: 7, month: 31, year: 365, all: 3650 };
+const RANGE_DAYS = {day: 1, week: 7, month: 31, year: 365, all: 3650};
 
 function DashboardChart({range}) {
     const [data, setData] = useState([]);
@@ -27,11 +27,11 @@ function DashboardChart({range}) {
                     <p className="loading-chart">Loading…</p>
                 ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                        <LineChart data={data} margin={{top: 4, right: 4, left: -20, bottom: 0}}>
                             <XAxis
                                 dataKey="time"
-                                tick={{ fill: "#6b7280", fontSize: 11 }}
-                                axisLine={{ stroke: "rgba(255,255,255,0.06)" }}
+                                tick={{fill: "#6b7280", fontSize: 11}}
+                                axisLine={{stroke: "rgba(255,255,255,0.06)"}}
                                 tickLine={false}
                                 tickFormatter={(v) =>
                                     new Date(v).toLocaleDateString(undefined, {
@@ -42,7 +42,7 @@ function DashboardChart({range}) {
                             />
                             <YAxis
                                 domain={["auto", "auto"]}
-                                tick={{ fill: "#6b7280", fontSize: 11 }}
+                                tick={{fill: "#6b7280", fontSize: 11}}
                                 axisLine={false}
                                 tickLine={false}
                             />
@@ -65,7 +65,7 @@ function DashboardChart({range}) {
                                         hour12: true
                                     });
                                 }}
-                                cursor={{ stroke: "rgba(59,130,246,0.3)", strokeWidth: 1 }}
+                                cursor={{stroke: "rgba(59,130,246,0.3)", strokeWidth: 1}}
                             />
                             <Line
                                 type="monotone"
@@ -73,7 +73,7 @@ function DashboardChart({range}) {
                                 stroke="#3b82f6"
                                 strokeWidth={2}
                                 dot={false}
-                                activeDot={{ r: 4, fill: "#3b82f6", strokeWidth: 0 }}
+                                activeDot={{r: 4, fill: "#3b82f6", strokeWidth: 0}}
                             />
                         </LineChart>
                     </ResponsiveContainer>

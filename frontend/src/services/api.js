@@ -197,10 +197,10 @@ export async function searchCrypto(symbol) {
     return res.json()
 }
 
-export async function getUser(){
+export async function getUser() {
     const res = await fetch(`${BASE_URL}/user`, {headers: getAuthHeaders()});
 
-    if (!res.ok){
+    if (!res.ok) {
         throw new Error("error fetching user information")
     }
 

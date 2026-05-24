@@ -1,17 +1,17 @@
-import { useEffect, useState } from "react";
-import { getDashboardStats, getUser } from "../services/api.js";
+import {useEffect, useState} from "react";
+import {getDashboardStats, getUser} from "../services/api.js";
 import DashboardStats from "../Dashboard/DashboardStats.jsx";
-import { useNavigate } from "react-router-dom";
+import {useNavigate} from "react-router-dom";
 import DashboardChart from "../Dashboard/DashboardChart.jsx";
 
 import "../css/Dashboard.css";
 
 const TIME_RANGES = [
-    { label: "1D", value: "day" },
-    { label: "1W", value: "week" },
-    { label: "1M", value: "month" },
-    { label: "1Y", value: "year" },
-    { label: "All", value: "all" },
+    {label: "1D", value: "day"},
+    {label: "1W", value: "week"},
+    {label: "1M", value: "month"},
+    {label: "1Y", value: "year"},
+    {label: "All", value: "all"},
 ];
 
 function DashboardPage() {
@@ -19,7 +19,7 @@ function DashboardPage() {
     const [error, setError] = useState(null);
     const [user, setUser] = useState({});
     const [activeRange, setActiveRange] = useState("day");
-    const [stats, setStats] = useState({ value: 0.0, curr_timeperiod: 0.0 });
+    const [stats, setStats] = useState({value: 0.0, curr_timeperiod: 0.0});
     const navigate = useNavigate();
 
     const loadDashboard = async (time_span) => {
@@ -65,10 +65,10 @@ function DashboardPage() {
 
             {error && <p className="error">{error}</p>}
 
-            <DashboardStats stats={stats} />
+            <DashboardStats stats={stats}/>
 
             <div className="dashboard-controls">
-                {TIME_RANGES.map(({ label, value }) => (
+                {TIME_RANGES.map(({label, value}) => (
                     <button
                         key={label}
                         className={`chart-range-btn${activeRange === (value ?? "all") ? " active" : ""}`}
