@@ -1,16 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Code formatting">
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/9a153d2f-452a-4025-8319-b86262861f67.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/9a153d2f-452a-4025-8319-b86262861f67.xml" afterDir="false" />
+    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Increased chart size and added an alltime button to show alltime profit by calculating when the users account was created and subtracting the time now from it to get a date range">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/db_models/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db_models/assets.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/routes/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/routes/assets.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/services/asset_services.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/services/asset_services.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/Dashboard/DashboardChart.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/Dashboard/DashboardChart.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/Dashboard/DashboardStats.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/Dashboard/DashboardStats.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/css/Dashboard.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/css/Dashboard.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/pages/DashboardPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/DashboardPage.jsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -144,15 +138,7 @@
       <workItem from="1779473964519" duration="4740000" />
       <workItem from="1779561211817" duration="6602000" />
       <workItem from="1779641744034" duration="6281000" />
-      <workItem from="1779652287723" duration="5017000" />
-    </task>
-    <task id="LOCAL-00005" summary="Added a new class that tracks transactions by adding them to my db table with multiple parameters">
-      <option name="closed" value="true" />
-      <created>1777430050067</created>
-      <option name="number" value="00005" />
-      <option name="presentableId" value="LOCAL-00005" />
-      <option name="project" value="LOCAL" />
-      <updated>1777430050067</updated>
+      <workItem from="1779652287723" duration="6407000" />
     </task>
     <task id="LOCAL-00006" summary="Added some routes to get transactions and make some transactions along with services logic which is just functions that handle the long logic like calculating current number of shares/holdings or get all transactions, etc.">
       <option name="closed" value="true" />
@@ -538,7 +524,15 @@
       <option name="project" value="LOCAL" />
       <updated>1779647747341</updated>
     </task>
-    <option name="localTasksCounter" value="54" />
+    <task id="LOCAL-00054" summary="Increased chart size and added an alltime button to show alltime profit by calculating when the users account was created and subtracting the time now from it to get a date range">
+      <option name="closed" value="true" />
+      <created>1779657498836</created>
+      <option name="number" value="00054" />
+      <option name="presentableId" value="LOCAL-00054" />
+      <option name="project" value="LOCAL" />
+      <updated>1779657498836</updated>
+    </task>
+    <option name="localTasksCounter" value="55" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -556,7 +550,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added a way to search for stocks, the idea is that when a user wants to make a transaction they search a symbol and out comes a bunch of stocks of that symbol with prices, used an api called finnhub. For crypto I will probably use coingecko or something like that." />
     <MESSAGE value="Added a new route in the backend that fetches crypto information based on search, will use it later to allow the use to type in symbols for crypto or stocks and get returned a list of them that they can click, opening a form and automatically sending to the backend the symbol of the asset they pressed" />
     <MESSAGE value="Changed the api im using for stock searching to twelvedata, currently have free plan with 10 api calls a minute but will upgrade before releasing" />
     <MESSAGE value=".idea files to commit" />
@@ -581,7 +574,8 @@
     <MESSAGE value="Added css for the dashboard file along with minor bug fixes like slow loading speed" />
     <MESSAGE value="Added colouring to the dashboard page to show green for profit and red for loss" />
     <MESSAGE value="Code formatting" />
-    <option name="LAST_COMMIT_MESSAGE" value="Code formatting" />
+    <MESSAGE value="Increased chart size and added an alltime button to show alltime profit by calculating when the users account was created and subtracting the time now from it to get a date range" />
+    <option name="LAST_COMMIT_MESSAGE" value="Increased chart size and added an alltime button to show alltime profit by calculating when the users account was created and subtracting the time now from it to get a date range" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/WalletTracker$test.coverage" NAME="test Coverage Results" MODIFIED="1777047403500" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

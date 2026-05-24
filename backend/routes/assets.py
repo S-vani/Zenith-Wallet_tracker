@@ -327,7 +327,6 @@ async def search_assets_stocks(asset: str):
     search_response = requests.get(url, params=params)
 
     all_results = search_response.json()["data"]
-    # print(all_results)
 
     filtered = []
     seen = set()

@@ -203,6 +203,8 @@ async def get_usd_to_cad():
         data = res.json()
 
     cad = data.get("rates", {}).get("CAD")
+    print(f"[FX] USD->CAD rate: {cad}")
+
 
     return float(cad)
 
@@ -214,17 +216,36 @@ async def get_crypto_prices_at(api_ids: list[str], timestamp: datetime):
         ticker_symbol = f"{api_id.upper()}-CAD"
         ticker = yf.Ticker(ticker_symbol)
         now = datetime.now(timezone.utc)
+
         start = timestamp - timedelta(minutes=5)
         end = min(timestamp + timedelta(minutes=5), now)
-
         hist = ticker.history(start=start, end=end, interval="1m")
-        if hist.empty:
+
+
+        if not hist.empty:
+            closest_row = hist.iloc[np.abs(hist.index.tz_convert("UTC") - timestamp).argmin()]
+            price = float(closest_row["Close"])
+            return api_id, price
+
+        fallback_start = timestamp - timedelta(days=5)
+        fallback_end = min(timestamp + timedelta(days=1), now)
+        hist_fallback = ticker.history(start=fallback_start, end=fallback_end, interval="1d")
+
+
+        if hist_fallback.empty:
             return api_id, None
-        closest_row = hist.iloc[np.abs(hist.index - timestamp).argmin()]
-        return api_id, float(closest_row["Close"])
+
+        hist_before = hist_fallback[hist_fallback.index.tz_convert("UTC") <= timestamp]
+
+        if hist_before.empty:
+            return api_id, None
+
+        price = float(hist_before.iloc[-1]["Close"])
+        return api_id, price
 
     results = await asyncio.gather(*[fetch_one(api_id) for api_id in api_ids])
     return dict(results)
+
 
 async def get_stock_prices_at(symbols: list[str], timestamp: datetime):
     if not symbols:
@@ -235,21 +256,31 @@ async def get_stock_prices_at(symbols: list[str], timestamp: datetime):
     async def fetch_one(symbol):
         ticker = yf.Ticker(symbol)
         now = datetime.now(timezone.utc)
+
         narrow_start = timestamp - timedelta(minutes=5)
         narrow_end = min(timestamp + timedelta(minutes=5), now)
-
         hist = ticker.history(start=narrow_start, end=narrow_end, interval="1m")
-        if not hist.empty:
-            closest_row = hist.iloc[np.abs(hist.index - timestamp).argmin()]
-            price = float(closest_row["Close"])
-        else:
-            fallback_start = timestamp - timedelta(days=5)
-            fallback_end = min(timestamp, now)
-            hist_fallback = ticker.history(start=fallback_start, end=fallback_end, interval="1d")
-            hist_before = hist_fallback[hist_fallback.index <= timestamp]
-            price = float(hist_before.iloc[-1]["Close"])
 
-        return symbol, price * conversion
+        if not hist.empty:
+            closest_row = hist.iloc[np.abs(hist.index.tz_convert("UTC") - timestamp).argmin()]
+            price = float(closest_row["Close"]) * conversion
+            return symbol, price
+
+        fallback_start = timestamp - timedelta(days=5)
+        fallback_end = min(timestamp + timedelta(days=1), now)
+        hist_fallback = ticker.history(start=fallback_start, end=fallback_end, interval="1d")
+
+        if hist_fallback.empty:
+            return symbol, 0.0
+
+        hist_before = hist_fallback[hist_fallback.index.tz_convert("UTC") <= timestamp]
+
+        if hist_before.empty:
+            return symbol, 0.0
+
+        close_usd = float(hist_before.iloc[-1]["Close"])
+        price = close_usd * conversion
+        return symbol, price
 
     results = await asyncio.gather(*[fetch_one(symbol) for symbol in symbols])
     return dict(results)
@@ -421,7 +452,7 @@ async def get_history_of_prices(
 
     # Translate it into a form that yahoo finance can understand
     if range == "1D":
-        period = "1d"
+        period = "2d"
         interval = "5m"
     elif range == "1W":
         period = "7d"
@@ -469,44 +500,31 @@ async def get_history_of_prices(
 
     return data, s
 
-
-def calculate_timespans_for_portfolio_history(
-        ranges: int
-):
+def calculate_timespans_for_portfolio_history(ranges: int):
     """
     Helper function to calculate the timespans that we loop through to calculate the portfolios historical values.
     Returns a list of timedelta objects.
     """
     now = datetime.now(timezone.utc)
-
+    end = now - timedelta(minutes=10)  # stop 10 minutes before now to avoid boundary issues
     start = now - timedelta(days=ranges)
 
-    # translate it to a way that my other functions can understand
-    # Note that points is how many points in time were splitting by so 289 points in 1 day should be 5-minute intervals
-    # its actually 288 splits but we add one to account for start and finish
     if ranges == 1:
         points = 289
         t = "1D"
-
     elif ranges == 7:
         points = 169
         t = "1W"
-
     elif ranges == 31:
         points = 121
         t = "1M"
-
     else:
         points = 366
         t = "1Y"
 
-    #
-    step = (now - start) / (points - 1)
+    step = (end - start) / (points - 1)
 
-    timestamps = []
-
-    for i in range(points):
-        timestamps.append(start + (step * i))
+    timestamps = [start + (step * i) for i in range(points)]
 
     return timestamps, t
 
@@ -559,6 +577,7 @@ async def get_portfolio_value_history(
                 cached_histories[symbol],
                 key=lambda x: abs(x["time"] - time)
             )
+
 
             curr_total += float(holding["quantity"]) * float(
                 closest["price"])  # total of the specific holding at a specific time
