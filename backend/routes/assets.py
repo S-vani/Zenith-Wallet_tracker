@@ -450,7 +450,8 @@ async def return_user_information(
     information = {
         "id": current_user.id,
         "name": current_user.name,
-        "email": current_user.email
+        "email": current_user.email,
+        "date_joined": current_user.date_joined
     }
 
     return information

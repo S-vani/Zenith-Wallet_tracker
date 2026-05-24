@@ -1,10 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Added css for the dashboard file along with minor bug fixes like slow loading speed">
+    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Code formatting">
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/9a153d2f-452a-4025-8319-b86262861f67.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/9a153d2f-452a-4025-8319-b86262861f67.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/db_models/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db_models/assets.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/routes/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/routes/assets.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/services/asset_services.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/services/asset_services.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/Dashboard/DashboardChart.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/Dashboard/DashboardChart.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/Dashboard/DashboardStats.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/Dashboard/DashboardStats.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/css/Dashboard.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/css/Dashboard.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/DashboardPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/DashboardPage.jsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -137,23 +143,8 @@
       <workItem from="1779324820504" duration="10384000" />
       <workItem from="1779473964519" duration="4740000" />
       <workItem from="1779561211817" duration="6602000" />
-      <workItem from="1779641744034" duration="5877000" />
-    </task>
-    <task id="LOCAL-00003" summary="Added a name parameter to the registration field so when a user registers they can input their name">
-      <option name="closed" value="true" />
-      <created>1777345478033</created>
-      <option name="number" value="00003" />
-      <option name="presentableId" value="LOCAL-00003" />
-      <option name="project" value="LOCAL" />
-      <updated>1777345478033</updated>
-    </task>
-    <task id="LOCAL-00004" summary="Added a new route to verify user">
-      <option name="closed" value="true" />
-      <created>1777347533626</created>
-      <option name="number" value="00004" />
-      <option name="presentableId" value="LOCAL-00004" />
-      <option name="project" value="LOCAL" />
-      <updated>1777347533626</updated>
+      <workItem from="1779641744034" duration="6281000" />
+      <workItem from="1779652287723" duration="5017000" />
     </task>
     <task id="LOCAL-00005" summary="Added a new class that tracks transactions by adding them to my db table with multiple parameters">
       <option name="closed" value="true" />
@@ -531,7 +522,23 @@
       <option name="project" value="LOCAL" />
       <updated>1779647046979</updated>
     </task>
-    <option name="localTasksCounter" value="52" />
+    <task id="LOCAL-00052" summary="Added colouring to the dashboard page to show green for profit and red for loss">
+      <option name="closed" value="true" />
+      <created>1779647689259</created>
+      <option name="number" value="00052" />
+      <option name="presentableId" value="LOCAL-00052" />
+      <option name="project" value="LOCAL" />
+      <updated>1779647689259</updated>
+    </task>
+    <task id="LOCAL-00053" summary="Code formatting">
+      <option name="closed" value="true" />
+      <created>1779647747341</created>
+      <option name="number" value="00053" />
+      <option name="presentableId" value="LOCAL-00053" />
+      <option name="project" value="LOCAL" />
+      <updated>1779647747341</updated>
+    </task>
+    <option name="localTasksCounter" value="54" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -549,8 +556,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added verification pages for signup and login, made some small tweaks with bugs that I found such as crypto pricing not fetching properly with yahoo finance returning None as a price. Will soon make it so when you signup, an email is sent to you with a link to verify just as a basic overlay before starting to work on css and styling" />
-    <MESSAGE value="Implemented email system using smtp protocol to send verification link" />
     <MESSAGE value="Added a way to search for stocks, the idea is that when a user wants to make a transaction they search a symbol and out comes a bunch of stocks of that symbol with prices, used an api called finnhub. For crypto I will probably use coingecko or something like that." />
     <MESSAGE value="Added a new route in the backend that fetches crypto information based on search, will use it later to allow the use to type in symbols for crypto or stocks and get returned a list of them that they can click, opening a form and automatically sending to the backend the symbol of the asset they pressed" />
     <MESSAGE value="Changed the api im using for stock searching to twelvedata, currently have free plan with 10 api calls a minute but will upgrade before releasing" />
@@ -574,7 +579,9 @@
     <MESSAGE value="Finished the holding page by styling the graph and the table with holdings" />
     <MESSAGE value="Centered the loading text to be in the middle of the table rather than the left to look better, also added animation for when loading the holdings" />
     <MESSAGE value="Added css for the dashboard file along with minor bug fixes like slow loading speed" />
-    <option name="LAST_COMMIT_MESSAGE" value="Added css for the dashboard file along with minor bug fixes like slow loading speed" />
+    <MESSAGE value="Added colouring to the dashboard page to show green for profit and red for loss" />
+    <MESSAGE value="Code formatting" />
+    <option name="LAST_COMMIT_MESSAGE" value="Code formatting" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/WalletTracker$test.coverage" NAME="test Coverage Results" MODIFIED="1777047403500" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

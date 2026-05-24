@@ -19,6 +19,7 @@ class Base(DeclarativeBase):
 
 class User(SQLAlchemyBaseUserTableUUID, Base):
     name = Column(String, nullable=False)
+    date_joined = Column(DateTime, default=datetime.now(timezone.utc))
 
     transactions = relationship("Transaction", back_populates="user")
 

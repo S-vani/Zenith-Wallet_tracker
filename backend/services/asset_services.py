@@ -406,7 +406,7 @@ async def get_portfolio_value_at(
 async def get_history_of_prices(
         symbol: str,
         type: str,
-        range: Literal["1D", "1W", "1M", "1Y", "5Y"]
+        range: str
 ):
     """
     Get historical prices of that specific symbol/holding on specific ranges, and turn it into a tuple returning the
@@ -471,7 +471,7 @@ async def get_history_of_prices(
 
 
 def calculate_timespans_for_portfolio_history(
-        ranges: Literal[1, 7, 31, 365]
+        ranges: int
 ):
     """
     Helper function to calculate the timespans that we loop through to calculate the portfolios historical values.
@@ -514,7 +514,7 @@ def calculate_timespans_for_portfolio_history(
 async def get_portfolio_value_history(
         db: AsyncSession,
         user_id: UUID,
-        ranges: Literal[1, 7, 31, 365]
+        ranges: int
 ):
     """
     return the data needed to graph the portfolios historical values.

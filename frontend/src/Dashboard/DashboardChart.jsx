@@ -1,35 +1,65 @@
 import {useEffect, useState} from "react";
-import {getPortfolioHistory} from "../services/api.js";
+import {getPortfolioHistory, getUser} from "../services/api.js";
 import {LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer} from "recharts";
 
-const RANGE_DAYS = {day: 1, week: 7, month: 31, year: 365, all: 3650};
-
-function DashboardChart({range}) {
+function DashboardChart({ range }) {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [diffDays, setDiffDays] = useState(null);
+
+    useEffect(() => {
+        const loadUser = async () => {
+            const user_info = await getUser();
+
+            const created = new Date(user_info.date_joined);
+            const now = new Date();
+
+            setDiffDays(
+                Math.ceil((now - created) / (1000 * 60 * 60 * 24))
+            );
+        };
+
+        loadUser();
+    }, []);
+
+    const getRangeValue = () => ({
+        day: 1,
+        week: 7,
+        month: 31,
+        year: 365,
+        all: diffDays
+    });
 
     const loadDashboardChart = async (selectedRange) => {
         setLoading(true);
+
         const res = await getPortfolioHistory(selectedRange);
         setData(res);
+
         setLoading(false);
     };
 
     useEffect(() => {
-        loadDashboardChart(RANGE_DAYS[range] ?? 1);
-    }, [range]);
+        if (range === "all" && diffDays == null) return;
+
+        const ranges = getRangeValue();
+
+        loadDashboardChart(ranges[range] ?? 1);
+    }, [range, diffDays]);
 
     return (
-        <div className="chart-wrapper">
+        <div className="chart-wrapper-dashboard">
 
             <div className="chart-body">
                 {loading ? (
-                    <p className="loading-chart">Loading…</p>
+                    <p className="loading-chart">Graphing chart...</p>
                 ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={data} margin={{top: 4, right: 4, left: -20, bottom: 0}}>
+                        <LineChart data={data} margin={{top: 4, right: 4, left: -30, bottom: 0}}>
                             <XAxis
                                 dataKey="time"
+                                interval={16}
+                                tickMargin={10}
                                 tick={{fill: "#6b7280", fontSize: 11}}
                                 axisLine={{stroke: "rgba(255,255,255,0.06)"}}
                                 tickLine={false}

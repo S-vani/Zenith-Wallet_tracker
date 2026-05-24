@@ -87,7 +87,7 @@ function DashboardPage() {
             </div>
 
             {loading ? (
-                <p className="loading">Loading…</p>
+                <p className="loading-dashboard">Fetching Portfolio History...</p>
             ) : (
                 <DashboardChart range={activeRange}/>
             )}
