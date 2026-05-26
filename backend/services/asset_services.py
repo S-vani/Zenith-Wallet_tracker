@@ -154,7 +154,7 @@ async def get_holdings_at_time(
                     (float(t.price_of_one) * conversion),
                     holdings_at_timestamp[api_id]["quantity"],
                     t.quantity
-                ) * conversion
+                )
                 holdings_at_timestamp[api_id]["quantity"] += float(t.quantity)
                 print(holdings_at_timestamp[api_id]["avg_price"])
                 print(holdings_at_timestamp[api_id]["quantity"])
