@@ -1,14 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Fixed a few glitches where the daily porfolio information was inaccurate by returning the wrong currency, and also not fetching prices properly">
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/9a153d2f-452a-4025-8319-b86262861f67.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/9a153d2f-452a-4025-8319-b86262861f67.xml" afterDir="false" />
+    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Added functions in backend to translate cad to other currencies depending on user region">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/db_models/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db_models/assets.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/routes/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/routes/assets.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/schemas/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/schemas/assets.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/services/asset_services.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/services/asset_services.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/Dashboard/DashboardChart.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/Dashboard/DashboardChart.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/services/api.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -144,15 +141,7 @@
       <workItem from="1779641744034" duration="6281000" />
       <workItem from="1779652287723" duration="6939000" />
       <workItem from="1779659266665" duration="190000" />
-      <workItem from="1779809476244" duration="1741000" />
-    </task>
-    <task id="LOCAL-00007" summary="Added some routes to get transactions using filters, delete transactions with their id and return transactions with specific ids. Added helper functions in the services to have cleaner code">
-      <option name="closed" value="true" />
-      <created>1777491492826</created>
-      <option name="number" value="00007" />
-      <option name="presentableId" value="LOCAL-00007" />
-      <option name="project" value="LOCAL" />
-      <updated>1777491492826</updated>
+      <workItem from="1779809476244" duration="8488000" />
     </task>
     <task id="LOCAL-00008" summary="Removed forcing user to be verified for now since I havnt even added a verification method so for testing purposes I have set it so current user does not have to be verified">
       <option name="closed" value="true" />
@@ -538,7 +527,15 @@
       <option name="project" value="LOCAL" />
       <updated>1779659035219</updated>
     </task>
-    <option name="localTasksCounter" value="56" />
+    <task id="LOCAL-00056" summary="Added functions in backend to translate cad to other currencies depending on user region">
+      <option name="closed" value="true" />
+      <created>1779811328533</created>
+      <option name="number" value="00056" />
+      <option name="presentableId" value="LOCAL-00056" />
+      <option name="project" value="LOCAL" />
+      <updated>1779811328534</updated>
+    </task>
+    <option name="localTasksCounter" value="57" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -556,7 +553,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Changed the api im using for stock searching to twelvedata, currently have free plan with 10 api calls a minute but will upgrade before releasing" />
     <MESSAGE value=".idea files to commit" />
     <MESSAGE value="In the frontend when you add a transaction now you can type a symbol and get returned a list of all the assets starting with those letters and display their current price and change, then you can select it and then enter the information for your transaction" />
     <MESSAGE value="Basic formating for some frontend files" />
@@ -581,7 +577,8 @@
     <MESSAGE value="Code formatting" />
     <MESSAGE value="Increased chart size and added an alltime button to show alltime profit by calculating when the users account was created and subtracting the time now from it to get a date range" />
     <MESSAGE value="Fixed a few glitches where the daily porfolio information was inaccurate by returning the wrong currency, and also not fetching prices properly" />
-    <option name="LAST_COMMIT_MESSAGE" value="Fixed a few glitches where the daily porfolio information was inaccurate by returning the wrong currency, and also not fetching prices properly" />
+    <MESSAGE value="Added functions in backend to translate cad to other currencies depending on user region" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added functions in backend to translate cad to other currencies depending on user region" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/WalletTracker$test.coverage" NAME="test Coverage Results" MODIFIED="1777047403500" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

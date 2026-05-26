@@ -89,7 +89,9 @@ export async function getHoldings() {
 
 export async function getPriceHistory(symbol, type, range) {
     const res = await fetch(
-        `${BASE_URL}/prices/history?symbol=${symbol}&type=${type}&range=${range}`
+        `${BASE_URL}/prices/history?symbol=${symbol}&type=${type}&range=${range}`, {
+            headers: getAuthHeaders()
+        }
     );
 
     if (!res.ok) {
@@ -178,7 +180,9 @@ export async function verify(params) {
 }
 
 export async function searchStock(symbol) {
-    const res = await fetch(`${BASE_URL}/assets/search/stock?asset=${symbol}`);
+    const res = await fetch(`${BASE_URL}/assets/search/stock?asset=${symbol}`, {
+            headers: getAuthHeaders()
+        });
 
     if (!res.ok) {
         throw new Error("search stock error")
@@ -188,7 +192,9 @@ export async function searchStock(symbol) {
 }
 
 export async function searchCrypto(symbol) {
-    const res = await fetch(`${BASE_URL}/assets/search/crypto?asset=${symbol}`);
+    const res = await fetch(`${BASE_URL}/assets/search/crypto?asset=${symbol}`, {
+            headers: getAuthHeaders()
+        });
 
     if (!res.ok) {
         throw new Error("search crypto error")

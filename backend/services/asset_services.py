@@ -27,7 +27,7 @@ async def get_holdings_from_symbol(db: AsyncSession, user_id: UUID, symbol: str)
     return result.scalars().all()
 
 
-async def get_curr_holdings_prices(holdings: dict[str, dict[str, float | str]]):
+async def get_curr_holdings_prices(holdings: dict[str, dict[str, float | str]], currency: str):
     """
     Return a list of dictionaries in the form {"api_id": curr_price}
     """
@@ -41,16 +41,24 @@ async def get_curr_holdings_prices(holdings: dict[str, dict[str, float | str]]):
             stocks.append(str(ids))
 
     # The 2 variables below are dicts like {api_id: curr_price}
-    crypto_prices = await get_crypto_prices_at(crypto, datetime.now(timezone.utc))
-    stock_prices = await get_stock_prices_at(stocks, datetime.now(timezone.utc))
+    crypto_prices = await get_crypto_prices_at(crypto, datetime.now(timezone.utc), currency)
+    stock_prices = await get_stock_prices_at(stocks, datetime.now(timezone.utc), currency)
 
     return crypto_prices | stock_prices
 
 
-async def get_total_realized_profit(db: AsyncSession, user_id: UUID):
+async def get_total_realized_profit(db: AsyncSession, user_id: UUID, currency: str):
     """
     Query the database with all the sell transactions and add up all the profit parameters in those sell transactions
     """
+    conversion = 1
+    if currency == "USD":
+        conversion = await get_usd()
+    elif currency == "EUR":
+        conversion = await get_eur()
+    else:
+        conversion = 1
+
     result = await db.execute(
         select(func.coalesce(func.sum(Transaction.profit), 0.0))
         .where(
@@ -59,20 +67,28 @@ async def get_total_realized_profit(db: AsyncSession, user_id: UUID):
         )
     )
 
-    return float(result.scalar_one())
+    return float(result.scalar_one()) * conversion
 
 
 async def get_cash_flow_between(
         db: AsyncSession,
         user_id: UUID,
         start: datetime,
-        end: datetime
+        end: datetime,
+        currency: str
 ):
     """
     Meant to calculate cash flow into the account, to be more specific imagine with 1 week ago someone portfolio value is 1000$,
     and now its 2000$, but they did not actually profit 1000$ but rather profited 100$ and then deposited another 900$, this function is
     meant to calculate that 900$ cash flow into the account so it's not accounted for in the profit
     """
+    conversion = 1
+    if currency == "USD":
+        conversion = await get_usd()
+    elif currency == "EUR":
+        conversion = await get_eur()
+    else:
+        conversion = 1
     result = await db.execute(
         select(
             func.coalesce(  # if there's no rows with these props return 0.0 instead of null
@@ -93,19 +109,28 @@ async def get_cash_flow_between(
         )
     )
 
-    return float(result.scalar_one())  # return 1 scalar float value
+    return float(result.scalar_one()) * conversion  # return 1 scalar float value
 
 
 async def get_holdings_at_time(
         db: AsyncSession,
         user_id: UUID,
-        timestamp: datetime
+        timestamp: datetime,
+        currency: str
 ):
     """
     Return a dictionary mapping an api id to another dictionary with average price, quantity  and type meant to be a dictionary
     of all the holdings at a certain time
     """
     holdings_at_timestamp = {}
+
+    conversion = 1
+    if currency == "USD":
+        conversion = await get_usd()
+    elif currency == "EUR":
+        conversion = await get_eur()
+    else:
+        conversion = 1
 
     result = await db.execute(
         select(Transaction)
@@ -120,26 +145,31 @@ async def get_holdings_at_time(
 
     for t in transactions:
         api_id = str(t.api_id)
+        print(t.price_of_one)
 
         if str(t.action) == "BUY":
             if api_id in holdings_at_timestamp:  # if the api_id is already in the dictionary recalculate its values
                 holdings_at_timestamp[api_id]["avg_price"] = get_holdings_helper(
                     holdings_at_timestamp[api_id]["avg_price"],
-                    t.price_of_one,
+                    (float(t.price_of_one) * conversion),
                     holdings_at_timestamp[api_id]["quantity"],
                     t.quantity
-                )
-                holdings_at_timestamp[api_id]["quantity"] += t.quantity
+                ) * conversion
+                holdings_at_timestamp[api_id]["quantity"] += float(t.quantity)
+                print(holdings_at_timestamp[api_id]["avg_price"])
+                print(holdings_at_timestamp[api_id]["quantity"])
             else:
                 holdings_at_timestamp[api_id] = {
-                    "avg_price": t.price_of_one,
-                    "quantity": t.quantity,
+                    "avg_price": float(t.price_of_one) * conversion,
+                    "quantity": float(t.quantity),
                     "type": t.asset_type
                 }
+                print(holdings_at_timestamp[api_id]["avg_price"])
+                print( holdings_at_timestamp[api_id]["quantity"])
 
         else:  # SELL
             if api_id in holdings_at_timestamp:
-                holdings_at_timestamp[api_id]["quantity"] -= t.quantity
+                holdings_at_timestamp[api_id]["quantity"] -= float(t.quantity)
 
     return holdings_at_timestamp
 
@@ -147,12 +177,13 @@ async def get_holdings_at_time(
 async def get_holdings_at_time_list(
         db: AsyncSession,
         user_id: UUID,
-        timestamp: datetime
+        timestamp: datetime,
+        currency: str
 ):
     """
     Take the dictionary that get_holdings_at_time returns and turn it into a list to be more easily used by the frontend
     """
-    result = await get_holdings_at_time(db, user_id, timestamp)
+    result = await get_holdings_at_time(db, user_id, timestamp, currency)
     now = datetime.now(timezone.utc)
 
     stocks = []
@@ -164,8 +195,8 @@ async def get_holdings_at_time_list(
         else:
             crypto.append(key)
 
-    stock_prices = await get_stock_prices_at(stocks, now)
-    crypto_prices = await get_crypto_prices_at(crypto, now)
+    stock_prices = await get_stock_prices_at(stocks, now, currency)
+    crypto_prices = await get_crypto_prices_at(crypto, now, currency)
 
     curr_holdings_list = []
 
@@ -188,8 +219,8 @@ def get_holdings_helper(curr_avg: float, new_price: float, curr_quantity: float,
     """
     Calculate the average price paid for a certain holding
     """
-    total_cost = (curr_avg * curr_quantity) + (new_price * new_quantity)
-    return total_cost / (curr_quantity + new_quantity)
+    total_cost = (float(curr_avg) * float(curr_quantity)) + (float(new_price) * float(new_quantity))
+    return total_cost / float((float(curr_quantity) + float(new_quantity)))
 
 
 async def get_usd_to_cad():
@@ -237,7 +268,7 @@ async def get_eur():
     return float(eur)
 
 
-async def get_crypto_prices_at(api_ids: list[str], timestamp: datetime):
+async def get_crypto_prices_at(api_ids: list[str], timestamp: datetime, currency: str):
     if not api_ids:
         return {}
 
@@ -246,6 +277,14 @@ async def get_crypto_prices_at(api_ids: list[str], timestamp: datetime):
         ticker = yf.Ticker(ticker_symbol)
         now = datetime.now(timezone.utc)
 
+        conversion = 1
+        if currency == "USD":
+            conversion = await get_usd()
+        elif currency == "EUR":
+            conversion = await get_eur()
+        else:
+            conversion = 1
+
         start = timestamp - timedelta(minutes=5)
         end = min(timestamp + timedelta(minutes=5), now)
         hist = ticker.history(start=start, end=end, interval="1m")
@@ -253,7 +292,7 @@ async def get_crypto_prices_at(api_ids: list[str], timestamp: datetime):
         if not hist.empty:
             closest_row = hist.iloc[np.abs(hist.index.tz_convert("UTC") - timestamp).argmin()]
             price = float(closest_row["Close"])
-            return api_id, price
+            return api_id, price * conversion
 
         fallback_start = timestamp - timedelta(days=5)
         fallback_end = min(timestamp + timedelta(days=1), now)
@@ -268,21 +307,40 @@ async def get_crypto_prices_at(api_ids: list[str], timestamp: datetime):
             return api_id, None
 
         price = float(hist_before.iloc[-1]["Close"])
-        return api_id, price
+        return api_id, price * conversion
 
     results = await asyncio.gather(*[fetch_one(api_id) for api_id in api_ids])
     return dict(results)
 
 
-async def get_stock_prices_at(symbols: list[str], timestamp: datetime):
+async def get_stock_prices_at(symbols: list[str], timestamp: datetime, currency: str):
     if not symbols:
         return {}
 
     conversion_to_cad = await get_usd_to_cad()
 
+    conversion = 1
+    if currency == "USD":
+        conversion = await get_usd()
+    elif currency == "EUR":
+        conversion = await get_eur()
+    else:
+        conversion = 1
+
     async def fetch_one(symbol):
         ticker = yf.Ticker(symbol)
         now = datetime.now(timezone.utc)
+
+        try:
+            ticker_currency = ticker.info.get("currency", "USD").upper()
+        except Exception:
+            ticker_currency = "USD"
+
+        # If already CAD no conversion needed, otherwise convert to CAD first
+        if ticker_currency == "CAD":
+            to_cad = 1.0
+        else:
+            to_cad = conversion_to_cad
 
         narrow_start = timestamp - timedelta(minutes=5)
         narrow_end = min(timestamp + timedelta(minutes=5), now)
@@ -290,8 +348,8 @@ async def get_stock_prices_at(symbols: list[str], timestamp: datetime):
 
         if not hist.empty:
             closest_row = hist.iloc[np.abs(hist.index.tz_convert("UTC") - timestamp).argmin()]
-            price = float(closest_row["Close"]) * conversion_to_cad
-            return symbol, price
+            price = float(closest_row["Close"]) * to_cad
+            return symbol, price * conversion
 
         fallback_start = timestamp - timedelta(days=5)
         fallback_end = min(timestamp + timedelta(days=1), now)
@@ -305,15 +363,14 @@ async def get_stock_prices_at(symbols: list[str], timestamp: datetime):
         if hist_before.empty:
             return symbol, 0.0
 
-        close_usd = float(hist_before.iloc[-1]["Close"])
-        price = close_usd * conversion_to_cad
-        return symbol, price
+        price = float(hist_before.iloc[-1]["Close"]) * to_cad
+        return symbol, price * conversion
 
     results = await asyncio.gather(*[fetch_one(symbol) for symbol in symbols])
     return dict(results)
 
 
-async def calculate_profit_for_one_transaction(db: AsyncSession, user_id: UUID, data: CreateTransaction):
+async def calculate_profit_for_one_transaction(db: AsyncSession, user_id: UUID, data: CreateTransaction, currency: str):
     """
     Calculate the amount a user profited from a certain sell transaction
     """
@@ -352,6 +409,14 @@ async def calculate_profit_for_one_transaction(db: AsyncSession, user_id: UUID, 
     sell_price = float(data.price_of_one)
 
     profit = (sell_price - avg_cost) * sell_qty
+
+    conversion = 1
+    if currency == "USD":
+        conversion = await get_usd()
+    elif currency == "EUR":
+        conversion = await get_eur()
+    else:
+        conversion = 1
 
     return profit
 
@@ -427,12 +492,13 @@ def turn_list_to_dict(lst):
 async def get_portfolio_value_at(
         db: AsyncSession,
         user_id: UUID,
-        timestamp: datetime
+        timestamp: datetime,
+        currency: str
 ):
     """
     Get the portfolios value at a specific time in the form of a float
     """
-    holdings = await get_holdings_at_time(db, user_id, timestamp)
+    holdings = await get_holdings_at_time(db, user_id, timestamp, currency)
 
     if not holdings:
         return 0.0
@@ -446,8 +512,8 @@ async def get_portfolio_value_at(
         else:
             stocks.append(api_id)
 
-    crypto_prices = await get_crypto_prices_at(crypto, timestamp)
-    stock_prices = await get_stock_prices_at(stocks, timestamp)
+    crypto_prices = await get_crypto_prices_at(crypto, timestamp, currency)
+    stock_prices = await get_stock_prices_at(stocks, timestamp, currency)
 
     prices = crypto_prices | stock_prices
 
@@ -464,7 +530,8 @@ async def get_portfolio_value_at(
 async def get_history_of_prices(
         symbol: str,
         type: str,
-        range: str
+        range: str,
+        currency: str
 ):
     """
     Get historical prices of that specific symbol/holding on specific ranges, and turn it into a tuple returning the
@@ -496,8 +563,16 @@ async def get_history_of_prices(
 
     ticker = yf.Ticker(s)  # create object representing the specific stock or crypto
 
-    currency = ticker.info.get("currency")
+    currency_1 = ticker.info.get("currency")
     conversion_to_cad = await get_usd_to_cad()
+
+    conversion = 1
+    if currency == "USD":
+        conversion = await get_usd()
+    elif currency == "EUR":
+        conversion = await get_eur()
+    else:
+        conversion = 1
 
     hist = ticker.history(
         period=period,
@@ -516,12 +591,12 @@ async def get_history_of_prices(
     for index, row in hist.iterrows():  # iterate row by row with index being the specific row label (date)
         price = float(row["Close"])
 
-        if currency == "USD" or type == "crypto":
+        if currency_1 == "USD" or type == "crypto":
             price *= conversion_to_cad
 
         data.append({
             "time": str(index),
-            "price": price
+            "price": price * conversion
             # "Closing" price on that interval, for example if time is 10:15:00, then it fetches price at 10:15:59
         })
 
@@ -560,7 +635,8 @@ def calculate_timespans_for_portfolio_history(ranges: int):
 async def get_portfolio_value_history(
         db: AsyncSession,
         user_id: UUID,
-        ranges: int
+        ranges: int,
+        currency: str
 ):
     """
     return the data needed to graph the portfolios historical values.
@@ -577,7 +653,8 @@ async def get_portfolio_value_history(
         holdings = await get_holdings_at_time(
             db,
             user_id,
-            time
+            time,
+            currency
         )  # Dictionary of holdings with api_id mapping to another dictionary with information needed
 
         for symbol, holding in holdings.items():
@@ -587,7 +664,8 @@ async def get_portfolio_value_history(
                 history, _ = await get_history_of_prices(
                     symbol,
                     holding["type"],
-                    t
+                    t,
+                    currency
                 )  # List of prices mapping {api_id: price}
 
                 parsed = []

@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 import requests
 
 from fastapi import HTTPException, Depends, APIRouter, Query
-from numpy.distutils.fcompiler import none
 from sqlalchemy import select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,7 +17,8 @@ from backend.schemas.assets import CreateTransaction, UpdateTransaction
 from backend.services.asset_services import current_quantity, create_holding_filter, \
     turn_list_to_dict, calculate_profit_for_one_transaction, get_curr_holdings_prices, \
     get_holdings_at_time, get_portfolio_value_at, get_cash_flow_between, get_total_realized_profit, \
-    get_holdings_at_time_list, get_history_of_prices, get_portfolio_value_history, is_valid_symbol, get_usd_to_cad
+    get_holdings_at_time_list, get_history_of_prices, get_portfolio_value_history, is_valid_symbol, get_usd_to_cad, \
+    get_usd, get_eur
 
 load_dotenv()
 router = APIRouter()
@@ -95,7 +95,7 @@ async def update_transaction_with_id(
     Note that the user won't actually be entering a transaction id, they will select buttons from the front end that will
     automatically call this route with the information inputted by the user.
     """
-    transaction = return_transaction_with_id(trans_id, session, current_user)
+    transaction = await return_transaction_with_id(trans_id, session, current_user)
 
     # Check exactly what was sent in
     if updates.symbol:
@@ -164,7 +164,8 @@ async def make_transaction(
 
         profit_calculated = await calculate_profit_for_one_transaction(session,
                                                                        current_user.id,
-                                                                       data)  # Calculate profit for the sell
+                                                                       data,
+                                                                       current_user.currency)  # Calculate profit for the sell
 
     transaction = Transaction(
         action=data.action,
@@ -199,7 +200,7 @@ async def get_current_holdings(
 
     this is a dictionary with all the current holdings that the user has
     """
-    return await get_holdings_at_time_list(session, current_user.id, datetime.now(timezone.utc))
+    return await get_holdings_at_time_list(session, current_user.id, datetime.now(timezone.utc), current_user.currency)
 
 
 @router.get("/dashboard")
@@ -215,14 +216,18 @@ async def portfolio_stats(
     """
     now = datetime.now(timezone.utc)
 
-    holdings = await get_holdings_at_time(session, current_user.id,
-                                          now)  # returns dict which maps api_id to avg_price, quantity and type
+    holdings = await get_holdings_at_time(session,
+                                          current_user.id,
+                                          now,
+                                          current_user.currency)  # returns dict which maps api_id to avg_price, quantity and type
 
     if holdings == {}:  # If we have no holdings
         return {"value": 0.0, "curr_timeperiod": 0.0}
 
     curr_prices = await get_curr_holdings_prices(
-        holdings)  # return dictionary mapping api_id to the current price of that holding
+        holdings,
+        current_user.currency
+    )  # return dictionary mapping api_id to the current price of that holding
 
     total_value = 0.0
     unrealized_profit = 0.0
@@ -238,7 +243,8 @@ async def portfolio_stats(
 
     if current_timeperiod == "all":  # If the timeperiod is all time profit
         realized_profit = await get_total_realized_profit(session,
-                                                          current_user.id)  # This function goes through all the users sell transactions and adds up the profit variable
+                                                          current_user.id,
+                                                          current_user.currency)  # This function goes through all the users sell transactions and adds up the profit variable
 
         return {
             "value": total_value,
@@ -255,9 +261,11 @@ async def portfolio_stats(
     past_time = now - timedelta(
         days=time_map[current_timeperiod])  # start date that where calculating profit from up to now
 
-    value_task = get_portfolio_value_at(session, current_user.id, past_time)  # portfolio value at that pastime
+    value_task = get_portfolio_value_at(session, current_user.id, past_time,
+                                        current_user.currency)  # portfolio value at that pastime
     cash_task = get_cash_flow_between(session, current_user.id, past_time,
-                                      now)  # how much cash has flowed in from then to now (user buys new holdings)
+                                      now,
+                                      current_user.currency)  # how much cash has flowed in from then to now (user buys new holdings)
 
     past_value, cash_flow = await asyncio.gather(
         value_task,
@@ -276,14 +284,16 @@ async def portfolio_stats(
 async def get_price_history(
         symbol: str,
         type: str,
-        range: Literal["1D", "1W", "1M", "1Y", "5Y"]
+        range: Literal["1D", "1W", "1M", "1Y", "5Y"],
+
+        current_user: User = Depends(current_active_user)
 ):
     """
     Get historical prices of that specific symbol/holding on specific ranges, to make a graph. For example lets say
     I want to see how much BTC has changed in price over the past day, I call get_price_history("BTC", "1D") and it
     returns all the data needed to generate a graph of its price
     """
-    data, s = await get_history_of_prices(symbol, type, range)
+    data, s = await get_history_of_prices(symbol, type, range, current_user.currency)
 
     return {
         "symbol": s,
@@ -303,16 +313,24 @@ async def get_portfolio_history(
     return a list of dictionaries which each have a time mapping to a string of time and also a value mapping to a float,
     to create a chart for frontend
     """
-    data = await get_portfolio_value_history(session, current_user.id, range)
+    data = await get_portfolio_value_history(session, current_user.id, range, current_user.currency)
 
     return data
 
 
 @router.get("/assets/search/stock")
-async def search_assets_stocks(asset: str):
+async def search_assets_stocks(asset: str, current_user: User = Depends(current_active_user)):
     asset = asset.upper()
     twelve = os.getenv("API_KEY")
-    conversion = await get_usd_to_cad()
+    conversion_to_cad = await get_usd_to_cad()
+
+    conversion = 1
+    if current_user.currency == "USD":
+        conversion = await get_usd()
+    elif current_user.currency == "EUR":
+        conversion = await get_eur()
+    else:
+        conversion = 1
 
     url = (
         f"https://api.twelvedata.com/symbol_search"
@@ -365,8 +383,8 @@ async def search_assets_stocks(asset: str):
             "symbol": res["symbol"],
             "type": "stock",
             "image": "",
-            "price": float(res["close"]) * float(conversion),
-            "change": float(res["change"]) * float(conversion),
+            "price": float(res["close"]) * float(conversion_to_cad) * conversion,
+            "change": float(res["change"]) * float(conversion_to_cad) * conversion,
             "change_pct": float(res["percent_change"])
         })
     else:
@@ -376,8 +394,8 @@ async def search_assets_stocks(asset: str):
                 "symbol": res[data]["symbol"],
                 "type": "stock",
                 "image": "",
-                "price": float(res[data]["close"]) * float(conversion),
-                "change": float(res[data]["change"]) * float(conversion),
+                "price": float(res[data]["close"]) * float(conversion_to_cad) * conversion,
+                "change": float(res[data]["change"]) * float(conversion_to_cad) * conversion,
                 "change_pct": float(res[data]["percent_change"])
             })
             print(final)
@@ -386,7 +404,7 @@ async def search_assets_stocks(asset: str):
 
 
 @router.get("/assets/search/crypto")
-async def search_assets_crypto(asset: str):
+async def search_assets_crypto(asset: str, current_user: User = Depends(current_active_user)):
     gecko = os.getenv("API_KEY_COINEGECKO")
 
     url = (
@@ -401,6 +419,14 @@ async def search_assets_crypto(asset: str):
         "x-cg-demo-api-key": gecko
     }
 
+    conversion = "cad"
+    if current_user.currency == "USD":
+        conversion = "usd"
+    elif current_user.currency == "EUR":
+        conversion = "eur"
+    else:
+        conversion = "cad"
+
     res = requests.get(url, params=params, headers=headers)
 
     data = res.json()["coins"][:6]
@@ -412,7 +438,7 @@ async def search_assets_crypto(asset: str):
     )
 
     params = {
-        "vs_currency": "cad",
+        "vs_currency": conversion,
         "ids": ids,
         "price_change_percentage": "24h",
     }
