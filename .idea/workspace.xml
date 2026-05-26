@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Increased chart size and added an alltime button to show alltime profit by calculating when the users account was created and subtracting the time now from it to get a date range">
+    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Fixed a few glitches where the daily porfolio information was inaccurate by returning the wrong currency, and also not fetching prices properly">
+      <change beforePath="$PROJECT_DIR$/.idea/dataSources/9a153d2f-452a-4025-8319-b86262861f67.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/9a153d2f-452a-4025-8319-b86262861f67.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/db_models/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db_models/assets.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/routes/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/routes/assets.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/schemas/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/schemas/assets.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/services/asset_services.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/services/asset_services.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/Dashboard/DashboardChart.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/Dashboard/DashboardChart.jsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -138,15 +142,9 @@
       <workItem from="1779473964519" duration="4740000" />
       <workItem from="1779561211817" duration="6602000" />
       <workItem from="1779641744034" duration="6281000" />
-      <workItem from="1779652287723" duration="6407000" />
-    </task>
-    <task id="LOCAL-00006" summary="Added some routes to get transactions and make some transactions along with services logic which is just functions that handle the long logic like calculating current number of shares/holdings or get all transactions, etc.">
-      <option name="closed" value="true" />
-      <created>1777430115851</created>
-      <option name="number" value="00006" />
-      <option name="presentableId" value="LOCAL-00006" />
-      <option name="project" value="LOCAL" />
-      <updated>1777430115851</updated>
+      <workItem from="1779652287723" duration="6939000" />
+      <workItem from="1779659266665" duration="190000" />
+      <workItem from="1779809476244" duration="1741000" />
     </task>
     <task id="LOCAL-00007" summary="Added some routes to get transactions using filters, delete transactions with their id and return transactions with specific ids. Added helper functions in the services to have cleaner code">
       <option name="closed" value="true" />
@@ -532,7 +530,15 @@
       <option name="project" value="LOCAL" />
       <updated>1779657498836</updated>
     </task>
-    <option name="localTasksCounter" value="55" />
+    <task id="LOCAL-00055" summary="Fixed a few glitches where the daily porfolio information was inaccurate by returning the wrong currency, and also not fetching prices properly">
+      <option name="closed" value="true" />
+      <created>1779659035219</created>
+      <option name="number" value="00055" />
+      <option name="presentableId" value="LOCAL-00055" />
+      <option name="project" value="LOCAL" />
+      <updated>1779659035219</updated>
+    </task>
+    <option name="localTasksCounter" value="56" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -550,7 +556,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added a new route in the backend that fetches crypto information based on search, will use it later to allow the use to type in symbols for crypto or stocks and get returned a list of them that they can click, opening a form and automatically sending to the backend the symbol of the asset they pressed" />
     <MESSAGE value="Changed the api im using for stock searching to twelvedata, currently have free plan with 10 api calls a minute but will upgrade before releasing" />
     <MESSAGE value=".idea files to commit" />
     <MESSAGE value="In the frontend when you add a transaction now you can type a symbol and get returned a list of all the assets starting with those letters and display their current price and change, then you can select it and then enter the information for your transaction" />
@@ -575,7 +580,8 @@
     <MESSAGE value="Added colouring to the dashboard page to show green for profit and red for loss" />
     <MESSAGE value="Code formatting" />
     <MESSAGE value="Increased chart size and added an alltime button to show alltime profit by calculating when the users account was created and subtracting the time now from it to get a date range" />
-    <option name="LAST_COMMIT_MESSAGE" value="Increased chart size and added an alltime button to show alltime profit by calculating when the users account was created and subtracting the time now from it to get a date range" />
+    <MESSAGE value="Fixed a few glitches where the daily porfolio information was inaccurate by returning the wrong currency, and also not fetching prices properly" />
+    <option name="LAST_COMMIT_MESSAGE" value="Fixed a few glitches where the daily porfolio information was inaccurate by returning the wrong currency, and also not fetching prices properly" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/WalletTracker$test.coverage" NAME="test Coverage Results" MODIFIED="1777047403500" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

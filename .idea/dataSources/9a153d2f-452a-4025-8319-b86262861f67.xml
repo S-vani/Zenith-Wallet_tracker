@@ -568,7 +568,7 @@
     </routine>
     <schema id="214" parent="1" name="main">
       <Current>1</Current>
-      <LastIntrospectionLocalTimestamp>2026-05-24.20:23:17</LastIntrospectionLocalTimestamp>
+      <LastIntrospectionLocalTimestamp>2026-05-26.15:44:28</LastIntrospectionLocalTimestamp>
     </schema>
     <argument id="215" parent="14">
       <ArgumentDirection>R</ArgumentDirection>
@@ -1933,16 +1933,21 @@
       <Position>8</Position>
       <StoredType>TIMESTAMP|0s</StoredType>
     </column>
-    <index id="656" parent="629" name="sqlite_autoindex_user_1">
+    <column id="656" parent="629" name="currency">
+      <DefaultExpression>NULL</DefaultExpression>
+      <Position>9</Position>
+      <StoredType>VARCHAR(10)|0s</StoredType>
+    </column>
+    <index id="657" parent="629" name="sqlite_autoindex_user_1">
       <ColNames>id</ColNames>
       <NameSurrogate>1</NameSurrogate>
       <Unique>1</Unique>
     </index>
-    <index id="657" parent="629" name="ix_user_email">
+    <index id="658" parent="629" name="ix_user_email">
       <ColNames>email</ColNames>
       <Unique>1</Unique>
     </index>
-    <key id="658" parent="629">
+    <key id="659" parent="629">
       <ColNames>id</ColNames>
       <Primary>1</Primary>
       <UnderlyingIndexName>sqlite_autoindex_user_1</UnderlyingIndexName>

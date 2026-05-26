@@ -194,7 +194,7 @@ def get_holdings_helper(curr_avg: float, new_price: float, curr_quantity: float,
 
 async def get_usd_to_cad():
     """
-    use an api to get the current usd to cad value since the entire app will be only in cad
+    use an api to get the current usd to cad value
     """
     url = "https://open.er-api.com/v6/latest/USD"
 
@@ -203,10 +203,39 @@ async def get_usd_to_cad():
         data = res.json()
 
     cad = data.get("rates", {}).get("CAD")
-    print(f"[FX] USD->CAD rate: {cad}")
-
 
     return float(cad)
+
+
+async def get_usd():
+    """
+    use an api to get the current usd price of 1 cad
+    """
+    url = "https://open.er-api.com/v6/latest/CAD"
+
+    async with httpx.AsyncClient() as client:
+        res = await client.get(url)
+        data = res.json()
+
+    usd = data.get("rates", {}).get("USD")
+
+    return float(usd)
+
+
+async def get_eur():
+    """
+    use an api to get the current eur price of 1 cad
+    """
+    url = "https://open.er-api.com/v6/latest/CAD"
+
+    async with httpx.AsyncClient() as client:
+        res = await client.get(url)
+        data = res.json()
+
+    eur = data.get("rates", {}).get("EUR")
+
+    return float(eur)
+
 
 async def get_crypto_prices_at(api_ids: list[str], timestamp: datetime):
     if not api_ids:
@@ -221,7 +250,6 @@ async def get_crypto_prices_at(api_ids: list[str], timestamp: datetime):
         end = min(timestamp + timedelta(minutes=5), now)
         hist = ticker.history(start=start, end=end, interval="1m")
 
-
         if not hist.empty:
             closest_row = hist.iloc[np.abs(hist.index.tz_convert("UTC") - timestamp).argmin()]
             price = float(closest_row["Close"])
@@ -230,7 +258,6 @@ async def get_crypto_prices_at(api_ids: list[str], timestamp: datetime):
         fallback_start = timestamp - timedelta(days=5)
         fallback_end = min(timestamp + timedelta(days=1), now)
         hist_fallback = ticker.history(start=fallback_start, end=fallback_end, interval="1d")
-
 
         if hist_fallback.empty:
             return api_id, None
@@ -251,7 +278,7 @@ async def get_stock_prices_at(symbols: list[str], timestamp: datetime):
     if not symbols:
         return {}
 
-    conversion = await get_usd_to_cad()
+    conversion_to_cad = await get_usd_to_cad()
 
     async def fetch_one(symbol):
         ticker = yf.Ticker(symbol)
@@ -263,7 +290,7 @@ async def get_stock_prices_at(symbols: list[str], timestamp: datetime):
 
         if not hist.empty:
             closest_row = hist.iloc[np.abs(hist.index.tz_convert("UTC") - timestamp).argmin()]
-            price = float(closest_row["Close"]) * conversion
+            price = float(closest_row["Close"]) * conversion_to_cad
             return symbol, price
 
         fallback_start = timestamp - timedelta(days=5)
@@ -279,7 +306,7 @@ async def get_stock_prices_at(symbols: list[str], timestamp: datetime):
             return symbol, 0.0
 
         close_usd = float(hist_before.iloc[-1]["Close"])
-        price = close_usd * conversion
+        price = close_usd * conversion_to_cad
         return symbol, price
 
     results = await asyncio.gather(*[fetch_one(symbol) for symbol in symbols])
@@ -470,7 +497,7 @@ async def get_history_of_prices(
     ticker = yf.Ticker(s)  # create object representing the specific stock or crypto
 
     currency = ticker.info.get("currency")
-    conversion = await get_usd_to_cad()
+    conversion_to_cad = await get_usd_to_cad()
 
     hist = ticker.history(
         period=period,
@@ -490,7 +517,7 @@ async def get_history_of_prices(
         price = float(row["Close"])
 
         if currency == "USD" or type == "crypto":
-            price *= conversion
+            price *= conversion_to_cad
 
         data.append({
             "time": str(index),
@@ -499,6 +526,7 @@ async def get_history_of_prices(
         })
 
     return data, s
+
 
 def calculate_timespans_for_portfolio_history(ranges: int):
     """
@@ -577,7 +605,6 @@ async def get_portfolio_value_history(
                 cached_histories[symbol],
                 key=lambda x: abs(x["time"] - time)
             )
-
 
             curr_total += float(holding["quantity"]) * float(
                 closest["price"])  # total of the specific holding at a specific time

@@ -2,7 +2,7 @@ import {useEffect, useState} from "react";
 import {getPortfolioHistory, getUser} from "../services/api.js";
 import {LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer} from "recharts";
 
-function DashboardChart({ range }) {
+function DashboardChart({range}) {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [diffDays, setDiffDays] = useState(null);
@@ -55,7 +55,7 @@ function DashboardChart({ range }) {
                     <p className="loading-chart">Graphing chart...</p>
                 ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={data} margin={{top: 4, right: 4, left: -30, bottom: 0}}>
+                        <LineChart data={data} margin={{top: 4, right: 5, left: 0, bottom: 0}}>
                             <XAxis
                                 dataKey="time"
                                 interval={16}
@@ -71,6 +71,7 @@ function DashboardChart({ range }) {
                                 }
                             />
                             <YAxis
+                                tickMargin={0}
                                 domain={["auto", "auto"]}
                                 tick={{fill: "#6b7280", fontSize: 11}}
                                 axisLine={false}

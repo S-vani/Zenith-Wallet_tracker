@@ -3,13 +3,18 @@ from fastapi_users import schemas
 import uuid
 from typing import Literal, Optional
 
+from datetime import datetime
+
 
 class UserRead(schemas.BaseUser[uuid.UUID]):
     name: str
+    date_joined: datetime
+    currency: str
 
 
 class UserCreate(schemas.BaseUserCreate):
     name: str
+    currency: str
 
 
 class UserUpdate(schemas.BaseUserUpdate):
