@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Added functions in backend to translate cad to other currencies depending on user region">
+    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Fixed bug where it was converting twice and giving wack numbers">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/db/database.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db/database.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/routes/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/routes/assets.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/services/asset_services.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/services/asset_services.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/Dashboard/DashboardChart.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/Dashboard/DashboardChart.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/services/api.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -141,23 +143,8 @@
       <workItem from="1779641744034" duration="6281000" />
       <workItem from="1779652287723" duration="6939000" />
       <workItem from="1779659266665" duration="190000" />
-      <workItem from="1779809476244" duration="8488000" />
-    </task>
-    <task id="LOCAL-00008" summary="Removed forcing user to be verified for now since I havnt even added a verification method so for testing purposes I have set it so current user does not have to be verified">
-      <option name="closed" value="true" />
-      <created>1777492151701</created>
-      <option name="number" value="00008" />
-      <option name="presentableId" value="LOCAL-00008" />
-      <option name="project" value="LOCAL" />
-      <updated>1777492151701</updated>
-    </task>
-    <task id="LOCAL-00009" summary="Added a way to calculate the profit for every sell so that later it can be easy to calculate total profit by querying all sells and simply adding the profit attribute that they all have">
-      <option name="closed" value="true" />
-      <created>1777495043191</created>
-      <option name="number" value="00009" />
-      <option name="presentableId" value="LOCAL-00009" />
-      <option name="project" value="LOCAL" />
-      <updated>1777495043191</updated>
+      <workItem from="1779809476244" duration="8742000" />
+      <workItem from="1779925142640" duration="2992000" />
     </task>
     <task id="LOCAL-00010" summary="New additions to be able to calculate the total portfolio value when user opens the app and also their current profit, as in the profit from the purchase price to how much they would profit if they sold today">
       <option name="closed" value="true" />
@@ -535,7 +522,23 @@
       <option name="project" value="LOCAL" />
       <updated>1779811328534</updated>
     </task>
-    <option name="localTasksCounter" value="57" />
+    <task id="LOCAL-00057" summary="Added a way to have the users each have their own currency attached to their account and then everything gets translated to be in the currency of their choice">
+      <option name="closed" value="true" />
+      <created>1779823558348</created>
+      <option name="number" value="00057" />
+      <option name="presentableId" value="LOCAL-00057" />
+      <option name="project" value="LOCAL" />
+      <updated>1779823558348</updated>
+    </task>
+    <task id="LOCAL-00058" summary="Fixed bug where it was converting twice and giving wack numbers">
+      <option name="closed" value="true" />
+      <created>1779823712104</created>
+      <option name="number" value="00058" />
+      <option name="presentableId" value="LOCAL-00058" />
+      <option name="project" value="LOCAL" />
+      <updated>1779823712104</updated>
+    </task>
+    <option name="localTasksCounter" value="59" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -553,8 +556,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value=".idea files to commit" />
-    <MESSAGE value="In the frontend when you add a transaction now you can type a symbol and get returned a list of all the assets starting with those letters and display their current price and change, then you can select it and then enter the information for your transaction" />
     <MESSAGE value="Basic formating for some frontend files" />
     <MESSAGE value="User can now pick exactly which crypto they purchased and information is automatically sent rather than manually typing the information in" />
     <MESSAGE value="Wrote some basic CSS for the transactions page and also changed the filtering to be onchange instead of on a submit" />
@@ -578,7 +579,9 @@
     <MESSAGE value="Increased chart size and added an alltime button to show alltime profit by calculating when the users account was created and subtracting the time now from it to get a date range" />
     <MESSAGE value="Fixed a few glitches where the daily porfolio information was inaccurate by returning the wrong currency, and also not fetching prices properly" />
     <MESSAGE value="Added functions in backend to translate cad to other currencies depending on user region" />
-    <option name="LAST_COMMIT_MESSAGE" value="Added functions in backend to translate cad to other currencies depending on user region" />
+    <MESSAGE value="Added a way to have the users each have their own currency attached to their account and then everything gets translated to be in the currency of their choice" />
+    <MESSAGE value="Fixed bug where it was converting twice and giving wack numbers" />
+    <option name="LAST_COMMIT_MESSAGE" value="Fixed bug where it was converting twice and giving wack numbers" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/WalletTracker$test.coverage" NAME="test Coverage Results" MODIFIED="1777047403500" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

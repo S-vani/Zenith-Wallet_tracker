@@ -18,7 +18,7 @@ from backend.services.asset_services import current_quantity, create_holding_fil
     turn_list_to_dict, calculate_profit_for_one_transaction, get_curr_holdings_prices, \
     get_holdings_at_time, get_portfolio_value_at, get_cash_flow_between, get_total_realized_profit, \
     get_holdings_at_time_list, get_history_of_prices, get_portfolio_value_history, is_valid_symbol, get_usd_to_cad, \
-    get_usd, get_eur
+    get_usd, get_eur, get_all_conversion_rates, get_conversion_factor
 
 load_dotenv()
 router = APIRouter()
@@ -324,13 +324,8 @@ async def search_assets_stocks(asset: str, current_user: User = Depends(current_
     twelve = os.getenv("API_KEY")
     conversion_to_cad = await get_usd_to_cad()
 
-    conversion = 1
-    if current_user.currency == "USD":
-        conversion = await get_usd()
-    elif current_user.currency == "EUR":
-        conversion = await get_eur()
-    else:
-        conversion = 1
+    rates = await get_all_conversion_rates()
+    conversion = get_conversion_factor(rates, current_user.currency)
 
     url = (
         f"https://api.twelvedata.com/symbol_search"

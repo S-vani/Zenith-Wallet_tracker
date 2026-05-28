@@ -1,4 +1,5 @@
 import asyncio
+import time
 from datetime import datetime, timedelta, timezone
 
 import httpx
@@ -11,7 +12,57 @@ from typing import Literal
 
 from backend.db_models.assets import Transaction
 from backend.schemas.assets import CreateTransaction
+import logging
+import time
 
+logging.getLogger("yfinance").setLevel(logging.CRITICAL)
+
+_symbol_currency_cache: dict[str, str] = {}
+_rates_cache: dict = {}
+_rates_cache_time: float = 0
+_RATES_TTL: int = 60
+
+async def get_ticker_currency(symbol: str) -> str:
+    if symbol in _symbol_currency_cache:
+        return _symbol_currency_cache[symbol]
+
+    try:
+        ticker = yf.Ticker(symbol)
+        currency = ticker.info.get("currency", "USD").upper()
+    except Exception:
+        currency = "USD"
+
+    _symbol_currency_cache[symbol] = currency
+    return currency
+
+async def get_all_conversion_rates() -> dict:
+    global _rates_cache, _rates_cache_time
+
+    now = time.time()
+    if _rates_cache and (now - _rates_cache_time) < _RATES_TTL:
+        return _rates_cache
+
+    usd_to_cad, usd, eur = await asyncio.gather(
+        get_usd_to_cad(),
+        get_usd(),
+        get_eur()
+    )
+
+    _rates_cache = {
+        "usd_to_cad": usd_to_cad,
+        "usd": usd,
+        "eur": eur
+    }
+    _rates_cache_time = now
+
+    return _rates_cache
+
+def get_conversion_factor(rates: dict, currency: str) -> float:
+    if currency == "USD":
+        return rates["usd"]
+    elif currency == "EUR":
+        return rates["eur"]
+    return 1.0
 
 async def get_holdings_from_symbol(db: AsyncSession, user_id: UUID, symbol: str):
     """
@@ -51,13 +102,8 @@ async def get_total_realized_profit(db: AsyncSession, user_id: UUID, currency: s
     """
     Query the database with all the sell transactions and add up all the profit parameters in those sell transactions
     """
-    conversion = 1
-    if currency == "USD":
-        conversion = await get_usd()
-    elif currency == "EUR":
-        conversion = await get_eur()
-    else:
-        conversion = 1
+    rates = await get_all_conversion_rates()
+    conversion = get_conversion_factor(rates, currency)
 
     result = await db.execute(
         select(func.coalesce(func.sum(Transaction.profit), 0.0))
@@ -82,13 +128,9 @@ async def get_cash_flow_between(
     and now its 2000$, but they did not actually profit 1000$ but rather profited 100$ and then deposited another 900$, this function is
     meant to calculate that 900$ cash flow into the account so it's not accounted for in the profit
     """
-    conversion = 1
-    if currency == "USD":
-        conversion = await get_usd()
-    elif currency == "EUR":
-        conversion = await get_eur()
-    else:
-        conversion = 1
+    rates = await get_all_conversion_rates()
+    conversion = get_conversion_factor(rates, currency)
+
     result = await db.execute(
         select(
             func.coalesce(  # if there's no rows with these props return 0.0 instead of null
@@ -124,13 +166,8 @@ async def get_holdings_at_time(
     """
     holdings_at_timestamp = {}
 
-    conversion = 1
-    if currency == "USD":
-        conversion = await get_usd()
-    elif currency == "EUR":
-        conversion = await get_eur()
-    else:
-        conversion = 1
+    rates = await get_all_conversion_rates()
+    conversion = get_conversion_factor(rates, currency)
 
     result = await db.execute(
         select(Transaction)
@@ -145,7 +182,6 @@ async def get_holdings_at_time(
 
     for t in transactions:
         api_id = str(t.api_id)
-        print(t.price_of_one)
 
         if str(t.action) == "BUY":
             if api_id in holdings_at_timestamp:  # if the api_id is already in the dictionary recalculate its values
@@ -156,16 +192,12 @@ async def get_holdings_at_time(
                     t.quantity
                 )
                 holdings_at_timestamp[api_id]["quantity"] += float(t.quantity)
-                print(holdings_at_timestamp[api_id]["avg_price"])
-                print(holdings_at_timestamp[api_id]["quantity"])
             else:
                 holdings_at_timestamp[api_id] = {
                     "avg_price": float(t.price_of_one) * conversion,
                     "quantity": float(t.quantity),
                     "type": t.asset_type
                 }
-                print(holdings_at_timestamp[api_id]["avg_price"])
-                print( holdings_at_timestamp[api_id]["quantity"])
 
         else:  # SELL
             if api_id in holdings_at_timestamp:
@@ -227,6 +259,8 @@ async def get_usd_to_cad():
     """
     use an api to get the current usd to cad value
     """
+    print("[CALLED] get_usd_to_cad")
+
     url = "https://open.er-api.com/v6/latest/USD"
 
     async with httpx.AsyncClient() as client:
@@ -242,6 +276,8 @@ async def get_usd():
     """
     use an api to get the current usd price of 1 cad
     """
+    print("[CALLED] get_usd")
+
     url = "https://open.er-api.com/v6/latest/CAD"
 
     async with httpx.AsyncClient() as client:
@@ -257,6 +293,8 @@ async def get_eur():
     """
     use an api to get the current eur price of 1 cad
     """
+    print("[CALLED] get_eur")
+
     url = "https://open.er-api.com/v6/latest/CAD"
 
     async with httpx.AsyncClient() as client:
@@ -277,13 +315,8 @@ async def get_crypto_prices_at(api_ids: list[str], timestamp: datetime, currency
         ticker = yf.Ticker(ticker_symbol)
         now = datetime.now(timezone.utc)
 
-        conversion = 1
-        if currency == "USD":
-            conversion = await get_usd()
-        elif currency == "EUR":
-            conversion = await get_eur()
-        else:
-            conversion = 1
+        rates = await get_all_conversion_rates()
+        conversion = get_conversion_factor(rates, currency)
 
         start = timestamp - timedelta(minutes=5)
         end = min(timestamp + timedelta(minutes=5), now)
@@ -317,24 +350,16 @@ async def get_stock_prices_at(symbols: list[str], timestamp: datetime, currency:
     if not symbols:
         return {}
 
-    conversion_to_cad = await get_usd_to_cad()
-
-    conversion = 1
-    if currency == "USD":
-        conversion = await get_usd()
-    elif currency == "EUR":
-        conversion = await get_eur()
-    else:
-        conversion = 1
+    rates = await get_all_conversion_rates()
+    conversion_to_cad = rates["usd_to_cad"]
+    conversion = get_conversion_factor(rates, currency)
 
     async def fetch_one(symbol):
+        ticker_currency = await get_ticker_currency(symbol)  # cached after first call
+        to_cad = 1.0 if ticker_currency == "CAD" else conversion_to_cad
+
         ticker = yf.Ticker(symbol)
         now = datetime.now(timezone.utc)
-
-        try:
-            ticker_currency = ticker.info.get("currency", "USD").upper()
-        except Exception:
-            ticker_currency = "USD"
 
         # If already CAD no conversion needed, otherwise convert to CAD first
         if ticker_currency == "CAD":
@@ -410,13 +435,8 @@ async def calculate_profit_for_one_transaction(db: AsyncSession, user_id: UUID, 
 
     profit = (sell_price - avg_cost) * sell_qty
 
-    conversion = 1
-    if currency == "USD":
-        conversion = await get_usd()
-    elif currency == "EUR":
-        conversion = await get_eur()
-    else:
-        conversion = 1
+    rates = await get_all_conversion_rates()
+    conversion = get_conversion_factor(rates, currency)
 
     return profit
 
@@ -564,15 +584,9 @@ async def get_history_of_prices(
     ticker = yf.Ticker(s)  # create object representing the specific stock or crypto
 
     currency_1 = ticker.info.get("currency")
-    conversion_to_cad = await get_usd_to_cad()
-
-    conversion = 1
-    if currency == "USD":
-        conversion = await get_usd()
-    elif currency == "EUR":
-        conversion = await get_eur()
-    else:
-        conversion = 1
+    rates = await get_all_conversion_rates()
+    conversion_to_cad = rates["usd_to_cad"]
+    conversion = get_conversion_factor(rates, currency)
 
     hist = ticker.history(
         period=period,

@@ -8,7 +8,12 @@ from backend.db_models.assets import Base, User
 
 DATABASE_URL = "sqlite+aiosqlite:///./walletdatabase.db"
 
-engine = create_async_engine(DATABASE_URL)
+engine = create_async_engine(    DATABASE_URL,
+    connect_args={"check_same_thread": False},  # required for SQLite
+    pool_size=1,         # SQLite only supports 1 real writer at a time
+    max_overflow=0,
+    pool_timeout=60,
+)
 
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 

@@ -107,6 +107,7 @@ export async function getPortfolioHistory(range) {
             headers: getAuthHeaders()
         }
     );
+    console.log("hello")
 
     if (!res.ok) {
         throw new Error("Failed to load portfolio chart")
