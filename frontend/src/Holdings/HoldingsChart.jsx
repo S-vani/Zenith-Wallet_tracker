@@ -51,7 +51,7 @@ function HoldingChart({symbol, type}) {
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart
                             data={data}
-                            margin={{ top: 10, right: 20, left: 30, bottom: 20 }}
+                            margin={{top: 10, right: 20, left: 30, bottom: 20}}
                         >
                             <XAxis
                                 dataKey="time"

@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Fixed bug where it was converting twice and giving wack numbers">
+    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Fixed another bug where there were over 200 http requests going to try and get usd conversions, so I just called it once and cached it with a TTL of 60 seconds">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/db/database.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db/database.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/db_models/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db_models/assets.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/routes/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/routes/assets.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/services/asset_services.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/services/asset_services.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/Dashboard/DashboardChart.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/Dashboard/DashboardChart.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/Dashboard/DashboardStats.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/Dashboard/DashboardStats.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/services/api.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -144,15 +145,7 @@
       <workItem from="1779652287723" duration="6939000" />
       <workItem from="1779659266665" duration="190000" />
       <workItem from="1779809476244" duration="8742000" />
-      <workItem from="1779925142640" duration="2992000" />
-    </task>
-    <task id="LOCAL-00010" summary="New additions to be able to calculate the total portfolio value when user opens the app and also their current profit, as in the profit from the purchase price to how much they would profit if they sold today">
-      <option name="closed" value="true" />
-      <created>1777601247691</created>
-      <option name="number" value="00010" />
-      <option name="presentableId" value="LOCAL-00010" />
-      <option name="project" value="LOCAL" />
-      <updated>1777601247691</updated>
+      <workItem from="1779925142640" duration="5984000" />
     </task>
     <task id="LOCAL-00011" summary="Changed my mind with profit instead added daily profit, weekly, monthly, yearly and all time profit rather than the previous profit idea since it was nonsensical. Changed multiple functions so they take a timestamp parameter to fetch historical prices of certain crypto and stocks rather than always getting current price to compare what the price of it was 24 hours ago to now, to calculate daily profit">
       <option name="closed" value="true" />
@@ -538,7 +531,15 @@
       <option name="project" value="LOCAL" />
       <updated>1779823712104</updated>
     </task>
-    <option name="localTasksCounter" value="59" />
+    <task id="LOCAL-00059" summary="Fixed another bug where there were over 200 http requests going to try and get usd conversions, so I just called it once and cached it with a TTL of 60 seconds">
+      <option name="closed" value="true" />
+      <created>1779928278692</created>
+      <option name="number" value="00059" />
+      <option name="presentableId" value="LOCAL-00059" />
+      <option name="project" value="LOCAL" />
+      <updated>1779928278692</updated>
+    </task>
+    <option name="localTasksCounter" value="60" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -556,7 +557,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Basic formating for some frontend files" />
     <MESSAGE value="User can now pick exactly which crypto they purchased and information is automatically sent rather than manually typing the information in" />
     <MESSAGE value="Wrote some basic CSS for the transactions page and also changed the filtering to be onchange instead of on a submit" />
     <MESSAGE value="Finished CSS layout for the transactions page, will work on the navigation system next" />
@@ -581,7 +581,8 @@
     <MESSAGE value="Added functions in backend to translate cad to other currencies depending on user region" />
     <MESSAGE value="Added a way to have the users each have their own currency attached to their account and then everything gets translated to be in the currency of their choice" />
     <MESSAGE value="Fixed bug where it was converting twice and giving wack numbers" />
-    <option name="LAST_COMMIT_MESSAGE" value="Fixed bug where it was converting twice and giving wack numbers" />
+    <MESSAGE value="Fixed another bug where there were over 200 http requests going to try and get usd conversions, so I just called it once and cached it with a TTL of 60 seconds" />
+    <option name="LAST_COMMIT_MESSAGE" value="Fixed another bug where there were over 200 http requests going to try and get usd conversions, so I just called it once and cached it with a TTL of 60 seconds" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/WalletTracker$test.coverage" NAME="test Coverage Results" MODIFIED="1777047403500" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

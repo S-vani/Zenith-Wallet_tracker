@@ -1,5 +1,4 @@
 import asyncio
-import time
 from datetime import datetime, timedelta, timezone
 
 import httpx
@@ -20,10 +19,13 @@ logging.getLogger("yfinance").setLevel(logging.CRITICAL)
 _symbol_currency_cache: dict[str, str] = {}
 _rates_cache: dict = {}
 _rates_cache_time: float = 0
-_RATES_TTL: int = 60
+
 
 async def get_ticker_currency(symbol: str) -> str:
-    if symbol in _symbol_currency_cache:
+    """
+    A function used to cache the ticker currency so it is only called once since ticker.info is expensive to call many times.
+    """
+    if symbol in _symbol_currency_cache:  # If we already have this symbol cached
         return _symbol_currency_cache[symbol]
 
     try:
@@ -35,11 +37,15 @@ async def get_ticker_currency(symbol: str) -> str:
     _symbol_currency_cache[symbol] = currency
     return currency
 
+
 async def get_all_conversion_rates() -> dict:
+    """
+    Cache conversion rates with TTL of 60 seconds
+    """
     global _rates_cache, _rates_cache_time
 
     now = time.time()
-    if _rates_cache and (now - _rates_cache_time) < _RATES_TTL:
+    if _rates_cache and (now - _rates_cache_time) < 60:
         return _rates_cache
 
     usd_to_cad, usd, eur = await asyncio.gather(
@@ -57,12 +63,17 @@ async def get_all_conversion_rates() -> dict:
 
     return _rates_cache
 
+
 def get_conversion_factor(rates: dict, currency: str) -> float:
+    """
+    Function with a bunch of if statements just to avoid repeating if statements on all functions
+    """
     if currency == "USD":
         return rates["usd"]
     elif currency == "EUR":
         return rates["eur"]
     return 1.0
+
 
 async def get_holdings_from_symbol(db: AsyncSession, user_id: UUID, symbol: str):
     """
@@ -307,26 +318,35 @@ async def get_eur():
 
 
 async def get_crypto_prices_at(api_ids: list[str], timestamp: datetime, currency: str):
+    """
+    Functions that takes in a list of api_ids of cryptos with a timestamp and currency and returns a dictionary of the form,
+    {api_id: price}
+    """
     if not api_ids:
         return {}
 
     async def fetch_one(api_id):
-        ticker_symbol = f"{api_id.upper()}-CAD"
+        ticker_symbol = f"{api_id.upper()}-CAD"  # crypto form for yahoo finance
         ticker = yf.Ticker(ticker_symbol)
         now = datetime.now(timezone.utc)
 
         rates = await get_all_conversion_rates()
         conversion = get_conversion_factor(rates, currency)
 
+        # Create the start and end windows around the timestamp given
         start = timestamp - timedelta(minutes=5)
         end = min(timestamp + timedelta(minutes=5), now)
-        hist = ticker.history(start=start, end=end, interval="1m")
+
+        hist = ticker.history(start=start, end=end,
+                              interval="1m")  # fetch historical candle data from yf in 1 minute intervals
 
         if not hist.empty:
-            closest_row = hist.iloc[np.abs(hist.index.tz_convert("UTC") - timestamp).argmin()]
-            price = float(closest_row["Close"])
+            closest_row = hist.iloc[np.abs(hist.index.tz_convert(
+                "UTC") - timestamp).argmin()]  # fetches row closest to our desired timestamp since hist will return a ton of data
+            price = float(closest_row["Close"])  # get closing price of that row
             return api_id, price * conversion
 
+        # FALLBACK SECTION - IF NO MINUTE DATA EXISTS
         fallback_start = timestamp - timedelta(days=5)
         fallback_end = min(timestamp + timedelta(days=1), now)
         hist_fallback = ticker.history(start=fallback_start, end=fallback_end, interval="1d")
@@ -334,19 +354,25 @@ async def get_crypto_prices_at(api_ids: list[str], timestamp: datetime, currency
         if hist_fallback.empty:
             return api_id, None
 
-        hist_before = hist_fallback[hist_fallback.index.tz_convert("UTC") <= timestamp]
+        hist_before = hist_fallback[
+            hist_fallback.index.tz_convert("UTC") <= timestamp]  # only get dates before our target timestamp
 
         if hist_before.empty:
             return api_id, None
 
-        price = float(hist_before.iloc[-1]["Close"])
+        price = float(hist_before.iloc[-1]["Close"])  # closest daily close price
         return api_id, price * conversion
 
-    results = await asyncio.gather(*[fetch_one(api_id) for api_id in api_ids])
-    return dict(results)
+    results = await asyncio.gather(
+        *[fetch_one(api_id) for api_id in api_ids])  # create coroutine of tasks in a list then run them concurrently
+    return dict(results)  # convert list of tuples to dicts
 
 
 async def get_stock_prices_at(symbols: list[str], timestamp: datetime, currency: str):
+    """
+    Functions that takes in a list of symbols of stocks with a timestamp and currency and returns a dictionary of the form,
+    {symbol: price}
+    """
     if not symbols:
         return {}
 
@@ -356,7 +382,7 @@ async def get_stock_prices_at(symbols: list[str], timestamp: datetime, currency:
 
     async def fetch_one(symbol):
         ticker_currency = await get_ticker_currency(symbol)  # cached after first call
-        to_cad = 1.0 if ticker_currency == "CAD" else conversion_to_cad
+        to_cad = 1.0 if ticker_currency == "CAD" else conversion_to_cad  # check what currency the stock is being returned in
 
         ticker = yf.Ticker(symbol)
         now = datetime.now(timezone.utc)
@@ -367,15 +393,20 @@ async def get_stock_prices_at(symbols: list[str], timestamp: datetime, currency:
         else:
             to_cad = conversion_to_cad
 
+        # get the start and end windows around the timestamp
         narrow_start = timestamp - timedelta(minutes=5)
         narrow_end = min(timestamp + timedelta(minutes=5), now)
-        hist = ticker.history(start=narrow_start, end=narrow_end, interval="1m")
+
+        hist = ticker.history(start=narrow_start, end=narrow_end,
+                              interval="1m")  # 1 minute interval data with time mapping to price
 
         if not hist.empty:
-            closest_row = hist.iloc[np.abs(hist.index.tz_convert("UTC") - timestamp).argmin()]
+            closest_row = hist.iloc[np.abs(hist.index.tz_convert(
+                "UTC") - timestamp).argmin()]  # fetch the closest row out of all the date returned
             price = float(closest_row["Close"]) * to_cad
             return symbol, price * conversion
 
+        # FALLBACK SECTION - IF NO MINUTE DATA EXISTS
         fallback_start = timestamp - timedelta(days=5)
         fallback_end = min(timestamp + timedelta(days=1), now)
         hist_fallback = ticker.history(start=fallback_start, end=fallback_end, interval="1d")
@@ -707,11 +738,3 @@ async def get_portfolio_value_history(
         })
 
     return data
-
-
-def is_valid_symbol(item, asset):
-    symbol = item["symbol"].upper()
-    symbol_starts_with_query = symbol.startswith(asset.upper())
-    no_foreign_exchange_suffix = "." not in item["symbol"]
-    type_is_supported = item.get("type") == "Common Stock"
-    return symbol_starts_with_query and no_foreign_exchange_suffix and type_is_supported

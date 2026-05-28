@@ -1,9 +1,9 @@
 import SignupForm from "../Authentication/SignupForm.jsx";
 import {signupAuthentication} from "../services/api";
 
-function SignupPage (){
+function SignupPage() {
 
-    return(
+    return (
         <div>
             <SignupForm onSubmit={signupAuthentication}/>
         </div>

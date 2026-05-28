@@ -1,12 +1,12 @@
 import {useState} from "react";
 
-function LoginForm({onClose, onSubmit}){
+function LoginForm({onClose, onSubmit}) {
     const [form, setForm] = useState({
         "username": "",
         "password": ""
     });
 
-    const handleChange = async (e) =>{
+    const handleChange = async (e) => {
         setForm({
             ...form,
             [e.target.name]: e.target.value
@@ -20,11 +20,12 @@ function LoginForm({onClose, onSubmit}){
         onSubmit(form);
     };
 
-    return(
+    return (
         <div>
             <form onSubmit={handleSubmit}>
                 <input name="username" placeholder="Username" onChange={handleChange}/>
-                <input name="password" placeholder="Password" onChange={handleChange} type="password" autoComplete="off"/>
+                <input name="password" placeholder="Password" onChange={handleChange} type="password"
+                       autoComplete="off"/>
 
                 <button type="submit">Submit</button>
             </form>

@@ -14,8 +14,10 @@ from starlette.requests import Request
 
 load_dotenv()
 
+
 class Base(DeclarativeBase):
     pass
+
 
 class User(SQLAlchemyBaseUserTableUUID, Base):
     name = Column(String, nullable=False)
@@ -23,6 +25,7 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     currency = Column(String, nullable=False)
 
     transactions = relationship("Transaction", back_populates="user")
+
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     reset_password_token_secret = os.getenv("SECRET")
@@ -34,7 +37,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         await self.request_verify(user, request)
 
     async def on_after_request_verify(
-        self, user: User, token: str, request: Request | None = None
+            self, user: User, token: str, request: Request | None = None
     ) -> None:
         verify_url = f"http://localhost:5173/verify?token={token}"
 
@@ -76,10 +79,10 @@ class Transaction(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)
-    action = Column(String, nullable=False) # Either BUY or SELL
+    action = Column(String, nullable=False)  # Either BUY or SELL
     profit = Column(Numeric(20, 10), default=0)
-    asset_type = Column(String, nullable=False) # type of purchase (stock, crypto, currency, etc.)
-    symbol = Column(String, nullable=False) # symbol or purchase (BTC, SMP500, AAPL, USD, etc.)
+    asset_type = Column(String, nullable=False)  # type of purchase (stock, crypto, currency, etc.)
+    symbol = Column(String, nullable=False)  # symbol or purchase (BTC, SMP500, AAPL, USD, etc.)
     api_id = Column(String, nullable=False)
     price_of_one = Column(Numeric(20, 10), nullable=False)
     quantity = Column(Numeric(20, 10), nullable=False)

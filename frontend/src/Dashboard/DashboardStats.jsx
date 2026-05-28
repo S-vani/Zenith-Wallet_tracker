@@ -3,8 +3,7 @@ function DashboardStats({stats}) {
     let statName = "stat-value"
     if (stats.curr_timeperiod > 0) {
         statName += " positive"
-    }
-    else if (stats.curr_timeperiod < 0) {
+    } else if (stats.curr_timeperiod < 0) {
         statName += " negative"
     }
 

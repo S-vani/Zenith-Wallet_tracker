@@ -1,13 +1,13 @@
 import {useState} from "react";
 
-function SignupForm({onSubmit}){
+function SignupForm({onSubmit}) {
     const [form, setForm] = useState({
         "email": "",
         "password": "",
         "name": ""
     });
 
-    const handleChange = async (e) =>{
+    const handleChange = async (e) => {
         setForm({
             ...form,
             [e.target.name]: e.target.value
@@ -20,11 +20,12 @@ function SignupForm({onSubmit}){
         onSubmit(form);
     };
 
-    return(
+    return (
         <div>
             <form onSubmit={handleSubmit}>
                 <input name="email" placeholder="Email" onChange={handleChange}/>
-                <input name="password" placeholder="Password" onChange={handleChange} autoComplete="off" type="password"/>
+                <input name="password" placeholder="Password" onChange={handleChange} autoComplete="off"
+                       type="password"/>
                 <input name="name" placeholder="Full Name" onChange={handleChange}/>
 
                 <button type="submit">Submit</button>

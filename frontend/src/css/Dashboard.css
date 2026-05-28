@@ -176,7 +176,7 @@
     box-shadow: 0 0 1rem rgba(59, 130, 246, 0.3);
 }
 
-.chart-wrapper-dashboard{
+.chart-wrapper-dashboard {
     height: 50rem;
     display: flex;
     flex-direction: column;

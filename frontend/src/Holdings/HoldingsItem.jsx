@@ -16,14 +16,13 @@ function HoldingsItem({holding}) {
         "current_total_price": holding.current_price.toFixed(2),
         "quantity": holding.quantity,
         "return": (holding.current_price - holding.price_paid).toFixed(2),
-        "return_pct": (100 * ((holding.current_price - holding.price_paid)/holding.price_paid)).toFixed(2)
+        "return_pct": (100 * ((holding.current_price - holding.price_paid) / holding.price_paid)).toFixed(2)
     }
 
     let classReturn = "change-pct"
-    if (data.return_pct > 0){
+    if (data.return_pct > 0) {
         classReturn += " positive"
-    }
-    else{
+    } else {
         classReturn += " negative"
     }
 

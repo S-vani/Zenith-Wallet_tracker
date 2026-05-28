@@ -8,7 +8,6 @@ function DashboardChart({range}) {
     const [diffDays, setDiffDays] = useState(null);
 
 
-
     useEffect(() => {
         const loadUser = async () => {
             try {
@@ -46,7 +45,7 @@ function DashboardChart({range}) {
     };
 
     useEffect(() => {
-        console.log("effect fired", { range, diffDays });
+        console.log("effect fired", {range, diffDays});
 
         if (range === "all" && diffDays == null) return;
 

@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import {useEffect} from "react";
+import {useSearchParams} from "react-router-dom";
 import {verify} from "../services/api"
 
 function VerifyPage() {
@@ -10,10 +10,10 @@ function VerifyPage() {
 
     }, []);
 
-    return(
+    return (
         <div>
             <h1>
-            Congrats you are now Verified
+                Congrats you are now Verified
             </h1>
             <p>
                 You may now close this page and login.

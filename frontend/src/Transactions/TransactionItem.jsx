@@ -4,7 +4,8 @@ function TransactionItem({transaction, index}) {
     const [expanded, setExpanded] = useState(false);
     return (
         <div className="transaction-item-wrapper">
-            <div className="transaction-item" style={{ animationDelay: `${index * 0.1}s` }} onClick={() => setExpanded(!expanded)}>
+            <div className="transaction-item" style={{animationDelay: `${index * 0.1}s`}}
+                 onClick={() => setExpanded(!expanded)}>
                 <div className="transaction-left">
                     <p className="symbol">
                         {transaction.symbol}
@@ -73,7 +74,7 @@ function TransactionItem({transaction, index}) {
                         <span>{transaction.user_id}</span>
                     </div>
 
-                    <div className="divider" />
+                    <div className="divider"/>
 
                     {/* MIDDLE INFO */}
                     <div className="transaction-row">
@@ -98,7 +99,7 @@ function TransactionItem({transaction, index}) {
                         </span>
                     </div>
 
-                    <div className="divider" />
+                    <div className="divider"/>
 
                     {/* BOTTOM INFO */}
                     <div className="transaction-row">

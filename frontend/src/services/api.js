@@ -182,8 +182,8 @@ export async function verify(params) {
 
 export async function searchStock(symbol) {
     const res = await fetch(`${BASE_URL}/assets/search/stock?asset=${symbol}`, {
-            headers: getAuthHeaders()
-        });
+        headers: getAuthHeaders()
+    });
 
     if (!res.ok) {
         throw new Error("search stock error")
@@ -194,8 +194,8 @@ export async function searchStock(symbol) {
 
 export async function searchCrypto(symbol) {
     const res = await fetch(`${BASE_URL}/assets/search/crypto?asset=${symbol}`, {
-            headers: getAuthHeaders()
-        });
+        headers: getAuthHeaders()
+    });
 
     if (!res.ok) {
         throw new Error("search crypto error")

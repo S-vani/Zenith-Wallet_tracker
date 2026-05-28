@@ -20,7 +20,7 @@ function TransactionSymbolSearch({onSub}) {
         }
     }
 
-    const onSubSymbols = (data, selected) =>{
+    const onSubSymbols = (data, selected) => {
         onSub(data);
         setShowSymbols(false)
         setSelectedSymbol(selected)
@@ -111,7 +111,7 @@ function TransactionSymbolSearch({onSub}) {
                         <span>
                             ${Number(selectedSymbol.change).toFixed(2)}
                         </span>
-                        <span >
+                        <span>
                             ({selectedSymbol.change_pct.toFixed(2)}%)
                         </span>
                     </div>

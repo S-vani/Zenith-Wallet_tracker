@@ -39,8 +39,10 @@ function TransactionCreate({onClose, onCreated, data}) {
 
             <form className="create-transaction-form" autoComplete="off" onSubmit={handleSubmit}>
                 <div className="quantity-price-buy">
-                    <input className="create-transaction-input" autoComplete="off" name="quantity" placeholder="Quantity" onChange={handleChange}/>
-                    <input  className="create-transaction-input" autoComplete="off" name="price_of_one" placeholder="Price of one" onChange={handleChange}/>
+                    <input className="create-transaction-input" autoComplete="off" name="quantity"
+                           placeholder="Quantity" onChange={handleChange}/>
+                    <input className="create-transaction-input" autoComplete="off" name="price_of_one"
+                           placeholder="Price of one" onChange={handleChange}/>
 
                     <select className="create-select" name="action" onChange={handleChange}>
                         <option value="BUY">BUY</option>

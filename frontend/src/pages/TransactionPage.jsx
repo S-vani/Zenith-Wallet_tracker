@@ -59,11 +59,12 @@ function TransactionsPage() {
             </div>
 
 
-
             {step !== "closed" && (
                 <div className="transaction-create-overlay">
                     <div className="transaction-create-box">
-                        <button className="transaction-create-close-button" onClick={() => {setStep("closed")}}>
+                        <button className="transaction-create-close-button" onClick={() => {
+                            setStep("closed")
+                        }}>
                             <img src="/assets/close.png" alt=""/>
                         </button>
 

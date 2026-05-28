@@ -14,11 +14,14 @@ from backend.authentication.authentication import current_active_user
 from backend.db.database import get_async_session
 from backend.db_models.assets import Transaction, User
 from backend.schemas.assets import CreateTransaction, UpdateTransaction
-from backend.services.asset_services import current_quantity, create_holding_filter, \
-    turn_list_to_dict, calculate_profit_for_one_transaction, get_curr_holdings_prices, \
-    get_holdings_at_time, get_portfolio_value_at, get_cash_flow_between, get_total_realized_profit, \
-    get_holdings_at_time_list, get_history_of_prices, get_portfolio_value_history, is_valid_symbol, get_usd_to_cad, \
-    get_usd, get_eur, get_all_conversion_rates, get_conversion_factor
+from backend.services.asset_services import (current_quantity, create_holding_filter, \
+                                             turn_list_to_dict, calculate_profit_for_one_transaction,
+                                             get_curr_holdings_prices, \
+                                             get_holdings_at_time, get_portfolio_value_at, get_cash_flow_between,
+                                             get_total_realized_profit, \
+                                             get_holdings_at_time_list, get_history_of_prices,
+                                             get_portfolio_value_history, \
+                                             get_all_conversion_rates, get_conversion_factor)
 
 load_dotenv()
 router = APIRouter()
@@ -320,12 +323,17 @@ async def get_portfolio_history(
 
 @router.get("/assets/search/stock")
 async def search_assets_stocks(asset: str, current_user: User = Depends(current_active_user)):
+    """
+    Use twelvedata api to fetch a list of dictionaries with all the information about all the search results based on
+    what asset is. For example is asset is "AAP" then this would return a max of 6 items in a list with each being a
+    stock, like AAPL, AAPD, etc.
+    """
     asset = asset.upper()
     twelve = os.getenv("API_KEY")
-    conversion_to_cad = await get_usd_to_cad()
 
     rates = await get_all_conversion_rates()
     conversion = get_conversion_factor(rates, current_user.currency)
+    conversion_to_cad = rates["usd_to_cad"]
 
     url = (
         f"https://api.twelvedata.com/symbol_search"
@@ -339,15 +347,16 @@ async def search_assets_stocks(asset: str, current_user: User = Depends(current_
 
     search_response = requests.get(url, params=params)
 
+    # Data is returned as a dict and the key "data" is basically all the important stuff
     all_results = search_response.json()["data"]
 
     filtered = []
     seen = set()
-    for result in all_results:
+    for result in all_results:  # unpack results
         symbol = result["symbol"]
         is_us = result.get("country") == "United States"
         is_valid_type = result.get("instrument_type") in ["Common Stock", "ETF"]
-        is_new = symbol not in seen
+        is_new = symbol not in seen  # ensure there aren't any duplicates
 
         if is_us and is_valid_type and is_new:
             seen.add(symbol)
@@ -356,7 +365,7 @@ async def search_assets_stocks(asset: str, current_user: User = Depends(current_
         if len(filtered) == 6:
             break
 
-    symbols = ",".join(result["symbol"] for result in filtered)
+    symbols = ",".join(result["symbol"] for result in filtered)  # get symbols in a form AAPL,GOOG,UAL
 
     url = (
         f"https://api.twelvedata.com/quote"
@@ -400,7 +409,13 @@ async def search_assets_stocks(asset: str, current_user: User = Depends(current_
 
 @router.get("/assets/search/crypto")
 async def search_assets_crypto(asset: str, current_user: User = Depends(current_active_user)):
+    """
+    Use coingecko api to fetch crypto prices of assets, similar to the route above in format.
+    """
     gecko = os.getenv("API_KEY_COINEGECKO")
+
+    rates = await get_all_conversion_rates()
+    conversion = get_conversion_factor(rates, current_user.currency)
 
     url = (
         f"https://api.coingecko.com/api/v3/search"
@@ -414,17 +429,9 @@ async def search_assets_crypto(asset: str, current_user: User = Depends(current_
         "x-cg-demo-api-key": gecko
     }
 
-    conversion = "cad"
-    if current_user.currency == "USD":
-        conversion = "usd"
-    elif current_user.currency == "EUR":
-        conversion = "eur"
-    else:
-        conversion = "cad"
-
     res = requests.get(url, params=params, headers=headers)
 
-    data = res.json()["coins"][:6]
+    data = res.json()["coins"][:6]  # top 6 results and luckely coingecko sorts by popularity
 
     ids = ",".join(coin["api_symbol"] for coin in data)
 
@@ -467,6 +474,9 @@ async def search_assets_crypto(asset: str, current_user: User = Depends(current_
 async def return_user_information(
         current_user: User = Depends(current_active_user)
 ):
+    """
+    return a dictionary with users information used in the frontend to fetch information to display.
+    """
     information = {
         "id": current_user.id,
         "name": current_user.name,
