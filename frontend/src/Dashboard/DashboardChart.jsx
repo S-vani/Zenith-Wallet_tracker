@@ -10,18 +10,12 @@ function DashboardChart({range}) {
 
     useEffect(() => {
         const loadUser = async () => {
-            try {
-                const user_info = await getUser();
-                console.log("user info", user_info);  // see what's coming back
+            const user_info = await getUser();
 
-                const created = new Date(user_info.date_joined);
-                console.log("created date", created, "is valid:", !isNaN(created));
+            const created = new Date(user_info.date_joined);
 
-                const now = new Date();
-                setDiffDays(Math.ceil((now - created) / (1000 * 60 * 60 * 24)));
-            } catch (err) {
-                console.error("getUser failed", err);
-            }
+            const now = new Date();
+            setDiffDays(Math.ceil((now - created) / (1000 * 60 * 60 * 24)));
         };
 
         loadUser();
@@ -36,23 +30,18 @@ function DashboardChart({range}) {
     });
 
     const loadDashboardChart = async (selectedRange) => {
-        console.log("calling backend with range", selectedRange);  // add this
         setLoading(true);
         const res = await getPortfolioHistory(selectedRange);
-        console.log("got data", res);  // add this
         setData(res);
         setLoading(false);
     };
 
     useEffect(() => {
-        console.log("effect fired", {range, diffDays});
-
         if (range === "all" && diffDays == null) return;
 
         const ranges = getRangeValue();
-        console.log("resolved range value", ranges[range]);
 
-        loadDashboardChart(ranges[range] ?? 1);
+        loadDashboardChart(ranges[range] ?? 1)
     }, [range, diffDays]);
 
     return (
