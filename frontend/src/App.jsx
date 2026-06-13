@@ -1,4 +1,4 @@
-import {Routes, Route} from "react-router-dom"
+import {Routes, Route, useLocation} from "react-router-dom"
 import NavBar from "./NavBar.jsx";
 import TransactionPage from "./pages/TransactionPage.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
@@ -11,9 +11,13 @@ import HomePage from "./pages/HomePage.jsx";
 
 function App() {
 
+    const location = useLocation();
+
+    const hideNav = location.pathname === "/";
+
     return (
         <div>
-            <NavBar/>
+            {!hideNav && <NavBar/>}
             <main className="main-content">
                 <Routes>
                     <Route path="/" element={<HomePage/>}/>

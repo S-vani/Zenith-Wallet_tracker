@@ -213,3 +213,13 @@ export async function getUser() {
 
     return res.json()
 }
+
+export async function getUserCount() {
+    const res = await fetch(`${BASE_URL}/users`);
+
+    if (!res.ok) {
+        throw new Error("error fetching user information")
+    }
+
+    return res.json()
+}

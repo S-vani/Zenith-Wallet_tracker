@@ -1,6 +1,7 @@
 import asyncio
 import os
 from datetime import datetime, timedelta, timezone
+from tkinter.tix import Select
 from typing import Optional, Literal
 import yfinance as yf
 from dotenv import load_dotenv
@@ -486,3 +487,13 @@ async def return_user_information(
     }
 
     return information
+
+@router.get("/users")
+async def return_users_count(session: AsyncSession = Depends(get_async_session),):
+    """
+
+    """
+    result = await session.execute(select(User))
+    users = result.scalars().all()
+
+    return len(users)
