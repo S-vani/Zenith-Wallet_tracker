@@ -32,6 +32,8 @@
 
 .login-page-information p{
     font-size: 1.2rem;
+    text-align: center;
+    width: 70%;
 }
 
 .login-page-information img{
@@ -41,4 +43,107 @@
 
 .login-page-brand div{
     font-size: 2rem;
+}
+
+.login-page-brand{
+    align-self: start;
+    margin-left: 3rem;
+
+}
+
+.login-form-side {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50%;
+    margin-bottom: 5rem;
+    margin-right: 5rem;
+}
+
+.login-form-card {
+    width: 100%;
+    max-width: 24rem;
+    background: linear-gradient(145deg, #1e2433, #161b28);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 1.25rem;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+    box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.35);
+}
+
+.login-form-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.login-form-header h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #f5f7ff;
+}
+
+.login-form-header p {
+    font-size: 0.85rem;
+    color: #9aa0a6;
+    line-height: 1.5;
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+}
+
+.login-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.login-field label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6b7280;
+}
+
+.login-field input {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0.625rem;
+    padding: 0.7rem 0.9rem;
+    font-size: 0.9rem;
+    color: #f5f7ff;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.login-field input::placeholder {
+    color: #6b7280;
+}
+
+.login-field input:focus {
+    outline: none;
+    border-color: rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.login-submit-btn {
+    width: 100%;
+    text-align: center;
+    margin-top: 0.5rem;
+}
+
+.login-form-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: #9aa0a6;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
