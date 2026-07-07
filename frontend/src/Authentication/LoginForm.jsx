@@ -1,6 +1,6 @@
 import {useState} from "react";
 
-function LoginForm({onClose, onSubmit}) {
+function LoginForm({onSubmit}) {
     const [form, setForm] = useState({
         "username": "",
         "password": ""
@@ -15,8 +15,7 @@ function LoginForm({onClose, onSubmit}) {
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-
-        onClose();
+        
         onSubmit(form);
     };
 

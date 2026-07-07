@@ -13,7 +13,7 @@ function App() {
 
     const location = useLocation();
 
-    const hideNav = location.pathname === "/";
+    const hideNav = location.pathname === "/" || location.pathname === "/login" || location.pathname === "/signup";
 
     return (
         <div>

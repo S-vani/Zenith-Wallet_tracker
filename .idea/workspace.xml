@@ -1,14 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="A bit more formatting for a file I forgot to clean up a bit">
-      <change afterPath="$PROJECT_DIR$/frontend/src/css/Home.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dataSources/9a153d2f-452a-4025-8319-b86262861f67.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dataSources/9a153d2f-452a-4025-8319-b86262861f67.xml" afterDir="false" />
+    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Added home page react file and css along with adding a new get endpoint to fetch the number of users the app has to display to users.">
+      <change afterPath="$PROJECT_DIR$/frontend/src/css/Login.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/routes/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/routes/assets.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/pages/HomePage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/HomePage.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/services/api.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/Authentication/LoginForm.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/Authentication/LoginForm.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/LoginPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/LoginPage.jsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -86,8 +84,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-PY-261.24374.152" />
-        <option value="bundled-python-sdk-c59985aa861c-c2ffad84badb-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-261.24374.152" />
+        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-PY-261.26222.68" />
+        <option value="bundled-python-sdk-50341a9f1f9c-c2ffad84badb-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-261.26222.68" />
       </set>
     </attachedChunks>
   </component>
@@ -155,15 +153,12 @@
       <workItem from="1780706925435" duration="751000" />
       <workItem from="1780848609090" duration="102000" />
       <workItem from="1781032032053" duration="8000" />
-      <workItem from="1781370261279" duration="2878000" />
-    </task>
-    <task id="LOCAL-00013" summary="Added a new method to update specific transactions along with a bunch of documentation in the form of docstrings and comments, will add more later before moving onto the front end">
-      <option name="closed" value="true" />
-      <created>1777669988478</created>
-      <option name="number" value="00013" />
-      <option name="presentableId" value="LOCAL-00013" />
-      <option name="project" value="LOCAL" />
-      <updated>1777669988478</updated>
+      <workItem from="1781370261279" duration="4429000" />
+      <workItem from="1781380514655" duration="811000" />
+      <workItem from="1781546805700" duration="13000" />
+      <workItem from="1781630968666" duration="629000" />
+      <workItem from="1781732924855" duration="466000" />
+      <workItem from="1783440040264" duration="312000" />
     </task>
     <task id="LOCAL-00014" summary="Added docstrings for all the routes and comments for them">
       <option name="closed" value="true" />
@@ -549,7 +544,15 @@
       <option name="project" value="LOCAL" />
       <updated>1779931785467</updated>
     </task>
-    <option name="localTasksCounter" value="62" />
+    <task id="LOCAL-00062" summary="Added home page react file and css along with adding a new get endpoint to fetch the number of users the app has to display to users.">
+      <option name="closed" value="true" />
+      <created>1781373178626</created>
+      <option name="number" value="00062" />
+      <option name="presentableId" value="LOCAL-00062" />
+      <option name="project" value="LOCAL" />
+      <updated>1781373178626</updated>
+    </task>
+    <option name="localTasksCounter" value="63" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -567,7 +570,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Finished CSS layout for the transactions page, will work on the navigation system next" />
     <MESSAGE value="Finished css layout for the navbar and uploaded some assets to use for it, the assets are made using ai but edited myself" />
     <MESSAGE value="Finished css layout for the filtering on the transaction page" />
     <MESSAGE value="Finished css layout for the add transaction button" />
@@ -592,7 +594,8 @@
     <MESSAGE value="Fixed another bug where there were over 200 http requests going to try and get usd conversions, so I just called it once and cached it with a TTL of 60 seconds" />
     <MESSAGE value="Added documentation for code through docstrings and comments along with basic formatting" />
     <MESSAGE value="A bit more formatting for a file I forgot to clean up a bit" />
-    <option name="LAST_COMMIT_MESSAGE" value="A bit more formatting for a file I forgot to clean up a bit" />
+    <MESSAGE value="Added home page react file and css along with adding a new get endpoint to fetch the number of users the app has to display to users." />
+    <option name="LAST_COMMIT_MESSAGE" value="Added home page react file and css along with adding a new get endpoint to fetch the number of users the app has to display to users." />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/WalletTracker$test.coverage" NAME="test Coverage Results" MODIFIED="1777047403500" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

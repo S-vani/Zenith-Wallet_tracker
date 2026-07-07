@@ -1,0 +1,44 @@
+.login-page-wrapper{
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    margin-top: 1.5rem;
+}
+
+
+
+.login-page-left-side{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 50%;
+    gap: 8rem;
+}
+
+.login-page-information{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.login-page-information h3{
+    font-size: 2rem;
+}
+
+.login-page-information h2{
+    font-size: 3rem;
+}
+
+.login-page-information p{
+    font-size: 1.2rem;
+}
+
+.login-page-information img{
+    width: 30rem;
+    height: 30rem;
+}
+
+.login-page-brand div{
+    font-size: 2rem;
+}
