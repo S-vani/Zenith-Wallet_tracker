@@ -17,7 +17,7 @@ function LoginForm({onSubmit}) {
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        
+
         onSubmit(form);
     };
 
@@ -62,7 +62,7 @@ function LoginForm({onSubmit}) {
 
                 <div className="login-form-footer">
                     <span>Don't have an account?</span>
-                    <button onClick={()=>navigate("/signup")} type="button" className="hero-link-btn">Sign up</button>
+                    <button onClick={() => navigate("/signup")} type="button" className="hero-link-btn">Sign up</button>
                 </div>
             </div>
         </div>

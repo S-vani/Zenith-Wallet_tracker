@@ -1,66 +1,11 @@
-.login-page-wrapper{
-    display: flex;
-    flex-direction: row;
-    width: 100%;
-    margin-top: 1.5rem;
-}
-
-
-
-.login-page-left-side{
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 50%;
-    gap: 5rem;
-}
-
-.login-page-information{
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-}
-
-.login-page-information h3{
-    font-size: 2rem;
-}
-
-.login-page-information h2{
-    font-size: 3rem;
-}
-
-.login-page-information p{
-    font-size: 1.2rem;
-    text-align: center;
-    width: 70%;
-}
-
-.login-page-information img{
-    width: 30rem;
-    height: 30rem;
-}
-
-.login-page-brand div{
-    font-size: 2rem;
-}
-
-.login-page-brand{
-    align-self: start;
-    margin-left: 3rem;
-
-}
-
-.login-form-side {
+.signup-form-side {
     display: flex;
     align-items: center;
     justify-content: center;
     width: 50%;
-    margin-bottom: 1rem;
-    margin-right: 5rem;
 }
 
-.login-form-card {
+.signup-form-card {
     width: 100%;
     max-width: 24rem;
     background: linear-gradient(145deg, #1e2433, #161b28);
@@ -73,37 +18,37 @@
     box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.35);
 }
 
-.login-form-header {
+.signup-form-header {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
 }
 
-.login-form-header h2 {
+.signup-form-header h2 {
     font-size: 1.6rem;
     font-weight: 700;
     color: #f5f7ff;
 }
 
-.login-form-header p {
+.signup-form-header p {
     font-size: 0.85rem;
     color: #9aa0a6;
     line-height: 1.5;
 }
 
-.login-form {
+.signup-form {
     display: flex;
     flex-direction: column;
     gap: 1.1rem;
 }
 
-.login-field {
+.signup-field {
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
 }
 
-.login-field label {
+.signup-field label {
     font-size: 0.7rem;
     font-weight: 600;
     text-transform: uppercase;
@@ -111,7 +56,7 @@
     color: #6b7280;
 }
 
-.login-field input {
+.signup-field input {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 0.625rem;
@@ -121,23 +66,23 @@
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.login-field input::placeholder {
+.signup-field input::placeholder {
     color: #6b7280;
 }
 
-.login-field input:focus {
+.signup-field input:focus {
     outline: none;
     border-color: rgba(59, 130, 246, 0.5);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
-.login-submit-btn {
+.signup-submit-btn {
     width: 100%;
     text-align: center;
     margin-top: 0.5rem;
 }
 
-.login-form-footer {
+.signup-form-footer {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -146,4 +91,73 @@
     color: #9aa0a6;
     padding-top: 1rem;
     border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.signup-page-wrapper {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    min-height: 100vh;
+}
+
+.signup-page-right-side {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 3rem;
+    width: 50%;
+    padding: 3rem 4rem;
+    background: linear-gradient(160deg, #131722, #0d1017);
+    border-left: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.signup-page-brand {
+    align-self: start;
+}
+
+.signup-page-information {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.signup-page-information h2 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1.25;
+    color: #f5f7ff;
+    max-width: 26rem;
+}
+
+.signup-benefits {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.signup-benefits li {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.signup-benefits .feature-icon {
+    margin-top: 0.15rem;
+}
+
+.signup-benefits h3 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #f5f7ff;
+    margin-bottom: 0.3rem;
+}
+
+.signup-benefits p {
+    font-size: 0.85rem;
+    color: #9aa0a6;
+    line-height: 1.55;
+    max-width: 22rem;
 }
