@@ -75,7 +75,6 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
 
 class Transaction(Base):
     __tablename__ = "transactions"
-    # Note I assume every purchase will be done using CAD and user will convert before typing in pricing
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(UUID(as_uuid=True), ForeignKey("user.id"), nullable=False)

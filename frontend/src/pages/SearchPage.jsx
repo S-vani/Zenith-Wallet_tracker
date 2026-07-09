@@ -1,9 +1,9 @@
-
+import "../css/Search.css"
 
 function SearchPage (){
     return (
-        <div>
-            
+        <div className="search-page-wrapper">
+            <input className="search-bar" placeholder="Insert Symbol"/>
         </div>
     )
 }
