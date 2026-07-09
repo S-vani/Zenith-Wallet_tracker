@@ -18,7 +18,7 @@ function LoginForm({onSubmit}) {
     const handleSubmit = async (e) => {
         e.preventDefault()
 
-        onSubmit(form);
+        onSubmit(form, navigate);
     };
 
     const navigate = useNavigate();

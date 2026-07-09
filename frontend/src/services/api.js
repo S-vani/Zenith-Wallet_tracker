@@ -116,7 +116,7 @@ export async function getPortfolioHistory(range) {
     return res.json()
 }
 
-export async function loginAuthentication(form) {
+export async function loginAuthentication(form, navigate) {
     const formData = new URLSearchParams();
 
     formData.append("username", form["username"]);
@@ -132,6 +132,9 @@ export async function loginAuthentication(form) {
 
     if (!res.ok) {
         throw new Error("Invalid username or password")
+    }
+    else{
+        navigate("/Dashboard ")
     }
 
     const data = await res.json()

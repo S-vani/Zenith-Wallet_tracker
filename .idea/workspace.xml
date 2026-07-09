@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Finished login page design">
-      <change afterPath="$PROJECT_DIR$/frontend/src/css/Signup.css" afterDir="false" />
+    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Signup page completed with the css with it as well">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/Authentication/LoginForm.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/Authentication/LoginForm.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/Authentication/SignupForm.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/Authentication/SignupForm.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/css/Login.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/css/Login.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/pages/SignupPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/SignupPage.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/LoginPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/LoginPage.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/services/api.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -159,15 +157,8 @@
       <workItem from="1781546805700" duration="13000" />
       <workItem from="1781630968666" duration="629000" />
       <workItem from="1781732924855" duration="466000" />
-      <workItem from="1783440040264" duration="3416000" />
-    </task>
-    <task id="LOCAL-00016" summary="Wrote the basic front end Transaction page to display existing transactions with no css formating yet">
-      <option name="closed" value="true" />
-      <created>1778003565934</created>
-      <option name="number" value="00016" />
-      <option name="presentableId" value="LOCAL-00016" />
-      <option name="project" value="LOCAL" />
-      <updated>1778003565934</updated>
+      <workItem from="1783440040264" duration="4868000" />
+      <workItem from="1783608046633" duration="1171000" />
     </task>
     <task id="LOCAL-00017" summary="Added basic way to create transactions, the plan is to create everything without any css styling and add the style at the end. Will work on filtering transactions next before moving onto creating an authentication/login page">
       <option name="closed" value="true" />
@@ -553,7 +544,15 @@
       <option name="project" value="LOCAL" />
       <updated>1783442807568</updated>
     </task>
-    <option name="localTasksCounter" value="65" />
+    <task id="LOCAL-00065" summary="Signup page completed with the css with it as well">
+      <option name="closed" value="true" />
+      <created>1783443579752</created>
+      <option name="number" value="00065" />
+      <option name="presentableId" value="LOCAL-00065" />
+      <option name="project" value="LOCAL" />
+      <updated>1783443579752</updated>
+    </task>
+    <option name="localTasksCounter" value="66" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -571,7 +570,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Finished css layout for the add transaction button" />
     <MESSAGE value="Added a new navbar link to access the users profile, changed background to have a cool pulsating animation along with an animation when loading transactions to fade in smoothly" />
     <MESSAGE value="Worked on styling the add transaction form by adding animations, rectangles, background colours and better symbols" />
     <MESSAGE value="Fixed a small bug where I was giving the exact route of images but the public directory can be accessed from anywhere so I dont need to specify public/assets/xxx.png and can just write /assets/xxx.png" />
@@ -596,7 +594,8 @@
     <MESSAGE value="Added home page react file and css along with adding a new get endpoint to fetch the number of users the app has to display to users." />
     <MESSAGE value="Added basic login page" />
     <MESSAGE value="Finished login page design" />
-    <option name="LAST_COMMIT_MESSAGE" value="Finished login page design" />
+    <MESSAGE value="Signup page completed with the css with it as well" />
+    <option name="LAST_COMMIT_MESSAGE" value="Signup page completed with the css with it as well" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/WalletTracker$test.coverage" NAME="test Coverage Results" MODIFIED="1777047403500" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
