@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Created base files and added Route for the search page">
-      <change afterPath="$PROJECT_DIR$/frontend/src/css/Search.css" afterDir="false" />
+    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Text box and basic css added for the search page">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/db_models/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db_models/assets.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/css/Global.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/css/Global.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/css/Search.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/css/Search.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/pages/SearchPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/SearchPage.jsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -159,15 +157,8 @@
       <workItem from="1781630968666" duration="629000" />
       <workItem from="1781732924855" duration="466000" />
       <workItem from="1783440040264" duration="4868000" />
-      <workItem from="1783608046633" duration="2828000" />
-    </task>
-    <task id="LOCAL-00019" summary="Formatted a bunch of files by adding proper spacing and more readable code">
-      <option name="closed" value="true" />
-      <created>1778031130788</created>
-      <option name="number" value="00019" />
-      <option name="presentableId" value="LOCAL-00019" />
-      <option name="project" value="LOCAL" />
-      <updated>1778031130788</updated>
+      <workItem from="1783608046633" duration="2851000" />
+      <workItem from="1783900054197" duration="391000" />
     </task>
     <task id="LOCAL-00020" summary="Added a dashboard page with stats like daily, weekly, monthly, yearly and all time profits, total value, along with a button that goes to another route that tells you what your current holdings are along with the average price you bought it at, will soon make it so next to each holding it says the profit you have on it">
       <option name="closed" value="true" />
@@ -553,7 +544,15 @@
       <option name="project" value="LOCAL" />
       <updated>1783609842106</updated>
     </task>
-    <option name="localTasksCounter" value="68" />
+    <task id="LOCAL-00068" summary="Text box and basic css added for the search page">
+      <option name="closed" value="true" />
+      <created>1783611184667</created>
+      <option name="number" value="00068" />
+      <option name="presentableId" value="LOCAL-00068" />
+      <option name="project" value="LOCAL" />
+      <updated>1783611184667</updated>
+    </task>
+    <option name="localTasksCounter" value="69" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -571,7 +570,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Fixed a small bug where I was giving the exact route of images but the public directory can be accessed from anywhere so I dont need to specify public/assets/xxx.png and can just write /assets/xxx.png" />
     <MESSAGE value="Added css styling for the crypto/stock searching when adding a new transaction" />
     <MESSAGE value="Added css styling to display the items that the user searches for in rows with 3 columns per row" />
     <MESSAGE value="More css for displaying assets to have green colour for profit and red for negative, fixed spacing and changed the logic where when a user chooses their asset of choice it expands it and shows a graph of its daily price, then lets the user enter quantities and price they bought it for" />
@@ -596,7 +594,8 @@
     <MESSAGE value="Signup page completed with the css with it as well" />
     <MESSAGE value="Entire workflow now works properly with signup and login redirecting properly. All thats left is the searching function to search for stocks and crypto." />
     <MESSAGE value="Created base files and added Route for the search page" />
-    <option name="LAST_COMMIT_MESSAGE" value="Created base files and added Route for the search page" />
+    <MESSAGE value="Text box and basic css added for the search page" />
+    <option name="LAST_COMMIT_MESSAGE" value="Text box and basic css added for the search page" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/WalletTracker$test.coverage" NAME="test Coverage Results" MODIFIED="1777047403500" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

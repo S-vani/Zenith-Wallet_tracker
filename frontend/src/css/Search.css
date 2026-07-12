@@ -7,6 +7,8 @@
     width: 10rem;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
     text-align: center;
+    color: rgba(255, 255, 255, 0.70)
+
 }
 
 .search-bar::placeholder{
