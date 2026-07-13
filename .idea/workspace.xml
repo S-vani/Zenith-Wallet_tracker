@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Text box and basic css added for the search page">
+    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Added react state and onchange for the input of search page">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/css/Search.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/css/Search.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/pages/SearchPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/SearchPage.jsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -158,15 +157,7 @@
       <workItem from="1781732924855" duration="466000" />
       <workItem from="1783440040264" duration="4868000" />
       <workItem from="1783608046633" duration="2851000" />
-      <workItem from="1783900054197" duration="391000" />
-    </task>
-    <task id="LOCAL-00020" summary="Added a dashboard page with stats like daily, weekly, monthly, yearly and all time profits, total value, along with a button that goes to another route that tells you what your current holdings are along with the average price you bought it at, will soon make it so next to each holding it says the profit you have on it">
-      <option name="closed" value="true" />
-      <created>1778104965388</created>
-      <option name="number" value="00020" />
-      <option name="presentableId" value="LOCAL-00020" />
-      <option name="project" value="LOCAL" />
-      <updated>1778104965388</updated>
+      <workItem from="1783900054197" duration="1126000" />
     </task>
     <task id="LOCAL-00021" summary="Each holding now says the current price of it and the profit">
       <option name="closed" value="true" />
@@ -552,7 +543,15 @@
       <option name="project" value="LOCAL" />
       <updated>1783611184667</updated>
     </task>
-    <option name="localTasksCounter" value="69" />
+    <task id="LOCAL-00069" summary="Added react state and onchange for the input of search page">
+      <option name="closed" value="true" />
+      <created>1783900669204</created>
+      <option name="number" value="00069" />
+      <option name="presentableId" value="LOCAL-00069" />
+      <option name="project" value="LOCAL" />
+      <updated>1783900669204</updated>
+    </task>
+    <option name="localTasksCounter" value="70" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -570,7 +569,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added css styling for the crypto/stock searching when adding a new transaction" />
     <MESSAGE value="Added css styling to display the items that the user searches for in rows with 3 columns per row" />
     <MESSAGE value="More css for displaying assets to have green colour for profit and red for negative, fixed spacing and changed the logic where when a user chooses their asset of choice it expands it and shows a graph of its daily price, then lets the user enter quantities and price they bought it for" />
     <MESSAGE value="Added last bit off css for the transaction creation page, only thing missing that I will add later is a graph displaying the daily price of that asset. Also debugged an issue where twelveapi was sending different outputs depending on size of input" />
@@ -595,7 +593,8 @@
     <MESSAGE value="Entire workflow now works properly with signup and login redirecting properly. All thats left is the searching function to search for stocks and crypto." />
     <MESSAGE value="Created base files and added Route for the search page" />
     <MESSAGE value="Text box and basic css added for the search page" />
-    <option name="LAST_COMMIT_MESSAGE" value="Text box and basic css added for the search page" />
+    <MESSAGE value="Added react state and onchange for the input of search page" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added react state and onchange for the input of search page" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/WalletTracker$test.coverage" NAME="test Coverage Results" MODIFIED="1777047403500" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
