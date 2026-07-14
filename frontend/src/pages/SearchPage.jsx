@@ -20,13 +20,18 @@ function SearchPage (){
 
     return (
         <div className="search-page-wrapper">
-            <button>Crypto</button>
-            <button>Stock</button>
-            <input
-                onChange={(e) => searchBarChange(e.target.value)}
-                className="search-bar"
-                placeholder="Insert Symbol"
-            />
+            <div className="search-area">
+                <div>
+                    <button>Crypto</button>
+                    <button>Stock</button>
+                </div>
+                <input
+                    onChange={(e) => searchBarChange(e.target.value)}
+                    className="search-bar"
+                    placeholder="Insert Symbol"
+                />
+            </div>
+
             <button className="search-submit-button" onClick={() => searchBarSubmit()}>Search</button>
 
             <button onClick={() => console.log(searchResults)}>Hello</button>
