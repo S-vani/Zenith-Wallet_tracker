@@ -432,7 +432,7 @@ async def search_assets_crypto(asset: str, current_user: User = Depends(current_
 
     res = requests.get(url, params=params, headers=headers)
 
-    data = res.json()["coins"][:6]  # top 6 results and luckely coingecko sorts by popularity
+    data = res.json()["coins"][:6]  # top 6 results and luckily coingecko sorts by popularity
 
     ids = ",".join(coin["api_symbol"] for coin in data)
 
@@ -441,7 +441,7 @@ async def search_assets_crypto(asset: str, current_user: User = Depends(current_
     )
 
     params = {
-        "vs_currency": conversion,
+        "vs_currency": "cad",
         "ids": ids,
         "price_change_percentage": "24h",
     }
@@ -463,8 +463,8 @@ async def search_assets_crypto(asset: str, current_user: User = Depends(current_
             "symbol": coin["symbol"],
             "type": "crypto",
             "image": coin["image"],  # may or may not use
-            "price": coin["current_price"],
-            "change": coin["price_change_24h"],
+            "price": coin["current_price"] * conversion,
+            "change": coin["price_change_24h"] * conversion,
             "change_pct": coin["price_change_percentage_24h"]
         })
 
