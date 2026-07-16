@@ -2,27 +2,25 @@ import "../css/Search.css"
 import {useState} from "react";
 import {searchCrypto, searchStock} from "../services/api.js";
 
-function SearchPage (){
+function SearchPage() {
     const [searchSymbol, setSearchSymbol] = useState({"symbol": "", "type": ""});
     const [searchResults, setSearchResults] = useState([])
 
 
-    function searchBarChange(e){
+    function searchBarChange(e) {
         setSearchSymbol({
             ...searchSymbol,
             "symbol": e,
         })
     }
 
-    async function searchBarSubmit(){
+    async function searchBarSubmit() {
         let data;
-        if (searchSymbol.type === "stock"){
+        if (searchSymbol.type === "stock") {
             data = await searchStock(searchSymbol.symbol)
-        }
-        else if (searchSymbol.type === "crypto"){
+        } else if (searchSymbol.type === "crypto") {
             data = await searchCrypto(searchSymbol.symbol)
-        }
-        else{
+        } else {
             throw new Error("Please select which type of holding you are searching for.")
         }
 
@@ -34,19 +32,19 @@ function SearchPage (){
             <div className="search-area">
                 <div>
                     <button
-                        className={searchSymbol.type === "crypto" ? "search-button active": "search-button"}
+                        className={searchSymbol.type === "crypto" ? "search-button active" : "search-button"}
                         onClick={() => setSearchSymbol({
-                        ...searchSymbol,
-                        "type": "crypto"
-                    })}>
+                            ...searchSymbol,
+                            "type": "crypto"
+                        })}>
                         Crypto
                     </button>
                     <button
-                        className={searchSymbol.type === "stock" ? "search-button active": "search-button"}
+                        className={searchSymbol.type === "stock" ? "search-button active" : "search-button"}
                         onClick={() => setSearchSymbol({
-                        ...searchSymbol,
-                        "type": "stock"
-                    })}>
+                            ...searchSymbol,
+                            "type": "stock"
+                        })}>
                         Stock
                     </button>
                 </div>

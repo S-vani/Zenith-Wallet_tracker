@@ -1,4 +1,3 @@
-
 import {useNavigate} from "react-router-dom";
 import {getUserCount} from "../services/api.js";
 
@@ -9,13 +8,13 @@ function HomePage() {
     const navigate = useNavigate();
     const [userCount, setUserCount] = useState(0);
 
-    const loadUserCount = async () =>{
-        const userAmount =  await getUserCount();
+    const loadUserCount = async () => {
+        const userAmount = await getUserCount();
         console.log(userAmount)
         setUserCount(userAmount)
     }
 
-    useEffect( () => {
+    useEffect(() => {
         loadUserCount()
     }, []);
 
@@ -44,7 +43,9 @@ function HomePage() {
                         evolve in real time — all in one calm, focused dashboard.
                     </p>
                     <div className="hero-actions">
-                        <button onClick={() => navigate("/signup")} className="auth-btn signup-btn large">Create free account</button>
+                        <button onClick={() => navigate("/signup")} className="auth-btn signup-btn large">Create free
+                            account
+                        </button>
                         <button className="hero-link-btn">See how it works →</button>
                     </div>
 
@@ -53,12 +54,12 @@ function HomePage() {
                             <span className="hero-stat-value positive">{userCount}</span>
                             <span className="hero-stat-label">Current users</span>
                         </div>
-                        <div className="hero-stat-divider" />
+                        <div className="hero-stat-divider"/>
                         <div className="hero-stat">
                             <span className="hero-stat-value">24/7</span>
                             <span className="hero-stat-label">Live market sync</span>
                         </div>
-                        <div className="hero-stat-divider" />
+                        <div className="hero-stat-divider"/>
                         <div className="hero-stat">
                             <span className="hero-stat-value">0</span>
                             <span className="hero-stat-label">Spreadsheets needed</span>
@@ -78,8 +79,8 @@ function HomePage() {
                         <svg className="preview-chart" viewBox="0 0 320 120" preserveAspectRatio="none">
                             <defs>
                                 <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="0%" stopColor="rgba(59,130,246,0.35)" />
-                                    <stop offset="100%" stopColor="rgba(59,130,246,0)" />
+                                    <stop offset="0%" stopColor="rgba(59,130,246,0.35)"/>
+                                    <stop offset="100%" stopColor="rgba(59,130,246,0)"/>
                                 </linearGradient>
                             </defs>
                             <path
@@ -97,7 +98,7 @@ function HomePage() {
                         <div className="preview-holdings">
                             <div className="preview-holding-row">
                                 <div className="preview-holding-name">
-                                    <span className="ticker-dot aapl" />
+                                    <span className="ticker-dot aapl"/>
                                     <span>AAPL</span>
                                 </div>
                                 <span className="preview-holding-value">$12,480.00</span>
@@ -105,7 +106,7 @@ function HomePage() {
                             </div>
                             <div className="preview-holding-row">
                                 <div className="preview-holding-name">
-                                    <span className="ticker-dot nvda" />
+                                    <span className="ticker-dot nvda"/>
                                     <span>NVDA</span>
                                 </div>
                                 <span className="preview-holding-value">$9,150.50</span>
@@ -113,7 +114,7 @@ function HomePage() {
                             </div>
                             <div className="preview-holding-row">
                                 <div className="preview-holding-name">
-                                    <span className="ticker-dot btc" />
+                                    <span className="ticker-dot btc"/>
                                     <span>BTC</span>
                                 </div>
                                 <span className="preview-holding-value">$6,310.90</span>
@@ -150,4 +151,5 @@ function HomePage() {
         </div>
     )
 }
+
 export default HomePage

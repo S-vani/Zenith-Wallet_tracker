@@ -488,8 +488,9 @@ async def return_user_information(
 
     return information
 
+
 @router.get("/users")
-async def return_users_count(session: AsyncSession = Depends(get_async_session),):
+async def return_users_count(session: AsyncSession = Depends(get_async_session), ):
     """
 
     """
