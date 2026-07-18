@@ -49,16 +49,19 @@ function SearchPage() {
                         Stock
                     </button>
                 </div>
-                <input
-                    onChange={(e) => searchBarChange(e.target.value)}
-                    className="search-bar"
-                    placeholder="Insert Symbol"
-                />
+                <div>
+                    <input
+                        onChange={(e) => searchBarChange(e.target.value)}
+                        className="search-bar"
+                        placeholder="Insert Symbol"
+                    />
+                    <button className="search-submit-button" onClick={() => searchBarSubmit()}>Search</button>
+                </div>
+
             </div>
 
-            <button className="search-submit-button" onClick={() => searchBarSubmit()}>Search</button>
 
-            <button onClick={() => console.log(searchResults)}>Hello</button>
+
             <SearchResults results={searchResults}/>
         </div>
     )

@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Formatting and comments">
-      <change afterPath="$PROJECT_DIR$/frontend/src/Search/SearchResults.jsx" afterDir="false" />
+    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Search page css completed">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/css/Search.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/css/Search.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/pages/SearchPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/SearchPage.jsx" afterDir="false" />
@@ -163,23 +162,7 @@
       <workItem from="1784037439676" duration="2845000" />
       <workItem from="1784230251430" duration="222000" />
       <workItem from="1784396381504" duration="10000" />
-      <workItem from="1784396796218" duration="1437000" />
-    </task>
-    <task id="LOCAL-00025" summary="Added a graph that shows users historical portfolio values over time, also fixed a bug where yahoo finance failed to fetch stock prices because when you passed in the current time it would set the start as 5 mins before, and end as 5 mins after which is in the future causing it to return none">
-      <option name="closed" value="true" />
-      <created>1778346005028</created>
-      <option name="number" value="00025" />
-      <option name="presentableId" value="LOCAL-00025" />
-      <option name="project" value="LOCAL" />
-      <updated>1778346005028</updated>
-    </task>
-    <task id="LOCAL-00026" summary="Added documentation and simplified code a bit along with clarifying variable names, comments, and docstrings with also removing some excessive variables.">
-      <option name="closed" value="true" />
-      <created>1778347242902</created>
-      <option name="number" value="00026" />
-      <option name="presentableId" value="LOCAL-00026" />
-      <option name="project" value="LOCAL" />
-      <updated>1778347242902</updated>
+      <workItem from="1784396796218" duration="2453000" />
     </task>
     <task id="LOCAL-00027" summary="Added verification pages for signup and login, made some small tweaks with bugs that I found such as crypto pricing not fetching properly with yahoo finance returning None as a price. Will soon make it so when you signup, an email is sent to you with a link to verify just as a basic overlay before starting to work on css and styling">
       <option name="closed" value="true" />
@@ -557,7 +540,23 @@
       <option name="project" value="LOCAL" />
       <updated>1784230469268</updated>
     </task>
-    <option name="localTasksCounter" value="74" />
+    <task id="LOCAL-00074" summary="Search page completed without css">
+      <option name="closed" value="true" />
+      <created>1784398387796</created>
+      <option name="number" value="00074" />
+      <option name="presentableId" value="LOCAL-00074" />
+      <option name="project" value="LOCAL" />
+      <updated>1784398387797</updated>
+    </task>
+    <task id="LOCAL-00075" summary="Search page css completed">
+      <option name="closed" value="true" />
+      <created>1784398489635</created>
+      <option name="number" value="00075" />
+      <option name="presentableId" value="LOCAL-00075" />
+      <option name="project" value="LOCAL" />
+      <updated>1784398489635</updated>
+    </task>
+    <option name="localTasksCounter" value="76" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -575,8 +574,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Finished the holding page by styling the graph and the table with holdings" />
-    <MESSAGE value="Centered the loading text to be in the middle of the table rather than the left to look better, also added animation for when loading the holdings" />
     <MESSAGE value="Added css for the dashboard file along with minor bug fixes like slow loading speed" />
     <MESSAGE value="Added colouring to the dashboard page to show green for profit and red for loss" />
     <MESSAGE value="Code formatting" />
@@ -600,7 +597,9 @@
     <MESSAGE value="Added more css styling for the search page" />
     <MESSAGE value="route is functional and searches for cryptos." />
     <MESSAGE value="Formatting and comments" />
-    <option name="LAST_COMMIT_MESSAGE" value="Formatting and comments" />
+    <MESSAGE value="Search page completed without css" />
+    <MESSAGE value="Search page css completed" />
+    <option name="LAST_COMMIT_MESSAGE" value="Search page css completed" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/WalletTracker$test.coverage" NAME="test Coverage Results" MODIFIED="1777047403500" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
