@@ -1,6 +1,7 @@
 import "../css/Search.css"
 import {useState} from "react";
 import {searchCrypto, searchStock} from "../services/api.js";
+import SearchResults from "../Search/SearchResults.jsx"
 
 function SearchPage() {
     const [searchSymbol, setSearchSymbol] = useState({"symbol": "", "type": ""});
@@ -58,6 +59,7 @@ function SearchPage() {
             <button className="search-submit-button" onClick={() => searchBarSubmit()}>Search</button>
 
             <button onClick={() => console.log(searchResults)}>Hello</button>
+            <SearchResults results={searchResults}/>
         </div>
     )
 }
