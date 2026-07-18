@@ -24,12 +24,8 @@ function SearchResults({ results }) {
             const res = await getPriceHistory(id, result.type, "1D");
 
             const formatted = res.data.map((point) => ({
-                time: point.time,
+                time: new Date(point.time).getTime(),
                 price: point.price,
-                label: new Date(point.time).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                }),
             }));
 
             setChartData((prev) => ({ ...prev, [id]: formatted }));
@@ -77,11 +73,17 @@ function SearchResults({ results }) {
                                     <ResponsiveContainer width="100%" height={140}>
                                         <LineChart data={data}>
                                             <XAxis
-                                                dataKey="label"
+                                                dataKey="time"
+                                                type="number"
+                                                domain={["dataMin", "dataMax"]}
+                                                scale="time"
+                                                tickFormatter={(t) =>
+                                                    new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                                                }
                                                 tick={{ fill: "#6b7280", fontSize: 10 }}
-                                                interval={Math.floor(data.length / 6)}
                                                 axisLine={{ stroke: "#0f1725" }}
                                                 tickLine={false}
+                                                interval={Math.floor(data.length / 6)}
                                             />
                                             <YAxis domain={["auto", "auto"]} hide />
                                             <Tooltip
@@ -91,16 +93,10 @@ function SearchResults({ results }) {
                                                     borderRadius: "0.5rem",
                                                     color: "#f5f7ff",
                                                 }}
-                                                labelStyle={{ color: "#9aa0a6" }}
+                                                labelFormatter={(t) => new Date(t).toLocaleTimeString()}
                                                 formatter={(value) => [`$${value.toFixed(2)}`, "Price"]}
                                             />
-                                            <Line
-                                                type="monotone"
-                                                dataKey="price"
-                                                stroke={isPositive ? "#22c55e" : "#ef4444"}
-                                                strokeWidth={2}
-                                                dot={false}
-                                            />
+                                            <Line type="monotone" dataKey="price" stroke={isPositive ? "#22c55e" : "#ef4444"} strokeWidth={2} dot={false} />
                                         </LineChart>
                                     </ResponsiveContainer>
                                 ) : (

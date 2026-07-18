@@ -35,3 +35,141 @@
     flex-direction: row;
     gap: 0.5rem;
 }
+
+.search-results-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    width: 100%;
+}
+
+.search-results-empty {
+    margin-left: 10rem;
+    margin-top: 2rem;
+    text-transform: uppercase;
+    font-size: 1.1rem;
+    color: #9aa0a6;
+}
+
+.search-result-wrapper {
+    display: flex;
+    flex-direction: column;
+    width: 70%;
+    align-self: center;
+    margin-top: 0.5rem;
+}
+
+.search-result-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 1rem 1.5rem;
+
+    border-radius: 1rem;
+
+    border: 0.05rem solid #0f1725;
+
+    background: linear-gradient(
+            180deg,
+            #111a2d,
+            #0d1322
+    );
+
+    cursor: pointer;
+
+    transition: border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.search-result-item:hover {
+    border-color: #1b2a44;
+
+    background: linear-gradient(
+            180deg,
+            #0f1f45,
+            #0d1526
+    );
+
+    box-shadow: 0 0 0.4rem rgba(255, 255, 255, 0.15);
+}
+
+.search-result-left {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.search-result-image {
+    width: 1.8rem;
+    height: 1.8rem;
+    border-radius: 50%;
+}
+
+.search-result-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.search-result-symbol {
+    text-transform: uppercase;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.search-result-type {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6b7280;
+}
+
+.search-result-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+}
+
+.search-result-price {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #f5f7ff;
+}
+
+.search-result-change {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.search-result-change.positive {
+    color: #22c55e;
+}
+
+.search-result-change.negative {
+    color: #ef4444;
+}
+
+.search-result-chart-box {
+    margin-top: 0.5rem;
+    padding: 1rem;
+
+    border-radius: 1rem;
+
+    border: 0.05rem solid #0f1725;
+
+    background: linear-gradient(
+            145deg,
+            #070b14,
+            #05070d
+    );
+
+    opacity: 0;
+    transform: translateY(-0.5rem);
+    animation: fadeIn 0.3s ease forwards;
+}
+
+.error-search{
+    color: red;
+}
