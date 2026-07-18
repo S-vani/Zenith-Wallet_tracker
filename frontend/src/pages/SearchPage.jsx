@@ -60,6 +60,8 @@ function SearchPage() {
 
             </div>
 
+            <button onClick={() => console.log(searchResults)}>se</button>
+
 
 
             <SearchResults results={searchResults}/>

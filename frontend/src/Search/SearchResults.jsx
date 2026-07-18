@@ -21,7 +21,7 @@ function SearchResults({ results }) {
 
         setLoadingChart(true);
         try {
-            const res = await getPriceHistory(id, result.type, "1D");
+            const res = await getPriceHistory(result.symbol, result.type, "1D");
 
             const formatted = res.data.map((point) => ({
                 time: new Date(point.time).getTime(),

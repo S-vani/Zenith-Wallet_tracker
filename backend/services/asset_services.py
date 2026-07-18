@@ -618,6 +618,9 @@ async def get_history_of_prices(
     rates = await get_all_conversion_rates()
     conversion_to_cad = rates["usd_to_cad"]
     conversion = get_conversion_factor(rates, currency)
+    print(f"conversion: {conversion}")
+    print(f"currency: {currency}")
+    print(f"rates: {rates}")
 
     hist = ticker.history(
         period=period,

@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Search page css completed">
+    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Minor css and bug fixes.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/services/asset_services.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/services/asset_services.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/Search/SearchResults.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/Search/SearchResults.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/css/Search.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/css/Search.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/pages/SearchPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/SearchPage.jsx" afterDir="false" />
     </list>
@@ -162,15 +164,7 @@
       <workItem from="1784037439676" duration="2845000" />
       <workItem from="1784230251430" duration="222000" />
       <workItem from="1784396381504" duration="10000" />
-      <workItem from="1784396796218" duration="2453000" />
-    </task>
-    <task id="LOCAL-00027" summary="Added verification pages for signup and login, made some small tweaks with bugs that I found such as crypto pricing not fetching properly with yahoo finance returning None as a price. Will soon make it so when you signup, an email is sent to you with a link to verify just as a basic overlay before starting to work on css and styling">
-      <option name="closed" value="true" />
-      <created>1778382864438</created>
-      <option name="number" value="00027" />
-      <option name="presentableId" value="LOCAL-00027" />
-      <option name="project" value="LOCAL" />
-      <updated>1778382864438</updated>
+      <workItem from="1784396796218" duration="3092000" />
     </task>
     <task id="LOCAL-00028" summary="Implemented email system using smtp protocol to send verification link">
       <option name="closed" value="true" />
@@ -556,7 +550,15 @@
       <option name="project" value="LOCAL" />
       <updated>1784398489635</updated>
     </task>
-    <option name="localTasksCounter" value="76" />
+    <task id="LOCAL-00076" summary="Minor css and bug fixes.">
+      <option name="closed" value="true" />
+      <created>1784399341698</created>
+      <option name="number" value="00076" />
+      <option name="presentableId" value="LOCAL-00076" />
+      <option name="project" value="LOCAL" />
+      <updated>1784399341698</updated>
+    </task>
+    <option name="localTasksCounter" value="77" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -574,7 +576,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added css for the dashboard file along with minor bug fixes like slow loading speed" />
     <MESSAGE value="Added colouring to the dashboard page to show green for profit and red for loss" />
     <MESSAGE value="Code formatting" />
     <MESSAGE value="Increased chart size and added an alltime button to show alltime profit by calculating when the users account was created and subtracting the time now from it to get a date range" />
@@ -599,7 +600,8 @@
     <MESSAGE value="Formatting and comments" />
     <MESSAGE value="Search page completed without css" />
     <MESSAGE value="Search page css completed" />
-    <option name="LAST_COMMIT_MESSAGE" value="Search page css completed" />
+    <MESSAGE value="Minor css and bug fixes." />
+    <option name="LAST_COMMIT_MESSAGE" value="Minor css and bug fixes." />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/WalletTracker$test.coverage" NAME="test Coverage Results" MODIFIED="1777047403500" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
