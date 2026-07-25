@@ -1,11 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Bug fixes to how the currency is converted">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/css/Search.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/css/Search.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/pages/SearchPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/SearchPage.jsx" afterDir="false" />
-    </list>
+    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Code documentation" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -163,14 +159,7 @@
       <workItem from="1784230251430" duration="222000" />
       <workItem from="1784396381504" duration="10000" />
       <workItem from="1784396796218" duration="3617000" />
-    </task>
-    <task id="LOCAL-00029" summary="Added a way to search for stocks, the idea is that when a user wants to make a transaction they search a symbol and out comes a bunch of stocks of that symbol with prices, used an api called finnhub. For crypto I will probably use coingecko or something like that.">
-      <option name="closed" value="true" />
-      <created>1778607398429</created>
-      <option name="number" value="00029" />
-      <option name="presentableId" value="LOCAL-00029" />
-      <option name="project" value="LOCAL" />
-      <updated>1778607398429</updated>
+      <workItem from="1784951905087" duration="598000" />
     </task>
     <task id="LOCAL-00030" summary="Added a new route in the backend that fetches crypto information based on search, will use it later to allow the use to type in symbols for crypto or stocks and get returned a list of them that they can click, opening a form and automatically sending to the backend the symbol of the asset they pressed">
       <option name="closed" value="true" />
@@ -556,7 +545,15 @@
       <option name="project" value="LOCAL" />
       <updated>1784400030600</updated>
     </task>
-    <option name="localTasksCounter" value="78" />
+    <task id="LOCAL-00078" summary="Code documentation">
+      <option name="closed" value="true" />
+      <created>1784951935744</created>
+      <option name="number" value="00078" />
+      <option name="presentableId" value="LOCAL-00078" />
+      <option name="project" value="LOCAL" />
+      <updated>1784951935744</updated>
+    </task>
+    <option name="localTasksCounter" value="79" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -574,7 +571,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Code formatting" />
     <MESSAGE value="Increased chart size and added an alltime button to show alltime profit by calculating when the users account was created and subtracting the time now from it to get a date range" />
     <MESSAGE value="Fixed a few glitches where the daily porfolio information was inaccurate by returning the wrong currency, and also not fetching prices properly" />
     <MESSAGE value="Added functions in backend to translate cad to other currencies depending on user region" />
@@ -599,7 +595,8 @@
     <MESSAGE value="Search page css completed" />
     <MESSAGE value="Minor css and bug fixes." />
     <MESSAGE value="Bug fixes to how the currency is converted" />
-    <option name="LAST_COMMIT_MESSAGE" value="Bug fixes to how the currency is converted" />
+    <MESSAGE value="Code documentation" />
+    <option name="LAST_COMMIT_MESSAGE" value="Code documentation" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/WalletTracker$test.coverage" NAME="test Coverage Results" MODIFIED="1777047403500" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
