@@ -1,10 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Minor css and bug fixes.">
+    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Bug fixes to how the currency is converted">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/services/asset_services.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/services/asset_services.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/Search/SearchResults.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/Search/SearchResults.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/css/Search.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/css/Search.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/pages/SearchPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/SearchPage.jsx" afterDir="false" />
     </list>
@@ -164,15 +162,7 @@
       <workItem from="1784037439676" duration="2845000" />
       <workItem from="1784230251430" duration="222000" />
       <workItem from="1784396381504" duration="10000" />
-      <workItem from="1784396796218" duration="3092000" />
-    </task>
-    <task id="LOCAL-00028" summary="Implemented email system using smtp protocol to send verification link">
-      <option name="closed" value="true" />
-      <created>1778601004412</created>
-      <option name="number" value="00028" />
-      <option name="presentableId" value="LOCAL-00028" />
-      <option name="project" value="LOCAL" />
-      <updated>1778601004413</updated>
+      <workItem from="1784396796218" duration="3617000" />
     </task>
     <task id="LOCAL-00029" summary="Added a way to search for stocks, the idea is that when a user wants to make a transaction they search a symbol and out comes a bunch of stocks of that symbol with prices, used an api called finnhub. For crypto I will probably use coingecko or something like that.">
       <option name="closed" value="true" />
@@ -558,7 +548,15 @@
       <option name="project" value="LOCAL" />
       <updated>1784399341698</updated>
     </task>
-    <option name="localTasksCounter" value="77" />
+    <task id="LOCAL-00077" summary="Bug fixes to how the currency is converted">
+      <option name="closed" value="true" />
+      <created>1784400030600</created>
+      <option name="number" value="00077" />
+      <option name="presentableId" value="LOCAL-00077" />
+      <option name="project" value="LOCAL" />
+      <updated>1784400030600</updated>
+    </task>
+    <option name="localTasksCounter" value="78" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -576,7 +574,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added colouring to the dashboard page to show green for profit and red for loss" />
     <MESSAGE value="Code formatting" />
     <MESSAGE value="Increased chart size and added an alltime button to show alltime profit by calculating when the users account was created and subtracting the time now from it to get a date range" />
     <MESSAGE value="Fixed a few glitches where the daily porfolio information was inaccurate by returning the wrong currency, and also not fetching prices properly" />
@@ -601,7 +598,8 @@
     <MESSAGE value="Search page completed without css" />
     <MESSAGE value="Search page css completed" />
     <MESSAGE value="Minor css and bug fixes." />
-    <option name="LAST_COMMIT_MESSAGE" value="Minor css and bug fixes." />
+    <MESSAGE value="Bug fixes to how the currency is converted" />
+    <option name="LAST_COMMIT_MESSAGE" value="Bug fixes to how the currency is converted" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/WalletTracker$test.coverage" NAME="test Coverage Results" MODIFIED="1777047403500" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

@@ -5,7 +5,7 @@ import SearchResults from "../Search/SearchResults.jsx"
 
 function SearchPage() {
     const [searchSymbol, setSearchSymbol] = useState({"symbol": "", "type": ""});
-    const [searchResults, setSearchResults] = useState([])
+    const [searchResults, setSearchResults] = useState([]) // hold the search results
 
 
     function searchBarChange(e) {
@@ -30,6 +30,7 @@ function SearchPage() {
 
     return (
         <div className="search-page-wrapper">
+            <h1>Search</h1>
             <div className="search-area">
                 <div>
                     <button
@@ -59,10 +60,6 @@ function SearchPage() {
                 </div>
 
             </div>
-
-            <button onClick={() => console.log(searchResults)}>se</button>
-
-
 
             <SearchResults results={searchResults}/>
         </div>
