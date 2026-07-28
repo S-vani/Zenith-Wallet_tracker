@@ -1,0 +1,267 @@
+.user-page-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-top: 4rem;
+    padding-bottom: 4rem;
+}
+
+.user-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    width: 32rem;
+}
+
+.user-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0 0.25rem;
+}
+
+.user-avatar {
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 50%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #93c5fd;
+
+    background: linear-gradient(180deg, #1d3461, #162344);
+    border: 0.05rem solid #2f4a7a;
+}
+
+.user-header-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.user-header-name {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #f5f7ff;
+}
+
+.user-header-sub {
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+.user-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+
+    padding: 1.75rem;
+
+    background: linear-gradient(145deg, #070b14, #05070d);
+
+    border: 0.1rem solid #0f1725;
+    border-radius: 1.25rem;
+
+    box-shadow: 0 0 0 0.05rem #070b12,
+    0 0.5rem 2.5rem #000000cc;
+}
+
+.user-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.user-card-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #c7d2e6;
+}
+
+.user-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.user-field-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #c7d2e6;
+}
+
+.user-field-input {
+    height: 3rem;
+    width: 100%;
+
+    padding: 0 1rem;
+
+    border-radius: 1rem;
+
+    border: 0.05rem solid #0f1725;
+
+    background: linear-gradient(180deg, #0b1220, #070b14);
+
+    color: #f5f7ff;
+
+    font-size: 0.95rem;
+    font-weight: 500;
+
+    outline: none;
+
+    transition: border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s ease,
+    background 0.2s ease;
+}
+
+.user-field-input::placeholder {
+    color: #5a6785;
+}
+
+.user-field-input:hover {
+    border-color: #1b2a44;
+    background: linear-gradient(180deg, #0d1526, #080c15);
+}
+
+.user-field-input:focus {
+    border-color: #2f4a7a;
+    box-shadow: 0 0 0 0.25rem #2f4a7a33,
+    0 0 1.125rem #2f4a7a44;
+    transform: translateY(-0.0625rem);
+}
+
+.user-email-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.user-email-row .user-field-input {
+    flex: 1;
+}
+
+.verify-badge {
+    flex-shrink: 0;
+
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+
+    padding: 0.35rem 0.7rem;
+    border-radius: 0.5rem;
+}
+
+.verify-badge.verified {
+    color: #22c55e;
+    background: rgba(34, 197, 94, 0.12);
+    border: 0.05rem solid rgba(34, 197, 94, 0.35);
+}
+
+.verify-badge.unverified {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.12);
+    border: 0.05rem solid rgba(245, 158, 11, 0.35);
+}
+
+.verify-row {
+    display: flex;
+    align-items: center;
+}
+
+.verify-button {
+    border-radius: 0.5rem;
+    transition: width 0.25s ease, height 0.25s ease;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    font-size: 0.85rem;
+
+    border: 0.05rem solid #0f1725;
+
+    background: linear-gradient(180deg, #0f1f45, #0d1526);
+
+    color: #f5f7ff;
+    font-weight: 500;
+
+    width: 8rem;
+    height: 2.2rem;
+}
+
+.verify-button:hover:not(:disabled) {
+    box-shadow: 0 0 0.4rem rgba(255, 255, 255, 0.5),
+    0 0 0.8rem rgba(180, 220, 255, 0.25);
+}
+
+.verify-button:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.verify-sent-text {
+    font-size: 0.8rem;
+    color: #22c55e;
+}
+
+.user-divider {
+    height: 1px;
+    background: #3a3a3a;
+    width: 100%;
+}
+
+.user-save-button {
+    align-self: flex-start;
+
+    border-radius: 0.5rem;
+    transition: width 0.25s ease, height 0.25s ease;
+    align-items: center;
+    justify-content: center;
+    display: flex;
+    font-size: 1rem;
+
+    border: 0.05rem solid #0f1725;
+
+    background: linear-gradient(180deg, #16a34a, #15803d);
+
+    color: #f5f7ff;
+    font-weight: 500;
+
+    width: 9rem;
+    height: 2.5rem;
+}
+
+.user-save-button:hover {
+    box-shadow: 0 0.3rem 1rem rgba(0, 0, 0, 0.2),
+    0 0 0.8rem rgba(34, 197, 94, 0.25);
+}
+
+.user-info-grid {
+    display: flex;
+    flex-direction: column;
+}
+
+.user-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 0;
+}
+
+.user-info-label {
+    font-size: 0.85rem;
+    color: #9aa0a6;
+}
+
+.user-info-value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #f5f7ff;
+}

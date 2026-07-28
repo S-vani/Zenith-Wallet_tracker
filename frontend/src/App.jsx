@@ -8,6 +8,7 @@ import VerifyPage from "./pages/VerifyPage.jsx";
 import SignupPage from "./pages/SignupPage.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import SearchPage from "./pages/SearchPage.jsx";
+import UserPage from "./pages/UserPage.jsx";
 
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
                     <Route path="/verify" element={<VerifyPage/>}/>
                     <Route path="/signup" element={<SignupPage/>}/>
                     <Route path="/search" element={<SearchPage/>}/>
+                    <Route path="/user" element={<UserPage/>}/>
                 </Routes>
             </main>
         </div>

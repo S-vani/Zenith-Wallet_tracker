@@ -75,7 +75,7 @@ function NavBar() {
                 </NavLink>
 
 
-                <NavLink to="/login"
+                <NavLink to="/user"
                          className={({isActive}) =>
                              isActive ? "nav-link active" : "nav-link"
                          }>
