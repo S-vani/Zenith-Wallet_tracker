@@ -30,6 +30,13 @@ function UserPage() {
         }
     };
 
+    const setInformation = (info, change) => {
+        setUserInformation((prev) =>({
+            ...prev,
+            info: change
+        }))
+    }
+
 
     useEffect(() => {
         async function getUserInformation() {
@@ -86,7 +93,7 @@ function UserPage() {
                         <input
                             className="user-field-input"
                             value={userInformation.name}
-                            onChange={(e) => setName(e.target.value)}
+                            onChange={(e) => setInformation("name", e.target.value)}
                             placeholder="Your name"
                         />
                     </div>
@@ -98,8 +105,8 @@ function UserPage() {
                                 className="user-field-input"
                                 value={userInformation.email}
                                 onChange={(e) => {
-                                    setEmail(e.target.value);
-                                    setIsVerified(false);
+                                    setInformation("email", e.target.value);
+                                    setInformation("isVerified", false);
                                     setVerificationSent(false);
                                 }}
                                 placeholder="you@example.com"
