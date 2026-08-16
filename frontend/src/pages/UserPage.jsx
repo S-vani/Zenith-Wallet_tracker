@@ -11,11 +11,13 @@ function UserPage() {
         "currency": "",
         "dateJoined": ""
     })
+    const [displayName, setDisplayName] = useState("");
     const [sendingVerification, setSendingVerification] = useState(false);
     const [verificationSent, setVerificationSent] = useState(false);
 
     const handleSave = async () => {
         const userinfo = await putUserInfo(userInformation)
+        setDisplayName(userInformation.name)
         console.log("Saving profile:", userInformation);
         console.log("Saving profile:", userinfo);
     };
@@ -34,7 +36,7 @@ function UserPage() {
     const setInformation = (info, change) => {
         setUserInformation((prev) => ({
             ...prev,
-            info: change
+            [info]: change
         }))
     }
 
@@ -42,6 +44,7 @@ function UserPage() {
     useEffect(() => {
         async function getUserInformation() {
             const info = await getUser();
+
 
             const formattedDate = new Date(info.date_joined).toLocaleDateString(
                 "en-US",
@@ -54,11 +57,12 @@ function UserPage() {
             const formattedInfo = {
                 name: info.name,
                 email: info.email,
-                isVerified: false,
+                isVerified: info.isVerified,
                 currency: info.currency,
                 dateJoined: formattedDate,
             };
 
+            setDisplayName(formattedInfo.name)
             setUserInformation(formattedInfo)
         }
 
@@ -79,7 +83,7 @@ function UserPage() {
                             .toUpperCase()}
                     </div>
                     <div className="user-header-info">
-                        <span className="user-header-name">{userInformation.name}</span>
+                        <span className="user-header-name">{displayName}</span>
                         <span className="user-header-sub">Account settings</span>
                     </div>
                 </div>

@@ -483,7 +483,8 @@ async def return_user_information(
         "name": current_user.name,
         "email": current_user.email,
         "date_joined": current_user.date_joined,
-        "currency": current_user.currency
+        "currency": current_user.currency,
+        "isVerified": current_user.is_verified
     }
 
     return information
@@ -509,12 +510,13 @@ async def edit_user_info(new_info: dict[str, Any],
     if new_info.get("name") != current_user.name:
         current_user.name = new_info.get("name")
     if new_info.get("email") != current_user.email:
-        current_user.name = new_info.get("email")
+        current_user.email = new_info.get("email")
     if new_info.get("isVerified") != current_user.is_verified:
-        current_user.name = new_info.get("isVerified")
+        current_user.is_verified = new_info.get("isVerified")
     if new_info.get("currency") != current_user.currency:
-        current_user.name = new_info.get("currency")
+        current_user.currency = new_info.get("currency")
 
+    print(current_user)
 
     await session.commit()
     await session.refresh(current_user)
