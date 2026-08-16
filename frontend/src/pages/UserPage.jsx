@@ -14,9 +14,14 @@ function UserPage() {
     const [displayName, setDisplayName] = useState("");
     const [sendingVerification, setSendingVerification] = useState(false);
     const [verificationSent, setVerificationSent] = useState(false);
+    const [savedInfo, setSavedInfo] = useState(false);
 
     const handleSave = async () => {
         const userinfo = await putUserInfo(userInformation)
+        setSavedInfo(true)
+        setTimeout(() => {
+            setSavedInfo(false);
+        }, 3000);
         setDisplayName(userInformation.name)
         console.log("Saving profile:", userInformation);
         console.log("Saving profile:", userinfo);
@@ -71,11 +76,14 @@ function UserPage() {
 
     return (
         <div className="user-page-wrapper">
+            {savedInfo && (
+                <div className="saving-popup">Changes Saved</div>
+            )}
             <button onClick={() => console.log(userInformation)}>asdsads</button>
             <div className="user-page">
                 <div className="user-header">
                     <div className="user-avatar">
-                        {userInformation.name
+                        {displayName
                             .split(" ")
                             .map((part) => part[0])
                             .join("")
@@ -142,6 +150,22 @@ function UserPage() {
                         )}
                     </div>
 
+                    <div className="user-field">
+                        <label className="user-field-label">Currency</label>
+                        <select
+                            className="user-field-select"
+                            value={userInformation.currency}
+                            onChange={(e) => setInformation("currency", e.target.value)}
+                        >
+                            <option value="" disabled>
+                                Select currency
+                            </option>
+                            <option value="USD">USD — US Dollar</option>
+                            <option value="CAD">CAD — Canadian Dollar</option>
+                            <option value="EUR">EUR — Euro</option>
+                        </select>
+                    </div>
+
                     <div className="user-divider"/>
 
                     <button className="user-save-button" onClick={handleSave}>
@@ -157,17 +181,7 @@ function UserPage() {
                     <div className="user-info-grid">
                         <div className="user-info-row">
                             <span className="user-info-label">Member since</span>
-                            <span className="user-info-value">March 2024</span>
-                        </div>
-                        <div className="divider"/>
-                        <div className="user-info-row">
-                            <span className="user-info-label">Portfolio value</span>
-                            <span className="user-info-value">$—</span>
-                        </div>
-                        <div className="divider"/>
-                        <div className="user-info-row">
-                            <span className="user-info-label">Last login</span>
-                            <span className="user-info-value">—</span>
+                            <span className="user-info-value">{userInformation.dateJoined}</span>
                         </div>
                     </div>
                 </div>

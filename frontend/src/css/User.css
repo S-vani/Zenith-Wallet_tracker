@@ -265,3 +265,97 @@
     font-weight: 600;
     color: #f5f7ff;
 }
+
+
+.user-field-select {
+    height: 3rem;
+    width: 100%;
+
+    padding: 0 1rem;
+
+    border-radius: 1rem;
+
+    border: 0.05rem solid #0f1725;
+
+    background: linear-gradient(180deg, #0b1220, #070b14);
+
+    color: #f5f7ff;
+
+    font-size: 0.95rem;
+    font-weight: 500;
+
+    outline: none;
+
+    cursor: pointer;
+
+    transition: border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s ease,
+    background 0.2s ease;
+
+    appearance: none;
+
+    background-image: linear-gradient(45deg, transparent 50%, #6b7280 50%),
+    linear-gradient(135deg, #6b7280 50%, transparent 50%);
+    background-position: calc(100% - 1.2rem) 1.25rem,
+    calc(100% - 0.85rem) 1.25rem;
+    background-size: 0.4rem 0.4rem,
+    0.4rem 0.4rem;
+    background-repeat: no-repeat;
+}
+
+.user-field-select:hover {
+    border-color: #1b2a44;
+    background-color: #0d1526;
+}
+
+.user-field-select:focus {
+    border-color: #2f4a7a;
+    box-shadow: 0 0 0 0.25rem #2f4a7a33,
+    0 0 1.125rem #2f4a7a44;
+    transform: translateY(-0.0625rem);
+}
+
+.user-field-select option {
+    background: #0b1220;
+    color: #f5f7ff;
+}
+
+.saving-popup {
+    position: fixed;
+    top: 1.5rem;
+    right: 1.5rem;
+
+    padding: 0.9rem 1.25rem;
+
+    border-radius: 0.75rem;
+
+    background: linear-gradient(180deg, #16a34a, #15803d);
+
+    border: 0.05rem solid #22c55e;
+
+    color: #f5f7ff;
+
+    font-size: 0.9rem;
+    font-weight: 600;
+
+    box-shadow:
+        0 0.5rem 1.5rem rgba(0, 0, 0, 0.35),
+        0 0 1rem rgba(34, 197, 94, 0.2);
+
+    z-index: 1000;
+
+    animation: saving-popup-in 0.25s ease-out;
+}
+
+@keyframes saving-popup-in {
+    from {
+        opacity: 0;
+        transform: translateY(-0.5rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

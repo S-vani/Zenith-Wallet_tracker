@@ -4,9 +4,9 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="User can now edit their own information and set their name, email, and currency to what they want.">
+    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="bug fixes with how the users information gets saved">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/routes/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/routes/assets.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/css/User.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/css/User.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/pages/UserPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/UserPage.jsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -323,15 +323,7 @@
       <workItem from="1785247712661" duration="2903000" />
       <workItem from="1786566855807" duration="891000" />
       <workItem from="1786653683716" duration="594000" />
-      <workItem from="1786891139867" duration="2202000" />
-    </task>
-    <task id="LOCAL-00035" summary="User can now pick exactly which crypto they purchased and information is automatically sent rather than manually typing the information in">
-      <option name="closed" value="true" />
-      <created>1778901378548</created>
-      <option name="number" value="00035" />
-      <option name="presentableId" value="LOCAL-00035" />
-      <option name="project" value="LOCAL" />
-      <updated>1778901378548</updated>
+      <workItem from="1786891139867" duration="2900000" />
     </task>
     <task id="LOCAL-00036" summary="Wrote some basic CSS for the transactions page and also changed the filtering to be onchange instead of on a submit">
       <option name="closed" value="true" />
@@ -717,7 +709,15 @@
       <option name="project" value="LOCAL" />
       <updated>1786892562401</updated>
     </task>
-    <option name="localTasksCounter" value="84" />
+    <task id="LOCAL-00084" summary="bug fixes with how the users information gets saved">
+      <option name="closed" value="true" />
+      <created>1786893517922</created>
+      <option name="number" value="00084" />
+      <option name="presentableId" value="LOCAL-00084" />
+      <option name="project" value="LOCAL" />
+      <updated>1786893517922</updated>
+    </task>
+    <option name="localTasksCounter" value="85" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -735,7 +735,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Fixed bug where it was converting twice and giving wack numbers" />
     <MESSAGE value="Fixed another bug where there were over 200 http requests going to try and get usd conversions, so I just called it once and cached it with a TTL of 60 seconds" />
     <MESSAGE value="Added documentation for code through docstrings and comments along with basic formatting" />
     <MESSAGE value="A bit more formatting for a file I forgot to clean up a bit" />
@@ -760,7 +759,8 @@
     <MESSAGE value="Basic user page information is displayed, will add the option to change the users information and verify email later." />
     <MESSAGE value="User page can now edit their name and email, not synced up to db yet" />
     <MESSAGE value="User can now edit their own information and set their name, email, and currency to what they want." />
-    <option name="LAST_COMMIT_MESSAGE" value="User can now edit their own information and set their name, email, and currency to what they want." />
+    <MESSAGE value="bug fixes with how the users information gets saved" />
+    <option name="LAST_COMMIT_MESSAGE" value="bug fixes with how the users information gets saved" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/WalletTracker$test.coverage" NAME="test Coverage Results" MODIFIED="1777047403500" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
