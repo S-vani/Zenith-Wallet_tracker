@@ -225,3 +225,18 @@ export async function getUserCount() {
 
     return res.json()
 }
+
+
+export async function putUserInfo(new_info){
+    const res = await fetch(`${BASE_URL}/user/information`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(new_info),
+    })
+
+    if (!res.ok){
+        throw new Error("error setting user information")
+    }
+
+    return res.json()
+}

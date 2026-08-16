@@ -1,7 +1,7 @@
 import {useState, useEffect} from "react";
 import "../css/User.css"
 
-import {getUser} from "../services/api.js"
+import {getUser, putUserInfo} from "../services/api.js"
 
 function UserPage() {
     const [userInformation, setUserInformation] = useState({
@@ -14,9 +14,10 @@ function UserPage() {
     const [sendingVerification, setSendingVerification] = useState(false);
     const [verificationSent, setVerificationSent] = useState(false);
 
-    const handleSave = () => {
-        // TODO: wire up to update-profile endpoint
-        console.log("Saving profile:", {name, email});
+    const handleSave = async () => {
+        const userinfo = await putUserInfo(userInformation)
+        console.log("Saving profile:", userInformation);
+        console.log("Saving profile:", userinfo);
     };
 
     const handleVerify = async () => {
@@ -31,7 +32,7 @@ function UserPage() {
     };
 
     const setInformation = (info, change) => {
-        setUserInformation((prev) =>({
+        setUserInformation((prev) => ({
             ...prev,
             info: change
         }))
@@ -58,7 +59,7 @@ function UserPage() {
                 dateJoined: formattedDate,
             };
 
-            setUserInformation(info)
+            setUserInformation(formattedInfo)
         }
 
         getUserInformation()
