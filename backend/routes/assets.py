@@ -7,7 +7,7 @@ import yfinance as yf
 from dotenv import load_dotenv
 import requests
 
-from fastapi import HTTPException, Depends, APIRouter, Query
+from fastapi import HTTPException, Depends, APIRouter, Query, Body
 from sqlalchemy import select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -526,7 +526,7 @@ async def edit_user_info(new_info: dict[str, Any],
 
 @router.put("/user/email")
 async def change_user_email(
-        new_email: str,
+        new_email: str = Body(...),
         current_user: User = Depends(current_active_user),
         session: AsyncSession = Depends(get_async_session),
         user_manager: UserManager = Depends(get_user_manager),

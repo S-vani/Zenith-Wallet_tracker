@@ -30,8 +30,8 @@ function UserPage() {
     const handleVerify = async () => {
         setSendingVerification(true);
         try {
-            const emailVerification = putUserEmail()
-            await new Promise((resolve) => setTimeout(resolve, 800));
+            const emailVerification = await putUserEmail(userInformation.email)
+            console.log(emailVerification)
             setVerificationSent(true);
         } finally {
             setSendingVerification(false);
