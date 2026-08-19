@@ -1,7 +1,7 @@
 import {useState, useEffect} from "react";
 import "../css/User.css"
 
-import {getUser, putUserInfo} from "../services/api.js"
+import {getUser, putUserInfo, putUserEmail} from "../services/api.js"
 
 function UserPage() {
     const [userInformation, setUserInformation] = useState({
@@ -30,7 +30,7 @@ function UserPage() {
     const handleVerify = async () => {
         setSendingVerification(true);
         try {
-            // TODO: wire up to send-verification-email endpoint
+            const emailVerification = putUserEmail()
             await new Promise((resolve) => setTimeout(resolve, 800));
             setVerificationSent(true);
         } finally {
@@ -79,7 +79,6 @@ function UserPage() {
             {savedInfo && (
                 <div className="saving-popup">Changes Saved</div>
             )}
-            <button onClick={() => console.log(userInformation)}>asdsads</button>
             <div className="user-page">
                 <div className="user-header">
                     <div className="user-avatar">

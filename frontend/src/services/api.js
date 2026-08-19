@@ -240,3 +240,17 @@ export async function putUserInfo(new_info){
 
     return res.json()
 }
+
+export async function putUserEmail(new_email) {
+    const res = await fetch(`${BASE_URL}/user/email`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(new_email),
+    })
+
+    if (!res.ok){
+        throw new Error("error sending email verification")
+    }
+
+    return res.json()
+}

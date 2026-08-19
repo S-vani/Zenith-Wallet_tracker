@@ -11,9 +11,9 @@ from fastapi import HTTPException, Depends, APIRouter, Query
 from sqlalchemy import select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.authentication.authentication import current_active_user
+from backend.authentication.authentication import current_active_user, get_user_manager
 from backend.db.database import get_async_session
-from backend.db_models.assets import Transaction, User
+from backend.db_models.assets import Transaction, User, UserManager
 from backend.schemas.assets import CreateTransaction, UpdateTransaction
 from backend.services.asset_services import (current_quantity, create_holding_filter, \
                                              turn_list_to_dict, calculate_profit_for_one_transaction,
@@ -522,3 +522,21 @@ async def edit_user_info(new_info: dict[str, Any],
     await session.refresh(current_user)
 
     return current_user
+
+
+@router.put("/user/email")
+async def change_user_email(
+        new_email: str,
+        current_user: User = Depends(current_active_user),
+        session: AsyncSession = Depends(get_async_session),
+        user_manager: UserManager = Depends(get_user_manager),
+):
+    current_user.email = new_email
+    current_user.is_verified = False
+
+    await session.commit()
+    await session.refresh(current_user)
+
+    await user_manager.request_verify(current_user)
+
+    return {"message": "Verification email sent"}
