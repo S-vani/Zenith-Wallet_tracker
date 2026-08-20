@@ -36,9 +36,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
                                 request: Request | None = None):
         await self.request_verify(user, request)
 
-    async def on_after_request_verify(
-            self, user: User, token: str, request: Request | None = None
-    ) -> None:
+    async def on_after_request_verify(self, user, token, request=None):
         verify_url = f"http://localhost:5173/verify?token={token}"
 
         sender = os.getenv("GMAIL_USER")
