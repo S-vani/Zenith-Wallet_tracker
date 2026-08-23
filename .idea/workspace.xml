@@ -4,9 +4,13 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Final minor fixes before shipping.">
+    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="final minor commits to get code ready for production">
+      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/zenith-wallet-tracker.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/db_models/assets.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db_models/assets.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/services/api.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/uv.lock" beforeDir="false" afterPath="$PROJECT_DIR$/uv.lock" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -220,15 +224,7 @@
       <workItem from="1787148524445" duration="2546000" />
       <workItem from="1787254793222" duration="1487000" />
       <workItem from="1787256306687" duration="1654000" />
-      <workItem from="1787512502262" duration="800000" />
-    </task>
-    <task id="LOCAL-00040" summary="Finished css layout for the add transaction button">
-      <option name="closed" value="true" />
-      <created>1779129115665</created>
-      <option name="number" value="00040" />
-      <option name="presentableId" value="LOCAL-00040" />
-      <option name="project" value="LOCAL" />
-      <updated>1779129115665</updated>
+      <workItem from="1787512502262" duration="3538000" />
     </task>
     <task id="LOCAL-00041" summary="Added a new navbar link to access the users profile, changed background to have a cool pulsating animation along with an animation when loading transactions to fade in smoothly">
       <option name="closed" value="true" />
@@ -614,7 +610,15 @@
       <option name="project" value="LOCAL" />
       <updated>1787257233074</updated>
     </task>
-    <option name="localTasksCounter" value="89" />
+    <task id="LOCAL-00089" summary="final minor commits to get code ready for production">
+      <option name="closed" value="true" />
+      <created>1787513509477</created>
+      <option name="number" value="00089" />
+      <option name="presentableId" value="LOCAL-00089" />
+      <option name="project" value="LOCAL" />
+      <updated>1787513509477</updated>
+    </task>
+    <option name="localTasksCounter" value="90" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -632,7 +636,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Added basic login page" />
     <MESSAGE value="Finished login page design" />
     <MESSAGE value="Signup page completed with the css with it as well" />
     <MESSAGE value="Entire workflow now works properly with signup and login redirecting properly. All thats left is the searching function to search for stocks and crypto." />
@@ -657,7 +660,8 @@
     <MESSAGE value="first steps to email verification system are finished, have to hook it up to the frontend now" />
     <MESSAGE value="Verification system is now fully functional" />
     <MESSAGE value="Final minor fixes before shipping." />
-    <option name="LAST_COMMIT_MESSAGE" value="Final minor fixes before shipping." />
+    <MESSAGE value="final minor commits to get code ready for production" />
+    <option name="LAST_COMMIT_MESSAGE" value="final minor commits to get code ready for production" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/WalletTracker$test.coverage" NAME="test Coverage Results" MODIFIED="1777047403500" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
