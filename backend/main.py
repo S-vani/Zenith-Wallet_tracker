@@ -2,11 +2,11 @@ import uvicorn
 import os
 
 from fastapi import FastAPI
-from schemas.assets import UserCreate, UserRead, UserUpdate
-from db.database import create_db_and_tables
+from backend.schemas.assets import UserCreate, UserRead, UserUpdate
+from backend.db.database import create_db_and_tables
 from contextlib import asynccontextmanager
-from authentication.authentication import auth_backend, fastapi_users
-from routes.assets import router as user_router
+from backend.authentication.authentication import auth_backend, fastapi_users
+from backend.routes.assets import router as user_router
 from fastapi.middleware.cors import CORSMiddleware
 
 
