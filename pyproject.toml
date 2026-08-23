@@ -1,0 +1,18 @@
+[project]
+name = "zenith-wallet-tracker"
+version = "0.1.0"
+description = "Zenith Wallet Tracker backend"
+requires-python = ">=3.11"
+dependencies = [
+    "aiosqlite>=0.22.1",
+    "email-validator>=2.3.0",
+    "fastapi>=0.141.1",
+    "fastapi-users-db-sqlalchemy>=7.0.0",
+    "fastapi-users[sqlalchemy]>=15.0.5",
+    "python-multipart>=0.0.32",
+    "sqlalchemy[asyncio]>=2.0.52",
+    "uvicorn[standard]>=0.52.4",
+]
+
+[tool.uv]
+package = false
