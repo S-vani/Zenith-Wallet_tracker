@@ -24,7 +24,7 @@ function LoginPage() {
                         See your performance, monitor your holdings, and make informed decisions with a clean
                         dashboard built for long-term investors.
                     </p>
-                    <img src="../../public/assets/login_page_logo.png" alt=""/>
+                    <img src="/assets/login_page_logo.png" alt=""/>
                 </div>
 
             </div>
