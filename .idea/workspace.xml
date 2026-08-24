@@ -5,7 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="final minor commits to get code ready for production">
-      <change beforePath="$PROJECT_DIR$/backend/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -219,15 +219,8 @@
       <workItem from="1787148524445" duration="2546000" />
       <workItem from="1787254793222" duration="1487000" />
       <workItem from="1787256306687" duration="1654000" />
-      <workItem from="1787512502262" duration="3885000" />
-    </task>
-    <task id="LOCAL-00042" summary="Worked on styling the add transaction form by adding animations, rectangles, background colours and better symbols">
-      <option name="closed" value="true" />
-      <created>1779139121645</created>
-      <option name="number" value="00042" />
-      <option name="presentableId" value="LOCAL-00042" />
-      <option name="project" value="LOCAL" />
-      <updated>1779139121645</updated>
+      <workItem from="1787512502262" duration="5580000" />
+      <workItem from="1787585401309" duration="1344000" />
     </task>
     <task id="LOCAL-00043" summary="Fixed a small bug where I was giving the exact route of images but the public directory can be accessed from anywhere so I dont need to specify public/assets/xxx.png and can just write /assets/xxx.png">
       <option name="closed" value="true" />
@@ -613,7 +606,15 @@
       <option name="project" value="LOCAL" />
       <updated>1787516464818</updated>
     </task>
-    <option name="localTasksCounter" value="91" />
+    <task id="LOCAL-00091" summary="final minor commits to get code ready for production">
+      <option name="closed" value="true" />
+      <created>1787516692020</created>
+      <option name="number" value="00091" />
+      <option name="presentableId" value="LOCAL-00091" />
+      <option name="project" value="LOCAL" />
+      <updated>1787516692020</updated>
+    </task>
+    <option name="localTasksCounter" value="92" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
