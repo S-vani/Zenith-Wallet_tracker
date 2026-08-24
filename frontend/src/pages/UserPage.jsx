@@ -23,15 +23,12 @@ function UserPage() {
             setSavedInfo(false);
         }, 3000);
         setDisplayName(userInformation.name)
-        console.log("Saving profile:", userInformation);
-        console.log("Saving profile:", userinfo);
     };
 
     const handleVerify = async () => {
         setSendingVerification(true);
         try {
             const emailVerification = await putUserEmail(userInformation.email)
-            console.log(emailVerification)
             setVerificationSent(true);
         } finally {
             setSendingVerification(false);

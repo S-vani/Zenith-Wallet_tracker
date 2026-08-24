@@ -270,8 +270,6 @@ async def get_usd_to_cad():
     """
     use an api to get the current usd to cad value
     """
-    print("[CALLED] get_usd_to_cad")
-
     url = "https://open.er-api.com/v6/latest/USD"
 
     async with httpx.AsyncClient() as client:
@@ -287,7 +285,6 @@ async def get_usd():
     """
     use an api to get the current usd price of 1 cad
     """
-    print("[CALLED] get_usd")
 
     url = "https://open.er-api.com/v6/latest/CAD"
 
@@ -304,7 +301,6 @@ async def get_eur():
     """
     use an api to get the current eur price of 1 cad
     """
-    print("[CALLED] get_eur")
 
     url = "https://open.er-api.com/v6/latest/CAD"
 
@@ -337,7 +333,8 @@ async def get_crypto_prices_at(api_ids: list[str], timestamp: datetime, currency
         start = timestamp - timedelta(minutes=5)
         end = min(timestamp + timedelta(minutes=5), now)
 
-        hist = await asyncio.to_thread(ticker.history, start=start, end=end, interval="1m")  # fetch historical candle data from yf in 1 minute intervals
+        hist = await asyncio.to_thread(ticker.history, start=start, end=end,
+                                       interval="1m")  # fetch historical candle data from yf in 1 minute intervals
 
         if not hist.empty:
             closest_row = hist.iloc[np.abs(hist.index.tz_convert(
@@ -396,7 +393,8 @@ async def get_stock_prices_at(symbols: list[str], timestamp: datetime, currency:
         narrow_start = timestamp - timedelta(minutes=5)
         narrow_end = min(timestamp + timedelta(minutes=5), now)
 
-        hist = await asyncio.to_thread(ticker.history, start=narrow_start, end=narrow_end, interval="1m")  # 1 minute interval data with time mapping to price
+        hist = await asyncio.to_thread(ticker.history, start=narrow_start, end=narrow_end,
+                                       interval="1m")  # 1 minute interval data with time mapping to price
 
         if not hist.empty:
             closest_row = hist.iloc[np.abs(hist.index.tz_convert(
@@ -616,9 +614,6 @@ async def get_history_of_prices(
     rates = await get_all_conversion_rates()
     conversion_to_cad = rates["usd_to_cad"]
     conversion = get_conversion_factor(rates, currency)
-    print(f"conversion: {conversion}")
-    print(f"currency: {currency}")
-    print(f"rates: {rates}")
 
     hist = ticker.history(
         period=period,

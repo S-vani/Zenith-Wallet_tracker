@@ -403,7 +403,6 @@ async def search_assets_stocks(asset: str, current_user: User = Depends(current_
                 "change": float(res[data]["change"]) * float(conversion_to_cad) * conversion,
                 "change_pct": float(res[data]["percent_change"])
             })
-            print(final)
 
     return final
 
@@ -506,7 +505,6 @@ async def edit_user_info(new_info: dict[str, Any],
                          current_user: User = Depends(current_active_user),
                          session: AsyncSession = Depends(get_async_session),
                          ):
-    print(new_info)
     if new_info.get("name") != current_user.name:
         current_user.name = new_info.get("name")
     if new_info.get("email") != current_user.email:
@@ -515,8 +513,6 @@ async def edit_user_info(new_info: dict[str, Any],
         current_user.is_verified = new_info.get("isVerified")
     if new_info.get("currency") != current_user.currency:
         current_user.currency = new_info.get("currency")
-
-    print(current_user)
 
     await session.commit()
     await session.refresh(current_user)

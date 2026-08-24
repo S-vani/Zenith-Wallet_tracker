@@ -10,7 +10,6 @@ function HomePage() {
 
     const loadUserCount = async () => {
         const userAmount = await getUserCount();
-        console.log(userAmount)
         setUserCount(userAmount)
     }
 

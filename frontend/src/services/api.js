@@ -223,7 +223,6 @@ export async function getUserCount() {
     if (!res.ok) {
         throw new Error("error fetching user information")
     }
-    console.log(BASE_URL)
 
     return res.json()
 }
