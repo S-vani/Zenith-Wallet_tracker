@@ -161,3 +161,66 @@
     line-height: 1.55;
     max-width: 22rem;
 }
+
+
+.signup-field select {
+    width: 100%;
+    box-sizing: border-box;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+
+    background-color: rgba(255, 255, 255, 0.03);
+    background-image:
+        linear-gradient(45deg, transparent 50%, #9aa0a6 50%),
+        linear-gradient(135deg, #9aa0a6 50%, transparent 50%);
+    background-position:
+        calc(100% - 1rem) 50%,
+        calc(100% - 0.7rem) 50%;
+    background-size:
+        0.35rem 0.35rem,
+        0.35rem 0.35rem;
+    background-repeat: no-repeat;
+
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 0.625rem;
+    padding: 0.7rem 2.5rem 0.7rem 0.9rem;
+
+    font-size: 0.9rem;
+    font-family: inherit;
+    color: #f5f7ff;
+
+    cursor: pointer;
+
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease,
+        background-color 0.15s ease;
+}
+
+.signup-field select:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.signup-field select:focus {
+    outline: none;
+    border-color: rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.signup-field select option {
+    background-color: #1e2433;
+    color: #f5f7ff;
+    padding: 0.7rem;
+}
+
+.signup-field select option:checked {
+    background-color: #2563eb;
+    color: #ffffff;
+}
+
+.signup-field select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

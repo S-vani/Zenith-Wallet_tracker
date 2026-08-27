@@ -4,7 +4,10 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="made images ready for production">
+    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="removed all print and console.log statements">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/Authentication/SignupForm.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/Authentication/SignupForm.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/css/Signup.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/css/Signup.css" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/services/api.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -83,6 +86,46 @@
     </key>
   </component>
   <component name="RunManager">
+    <configuration default="true" type="tests" factoryName="Autodetect">
+      <module name="Zenith - Wallet tracker" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="DEBUG_JUST_MY_CODE" value="false" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;&quot;" />
+      <option name="_new_targetType" value="&quot;PATH&quot;" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="tests" factoryName="Doctests">
+      <module name="Zenith - Wallet tracker" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="DEBUG_JUST_MY_CODE" value="false" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
+      <option name="SCRIPT_NAME" value="" />
+      <option name="CLASS_NAME" value="" />
+      <option name="METHOD_NAME" value="" />
+      <option name="FOLDER_NAME" value="" />
+      <option name="TEST_TYPE" value="TEST_SCRIPT" />
+      <option name="PATTERN" value="" />
+      <option name="USE_PATTERN" value="false" />
+      <method v="2" />
+    </configuration>
     <configuration default="true" type="tests" factoryName="Autodetect">
       <module name="Zenith - Wallet tracker" />
       <option name="ENV_FILES" value="" />
@@ -220,15 +263,8 @@
       <workItem from="1787254793222" duration="1487000" />
       <workItem from="1787256306687" duration="1654000" />
       <workItem from="1787512502262" duration="5580000" />
-      <workItem from="1787585401309" duration="2292000" />
-    </task>
-    <task id="LOCAL-00046" summary="More css for displaying assets to have green colour for profit and red for negative, fixed spacing and changed the logic where when a user chooses their asset of choice it expands it and shows a graph of its daily price, then lets the user enter quantities and price they bought it for">
-      <option name="closed" value="true" />
-      <created>1779331287591</created>
-      <option name="number" value="00046" />
-      <option name="presentableId" value="LOCAL-00046" />
-      <option name="project" value="LOCAL" />
-      <updated>1779331287591</updated>
+      <workItem from="1787585401309" duration="2760000" />
+      <workItem from="1787854641093" duration="686000" />
     </task>
     <task id="LOCAL-00047" summary="Added last bit off css for the transaction creation page, only thing missing that I will add later is a graph displaying the daily price of that asset. Also debugged an issue where twelveapi was sending different outputs depending on size of input">
       <option name="closed" value="true" />
@@ -614,7 +650,15 @@
       <option name="project" value="LOCAL" />
       <updated>1787587653938</updated>
     </task>
-    <option name="localTasksCounter" value="95" />
+    <task id="LOCAL-00095" summary="removed all print and console.log statements">
+      <option name="closed" value="true" />
+      <created>1787587861919</created>
+      <option name="number" value="00095" />
+      <option name="presentableId" value="LOCAL-00095" />
+      <option name="project" value="LOCAL" />
+      <updated>1787587861919</updated>
+    </task>
+    <option name="localTasksCounter" value="96" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -632,7 +676,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Entire workflow now works properly with signup and login redirecting properly. All thats left is the searching function to search for stocks and crypto." />
     <MESSAGE value="Created base files and added Route for the search page" />
     <MESSAGE value="Text box and basic css added for the search page" />
     <MESSAGE value="Added react state and onchange for the input of search page" />
@@ -657,7 +700,8 @@
     <MESSAGE value="final minor commits to get code ready for production" />
     <MESSAGE value="changes to the env name of the backend url since it must start with vite" />
     <MESSAGE value="made images ready for production" />
-    <option name="LAST_COMMIT_MESSAGE" value="made images ready for production" />
+    <MESSAGE value="removed all print and console.log statements" />
+    <option name="LAST_COMMIT_MESSAGE" value="removed all print and console.log statements" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/WalletTracker$test.coverage" NAME="test Coverage Results" MODIFIED="1777047403500" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

@@ -5,7 +5,8 @@ function SignupForm({onSubmit}) {
     const [form, setForm] = useState({
         email: "",
         password: "",
-        name: ""
+        name: "",
+        currency: ""
     });
 
     const handleChange = async (e) => {
@@ -63,6 +64,21 @@ function SignupForm({onSubmit}) {
                             type="password"
                             autoComplete="off"
                         />
+                    </div>
+
+                    <div className="signup-field">
+                        <label htmlFor="currency">Preferred Currency</label>
+                        <select
+                            id="currency"
+                            name="currency"
+                            value={form.currency}
+                            onChange={handleChange}
+                            required
+                        >
+                            <option value="CAD">CAD — Canadian Dollar</option>
+                            <option value="USD">USD — US Dollar</option>
+                            <option value="EUR">EUR — Euro</option>
+                        </select>
                     </div>
 
                     <button type="submit" className="auth-btn signup-btn large signup-submit-btn">

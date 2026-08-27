@@ -153,6 +153,7 @@ export async function signupAuthentication(form) {
                 email: form.email,
                 password: form.password,
                 name: form.name,
+                currency: form.currency,
             })
         }
     )
