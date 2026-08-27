@@ -4,11 +4,8 @@
     <option name="autoReloadType" value="ALL" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="removed all print and console.log statements">
+    <list default="true" id="4bf806ef-6a19-406f-95ad-574cf8d11c69" name="Changes" comment="Fixed bug with signup not sending currency.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/Authentication/SignupForm.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/Authentication/SignupForm.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/css/Signup.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/css/Signup.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/services/api.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/services/api.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -264,15 +261,7 @@
       <workItem from="1787256306687" duration="1654000" />
       <workItem from="1787512502262" duration="5580000" />
       <workItem from="1787585401309" duration="2760000" />
-      <workItem from="1787854641093" duration="686000" />
-    </task>
-    <task id="LOCAL-00047" summary="Added last bit off css for the transaction creation page, only thing missing that I will add later is a graph displaying the daily price of that asset. Also debugged an issue where twelveapi was sending different outputs depending on size of input">
-      <option name="closed" value="true" />
-      <created>1779335214530</created>
-      <option name="number" value="00047" />
-      <option name="presentableId" value="LOCAL-00047" />
-      <option name="project" value="LOCAL" />
-      <updated>1779335214530</updated>
+      <workItem from="1787854641093" duration="2129000" />
     </task>
     <task id="LOCAL-00048" summary="Added css for the holdings page to display it in a table">
       <option name="closed" value="true" />
@@ -658,7 +647,15 @@
       <option name="project" value="LOCAL" />
       <updated>1787587861919</updated>
     </task>
-    <option name="localTasksCounter" value="96" />
+    <task id="LOCAL-00096" summary="Fixed bug with signup not sending currency.">
+      <option name="closed" value="true" />
+      <created>1787855370500</created>
+      <option name="number" value="00096" />
+      <option name="presentableId" value="LOCAL-00096" />
+      <option name="project" value="LOCAL" />
+      <updated>1787855370500</updated>
+    </task>
+    <option name="localTasksCounter" value="97" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -676,7 +673,6 @@
     </option>
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Created base files and added Route for the search page" />
     <MESSAGE value="Text box and basic css added for the search page" />
     <MESSAGE value="Added react state and onchange for the input of search page" />
     <MESSAGE value="Search bar submit now calls backend search routes to return the information." />
@@ -701,7 +697,8 @@
     <MESSAGE value="changes to the env name of the backend url since it must start with vite" />
     <MESSAGE value="made images ready for production" />
     <MESSAGE value="removed all print and console.log statements" />
-    <option name="LAST_COMMIT_MESSAGE" value="removed all print and console.log statements" />
+    <MESSAGE value="Fixed bug with signup not sending currency." />
+    <option name="LAST_COMMIT_MESSAGE" value="Fixed bug with signup not sending currency." />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/WalletTracker$test.coverage" NAME="test Coverage Results" MODIFIED="1777047403500" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

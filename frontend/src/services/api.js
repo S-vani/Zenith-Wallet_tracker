@@ -169,7 +169,7 @@ export async function verify(params) {
     const token = params.get("token");
 
     const res = await fetch(
-        "http://localhost:8000/auth/verify",
+        `${BASE_URL}/auth/verify`,
         {
             method: "POST",
             headers: {
