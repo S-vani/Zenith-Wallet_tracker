@@ -2,6 +2,8 @@ import {useState} from "react";
 import {Link} from "react-router-dom";
 import {requestVerification} from "../services/api.js";
 import PasswordInput from "./PasswordInput.jsx";
+import GoogleButton from "./GoogleButton.jsx";
+import {showToast} from "../utils/toast.js";
 
 function SignupForm({onSubmit}) {
     const [form, setForm] = useState({
@@ -33,6 +35,7 @@ function SignupForm({onSubmit}) {
 
         try {
             await onSubmit(form);
+            showToast("Account created successfully!");
             setRegisteredEmail(form.email.trim());
         } catch (err) {
             setError(err.message);
@@ -83,6 +86,8 @@ function SignupForm({onSubmit}) {
                 </div>
 
                 {error && <p className="alert-error" role="alert">{error}</p>}
+
+                <GoogleButton label="Sign up with Google"/>
 
                 <form className="signup-form" onSubmit={handleSubmit}>
                     <div className="signup-field">

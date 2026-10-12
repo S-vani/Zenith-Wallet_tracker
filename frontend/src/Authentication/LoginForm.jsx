@@ -1,19 +1,36 @@
 import {useState} from "react";
-import {Link, useLocation, useNavigate} from "react-router-dom";
+import {Link, useLocation, useNavigate, useSearchParams} from "react-router-dom";
 import {requestVerification} from "../services/api.js";
+import {showToast} from "../utils/toast.js";
 import PasswordInput from "./PasswordInput.jsx";
+import GoogleButton from "./GoogleButton.jsx";
+
+// reasons the backend can send back after a failed Google sign in
+const GOOGLE_ERRORS = {
+    cancelled: "Google sign in was cancelled.",
+    expired: "Google sign in took too long. Please try again.",
+    invalid_state: "Google sign in couldn't be verified. Please try again.",
+    google_error: "Google couldn't complete the sign in. Please try again.",
+    no_email: "Your Google account didn't share an email address.",
+    inactive: "This account has been deactivated.",
+    google_not_configured: "Google sign in isn't available right now.",
+};
 
 
 function LoginForm({onSubmit}) {
     const navigate = useNavigate();
     const location = useLocation();
+    const [searchParams] = useSearchParams();
+    const googleError = searchParams.get("oauth_error");
 
     const [form, setForm] = useState({
         "email": "",
         "password": ""
     });
     const [submitting, setSubmitting] = useState(false);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState(
+        googleError ? (GOOGLE_ERRORS[googleError] ?? "Google sign in failed. Please try again.") : null
+    );
     const [needsVerification, setNeedsVerification] = useState(false);
     const [notice, setNotice] = useState(
         location.state?.notice ?? (location.state?.expired ? "Your session expired. Please log in again." : null)
@@ -35,6 +52,7 @@ function LoginForm({onSubmit}) {
 
         try {
             await onSubmit(form);
+            showToast("Logged in successfully. Welcome back!");
             navigate(location.state?.from ?? "/dashboard", {replace: true});
         } catch (err) {
             setError(err.message);
@@ -74,6 +92,8 @@ function LoginForm({onSubmit}) {
                         )}
                     </div>
                 )}
+
+                <GoogleButton next={location.state?.from ?? "/dashboard"}/>
 
                 <form className="login-form" onSubmit={handleSubmit}>
                     <div className="login-field">

@@ -2,7 +2,7 @@ import uuid
 from fastapi import Depends
 from fastapi_users import FastAPIUsers
 from fastapi_users.authentication import AuthenticationBackend, BearerTransport, JWTStrategy
-from fastapi_users.db import SQLAlchemyUserDatabase
+from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
 from backend.db.database import get_user_db
 from backend.db_models.assets import UserManager, User
 

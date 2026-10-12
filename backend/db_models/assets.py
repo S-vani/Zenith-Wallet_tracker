@@ -8,7 +8,7 @@ from email.mime.text import MIMEText
 
 from dotenv import load_dotenv
 from fastapi_users import BaseUserManager, UUIDIDMixin, exceptions, models
-from fastapi_users.db import SQLAlchemyBaseUserTableUUID
+from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTableUUID, SQLAlchemyBaseOAuthAccountTableUUID
 from sqlalchemy import Column, String, DateTime, ForeignKey, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, relationship
@@ -21,12 +21,20 @@ class Base(DeclarativeBase):
     pass
 
 
+class OAuthAccount(SQLAlchemyBaseOAuthAccountTableUUID, Base):
+    """
+    Links a user to an outside login provider (Google), so they can sign in with it
+    """
+    pass
+
+
 class User(SQLAlchemyBaseUserTableUUID, Base):
-    name = Column(String, nullable=False)
+    name = Column(String, nullable=False, default="")  # Google sign ups start blank and get their Google name
     date_joined = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     currency = Column(String, nullable=False, default="CAD")
 
     transactions = relationship("Transaction", back_populates="user")
+    oauth_accounts = relationship("OAuthAccount", lazy="joined")
 
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
@@ -41,10 +49,12 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     async def on_after_register(self,
                                 user: User,
                                 request: Request | None = None):
+        if user.is_verified:  # Google accounts arrive already verified, there's nothing to confirm
+            return
         await self.request_verify(user, request)
 
     async def on_after_request_verify(self, user, token, request=None):
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173").split(",")[0].strip().rstrip("/")
         verify_url = f"{frontend_url}/verify?token={token}"
 
         sender = os.getenv("GMAIL_USER")

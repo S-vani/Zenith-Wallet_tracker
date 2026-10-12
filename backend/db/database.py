@@ -6,7 +6,7 @@ from fastapi import Depends
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
-from backend.db_models.assets import Base, User
+from backend.db_models.assets import Base, User, OAuthAccount
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -39,4 +39,4 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def get_user_db(session: AsyncSession = Depends(get_async_session)):
-    yield SQLAlchemyUserDatabase(session, User)
+    yield SQLAlchemyUserDatabase(session, User, OAuthAccount)

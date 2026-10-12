@@ -184,6 +184,20 @@ export async function loginAuthentication(form) {
     return data
 }
 
+// Which sign in providers (e.g. Google) the backend has set up
+export async function getAuthProviders() {
+    return request("/auth/providers", {auth: false});
+}
+
+// Full-page redirect target that starts "Continue with Google"
+export function googleSignInUrl(next = "/dashboard") {
+    return `${BASE_URL}/auth/google/start?next=${encodeURIComponent(next)}`;
+}
+
+export function saveToken(token) {
+    localStorage.setItem("token", token);
+}
+
 export async function signupAuthentication(form) {
     return request("/auth/register", {
         auth: false,

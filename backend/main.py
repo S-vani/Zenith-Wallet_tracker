@@ -15,6 +15,7 @@ from backend.db.database import create_db_and_tables
 from contextlib import asynccontextmanager
 from backend.authentication.authentication import auth_backend, fastapi_users
 from backend.routes.assets import router as user_router
+from backend.routes.oauth import router as oauth_router
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -52,7 +53,8 @@ app.add_middleware(CatchUnhandledErrors)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[frontend_url],
+    # FRONTEND_URL can list several origins separated by commas (e.g. with and without www)
+    allow_origins=[origin.strip().rstrip("/") for origin in frontend_url.split(",") if origin.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -63,6 +65,7 @@ app.include_router(fastapi_users.get_register_router(UserRead, UserCreate), pref
 app.include_router(fastapi_users.get_reset_password_router(), prefix="/auth", tags=["auth"])
 app.include_router(fastapi_users.get_verify_router(UserRead), prefix="/auth", tags=["auth"])
 app.include_router(fastapi_users.get_users_router(UserRead, UserUpdate), prefix="/users", tags=["users"])
+app.include_router(oauth_router)
 app.include_router(user_router)
 
 if __name__ == "__main__":

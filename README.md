@@ -33,3 +33,27 @@ npm test                                              # Windows PowerShell witho
 - `npm run test:frontend` runs the Vitest suite in `frontend/test/` (`npm --prefix frontend run test:watch` re-runs on save).
 - The backend tests use a throwaway SQLite database, a test JWT secret and no email account, and block all network access (exchange rates, Yahoo Finance, TwelveData and CoinGecko are faked), so they never touch `walletdatabase.db`, your `.env` values or any real API.
 - Tests marked `xfail` document known bugs; once a bug is fixed its test reports `XPASS(strict)` and fails, so remove the `xfail` marker then.
+
+
+## Google sign in
+
+The "Continue with Google" button only appears once these are set in the backend `.env`:
+
+```
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+BACKEND_URL=https://your-backend-domain        # public URL of the FastAPI server (default http://localhost:8000)
+FRONTEND_URL=https://zenithwalletracker.ca     # where users are sent back to; comma-separate extra origins for CORS
+```
+
+To get the client ID and secret:
+
+1. In the [Google Cloud console](https://console.cloud.google.com/), create (or pick) a project.
+2. **APIs & Services → OAuth consent screen**: set it up (External), with the app name, support email and the `email`, `profile` and `openid` scopes.
+3. **APIs & Services → Library**: enable the **Google People API** (used to read the account's email and name).
+4. **APIs & Services → Credentials → Create credentials → OAuth client ID**, type **Web application**, and add these **Authorized redirect URIs**:
+   - `https://your-backend-domain/auth/google/callback`
+   - `http://localhost:8000/auth/google/callback` (for local development)
+5. Copy the client ID and secret into `.env` and restart the backend.
+
+Signing in with Google creates a verified account (or links to an existing account with the same email), so no verification email is needed.

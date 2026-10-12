@@ -109,3 +109,48 @@
     color: var(--text-muted);
     font-size: 0.95rem;
 }
+
+/* "Continue with Google" button and the "or" divider under it */
+.google-btn {
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.625rem;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text);
+    font-size: 0.92rem;
+    font-weight: 600;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.google-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.24);
+}
+
+.google-btn svg {
+    width: 1.15rem;
+    height: 1.15rem;
+}
+
+.auth-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--text-subtle);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+}

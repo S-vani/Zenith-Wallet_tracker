@@ -6,6 +6,8 @@ import VerifyPage from "./pages/VerifyPage.jsx";
 import SignupPage from "./pages/SignupPage.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
+import OAuthCallbackPage from "./pages/OAuthCallbackPage.jsx";
+import Toaster from "./components/Toaster.jsx";
 import {UserProvider} from "./context/UserContext.jsx";
 import {getToken} from "./services/api.js";
 
@@ -46,11 +48,14 @@ function ProtectedLayout() {
 
 function App() {
     return (
+        <>
+        <Toaster/>
         <Routes>
             <Route path="/" element={<HomePage/>}/>
             <Route path="/login" element={<LoginPage/>}/>
             <Route path="/signup" element={<SignupPage/>}/>
             <Route path="/verify" element={<VerifyPage/>}/>
+            <Route path="/auth/callback" element={<OAuthCallbackPage/>}/>
 
             <Route element={<ProtectedLayout/>}>
                 <Route path="/dashboard" element={<DashboardPage/>}/>
@@ -62,6 +67,7 @@ function App() {
 
             <Route path="*" element={<NotFoundPage/>}/>
         </Routes>
+        </>
     )
 }
 
