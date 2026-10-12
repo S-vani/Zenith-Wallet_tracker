@@ -1,0 +1,158 @@
+import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
+
+// api.js reads the backend url at import time, so set it first and import the module fresh for each test
+const BASE = "http://api.test";
+let api;
+let fetchMock;
+let store;
+let events;
+
+function respond(status, body) {
+    return {
+        ok: status >= 200 && status < 300,
+        status,
+        json: async () => {
+            if (body instanceof Error) throw body;
+            return body;
+        },
+    };
+}
+
+beforeEach(async () => {
+    vi.resetModules();
+    vi.stubEnv("VITE_BACKEND_URL", BASE);
+
+    store = new Map();
+    events = [];
+    vi.stubGlobal("localStorage", {
+        getItem: (k) => (store.has(k) ? store.get(k) : null),
+        setItem: (k, v) => store.set(k, String(v)),
+        removeItem: (k) => store.delete(k),
+    });
+    vi.stubGlobal("window", {dispatchEvent: (e) => events.push(e.type)});
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    api = await import("../src/services/api.js");
+});
+
+afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+});
+
+describe("error messages", () => {
+    it.each([
+        ["LOGIN_BAD_CREDENTIALS", "Incorrect email or password."],
+        ["LOGIN_USER_NOT_VERIFIED", "Please verify your email before logging in."],
+    ])("maps %s on login", async (code, message) => {
+        fetchMock.mockResolvedValue(respond(400, {detail: code}));
+        await expect(api.loginAuthentication({email: "a@b.co", password: "x"})).rejects.toThrow(message);
+    });
+
+    it("maps fastapi-users error objects", async () => {
+        fetchMock.mockResolvedValue(respond(400, {detail: {code: "REGISTER_INVALID_PASSWORD", reason: "short"}}));
+        await expect(api.signupAuthentication({email: "a@b.co", password: "x", name: "A", currency: "CAD"}))
+            .rejects.toThrow("That password isn't allowed. Try a longer one.");
+    });
+
+    it("uses the reason of unknown error codes", async () => {
+        fetchMock.mockResolvedValue(respond(400, {detail: {code: "SOMETHING_NEW", reason: "Because."}}));
+        await expect(api.verify("t")).rejects.toThrow("Because.");
+    });
+
+    it("passes plain string details through", async () => {
+        fetchMock.mockResolvedValue(respond(409, {detail: "Insufficient holdings"}));
+        await expect(api.createTransaction({})).rejects.toThrow("Insufficient holdings");
+    });
+
+    it.each([
+        [{loc: ["body", "quantity"], msg: "Input should be less than or equal to 1000000000000", ctx: {le: 1e12}},
+            "Quantity is too large."],
+        [{loc: ["body", "price_of_one"], msg: "Input should be greater than 0", ctx: {gt: 0}},
+            "Price must be greater than 0."],
+        [{loc: ["body", "name"], msg: "String should have at least 1 character", ctx: {min_length: 1}},
+            "Name can't be empty."],
+        [{loc: ["body", "name"], msg: "String should have at most 100 characters", ctx: {max_length: 100}},
+            "Name must be 100 characters or fewer."],
+        [{loc: ["body", "email"], msg: "value is not a valid email address"}, "Please enter a valid email address."],
+        [{loc: ["body", "asset_type"], msg: "Input should be 'stock' or 'crypto'"},
+            "Asset type: Input should be 'stock' or 'crypto'"],
+        [{loc: ["body", "mystery"], msg: "Value error, nope"}, "This field: nope"],
+    ])("turns validation errors into readable text (%#)", async (detail, message) => {
+        fetchMock.mockResolvedValue(respond(422, {detail: [detail]}));
+        await expect(api.putUserInfo({})).rejects.toThrow(message);
+    });
+
+    it("falls back when the body isn't json", async () => {
+        fetchMock.mockResolvedValue(respond(500, new SyntaxError("not json")));
+        await expect(api.getHoldings()).rejects.toThrow("Failed to load your holdings.");
+    });
+
+    it("reports network failures", async () => {
+        fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+        await expect(api.getUser()).rejects.toThrow("Can't reach the server.");
+    });
+
+    it("signs the user out when the session expired", async () => {
+        store.set("token", "old");
+        fetchMock.mockResolvedValue(respond(401, {detail: "Unauthorized"}));
+
+        await expect(api.getUser()).rejects.toThrow("Your session has expired.");
+        expect(store.has("token")).toBe(false);
+        expect(events).toEqual(["auth:expired"]);
+    });
+
+    it("does not sign out on 401 for public requests", async () => {
+        store.set("token", "keep");
+        fetchMock.mockResolvedValue(respond(401, {detail: "nope"}));
+        await expect(api.getUserCount()).rejects.toThrow("nope");
+        expect(store.get("token")).toBe("keep");
+    });
+});
+
+describe("requests", () => {
+    it("stores the token after logging in and sends it afterwards", async () => {
+        fetchMock.mockResolvedValueOnce(respond(200, {access_token: "abc", token_type: "bearer"}));
+        await api.loginAuthentication({email: "  me@example.com ", password: "pw"});
+
+        const [url, init] = fetchMock.mock.calls[0];
+        expect(url).toBe(`${BASE}/auth/jwt/login`);
+        expect(init.body.get("username")).toBe("me@example.com");
+        expect(store.get("token")).toBe("abc");
+
+        fetchMock.mockResolvedValueOnce(respond(200, {name: "Me"}));
+        await api.getUser();
+        expect(fetchMock.mock.calls[1][1].headers.Authorization).toBe("Bearer abc");
+    });
+
+    it("builds transaction filters with local day boundaries", async () => {
+        fetchMock.mockResolvedValue(respond(200, []));
+        await api.getTransactions({symbol: " aapl ", action: "SELL", start_date: "2024-06-03", end_date: "2024-06-04"});
+
+        const url = new URL(fetchMock.mock.calls[0][0]);
+        expect(url.searchParams.get("symbol")).toBe("aapl");
+        expect(url.searchParams.get("action")).toBe("SELL");
+        expect(url.searchParams.get("start_date")).toBe(new Date("2024-06-03T00:00:00").toISOString());
+        expect(url.searchParams.get("end_date")).toBe(new Date("2024-06-04T23:59:59.999").toISOString());
+    });
+
+    it("leaves out empty filters", async () => {
+        fetchMock.mockResolvedValue(respond(200, []));
+        await api.getTransactions({});
+        expect(fetchMock.mock.calls[0][0]).toBe(`${BASE}/transactions?`);
+    });
+
+    it("trims signup fields", async () => {
+        fetchMock.mockResolvedValue(respond(201, {}));
+        await api.signupAuthentication({email: " a@b.co ", password: " pw ", name: "  Ann ", currency: "USD"});
+        expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(
+            {email: "a@b.co", password: " pw ", name: "Ann", currency: "USD"});
+    });
+
+    it("encodes search queries", async () => {
+        fetchMock.mockResolvedValue(respond(200, []));
+        await api.searchStock("A&B");
+        expect(fetchMock.mock.calls[0][0]).toBe(`${BASE}/assets/search/stock?asset=A%26B`);
+    });
+});
