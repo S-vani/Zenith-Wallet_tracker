@@ -77,8 +77,10 @@ async function request(path, {auth = true, fallbackError = "Something went wrong
             ...options,
             headers: auth ? getAuthHeaders() : {"Content-Type": "application/json", ...options.headers},
         });
-    } catch {
-        throw new Error("Can't reach the server. Check your connection and try again.");
+    } catch (err) {
+        // a cancelled request (AbortController) isn't a connection problem, let the caller ignore it
+        if (err?.name === "AbortError") throw err;
+        throw new Error("Can't reach the server. Check your connection and try again.", {cause: err});
     }
 
     if (auth && (res.status === 401 || res.status === 403)) {
@@ -88,7 +90,9 @@ async function request(path, {auth = true, fallbackError = "Something went wrong
     }
 
     if (!res.ok) {
-        throw new Error(await errorMessage(res, fallbackError));
+        const error = new Error(await errorMessage(res, fallbackError));
+        error.status = res.status; // lets callers treat e.g. 429 differently
+        throw error;
     }
 
     return res.json();
@@ -148,6 +152,20 @@ export async function getPriceHistory(symbol, type, range) {
     const params = new URLSearchParams({symbol, type, range});
 
     return request(`/prices/history?${params.toString()}`, {fallbackError: "Failed to load chart data."});
+}
+
+// Market Analyst report for one asset. `signal` cancels the request when the user switches to another asset
+export async function getAnalystReport({symbol, type, coinId, refresh = false}, {signal} = {}) {
+    const params = new URLSearchParams({symbol, type});
+
+    if (coinId) {
+        params.append("coin_id", coinId);
+    }
+    if (refresh) {
+        params.append("refresh", "true");
+    }
+
+    return request(`/analyst?${params.toString()}`, {signal, fallbackError: "Couldn't load the market analysis."});
 }
 
 export async function getPortfolioHistory(range) {

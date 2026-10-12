@@ -180,4 +180,9 @@
     .search-form .btn {
         width: 100%;
     }
+
+    /* the analyst panel inside has its own padding, so keep the outer box tight on phones */
+    .search-result-chart-box {
+        padding: 0.75rem;
+    }
 }

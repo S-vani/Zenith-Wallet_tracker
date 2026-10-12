@@ -57,3 +57,15 @@ To get the client ID and secret:
 5. Copy the client ID and secret into `.env` and restart the backend.
 
 Signing in with Google creates a verified account (or links to an existing account with the same email), so no verification email is needed.
+
+
+## Market analyst (search page)
+
+When you open a search result, a **Market Analyst** panel appears under the chart with a bullish/neutral/bearish outlook, key insights, bull/base/bear scenarios, what to watch, the main risk and a bottom line. It is free: a built-in rules engine computes everything from Yahoo Finance and CoinGecko data, and no paid AI is involved. Reports are cached for an hour (30 minutes for crypto).
+
+Optionally, add a free Google Gemini key to `.env` to have the wording rewritten more naturally. Gemini can't change the numbers or the outlook; any rewrite that adds new facts is rejected automatically.
+
+```
+GEMINI_API_KEY=...        # free at https://aistudio.google.com (no credit card)
+GEMINI_MODEL=gemini-2.5-flash   # optional
+```

@@ -156,3 +156,48 @@ describe("requests", () => {
         expect(fetchMock.mock.calls[0][0]).toBe(`${BASE}/assets/search/stock?asset=A%26B`);
     });
 });
+
+describe("getAnalystReport", () => {
+    it("sends symbol, type and the optional coin id / refresh flag", async () => {
+        fetchMock.mockResolvedValue(respond(200, {status: "ok"}));
+
+        await api.getAnalystReport({symbol: "BTC-USD", type: "crypto", coinId: "bitcoin", refresh: true});
+        let url = new URL(fetchMock.mock.calls[0][0]);
+        expect(url.pathname).toBe("/analyst");
+        expect(Object.fromEntries(url.searchParams)).toEqual(
+            {symbol: "BTC-USD", type: "crypto", coin_id: "bitcoin", refresh: "true"});
+
+        await api.getAnalystReport({symbol: "AAPL", type: "stock"});
+        url = new URL(fetchMock.mock.calls[1][0]);
+        expect(Object.fromEntries(url.searchParams)).toEqual({symbol: "AAPL", type: "stock"});
+    });
+
+    it("forwards the abort signal and the token", async () => {
+        store.set("token", "abc");
+        fetchMock.mockResolvedValue(respond(200, {status: "ok"}));
+        const controller = new AbortController();
+
+        await api.getAnalystReport({symbol: "AAPL", type: "stock"}, {signal: controller.signal});
+        const init = fetchMock.mock.calls[0][1];
+        expect(init.signal).toBe(controller.signal);
+        expect(init.headers.Authorization).toBe("Bearer abc");
+    });
+
+    it("rethrows aborts instead of reporting a connection problem", async () => {
+        fetchMock.mockRejectedValue(new DOMException("The operation was aborted.", "AbortError"));
+        await expect(api.getAnalystReport({symbol: "AAPL", type: "stock"})).rejects.toMatchObject({name: "AbortError"});
+    });
+
+    it("keeps the status and readable detail of errors such as 429", async () => {
+        fetchMock.mockResolvedValue(respond(429, {detail: "You can refresh this analysis again in 4 minutes."}));
+        await expect(api.getAnalystReport({symbol: "AAPL", type: "stock", refresh: true})).rejects.toMatchObject({
+            status: 429, message: "You can refresh this analysis again in 4 minutes.",
+        });
+    });
+
+    it("uses a readable fallback for server errors", async () => {
+        fetchMock.mockResolvedValue(respond(503, new SyntaxError("not json")));
+        await expect(api.getAnalystReport({symbol: "AAPL", type: "stock"}))
+            .rejects.toThrow("Couldn't load the market analysis.");
+    });
+});

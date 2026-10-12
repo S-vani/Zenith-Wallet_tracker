@@ -16,6 +16,7 @@ from contextlib import asynccontextmanager
 from backend.authentication.authentication import auth_backend, fastapi_users
 from backend.routes.assets import router as user_router
 from backend.routes.oauth import router as oauth_router
+from backend.routes.analyst import router as analyst_router
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -79,6 +80,7 @@ app.include_router(fastapi_users.get_auth_router(auth_backend, requires_verifica
 app.include_router(fastapi_users.get_register_router(UserRead, UserCreate), prefix="/auth", tags=["auth"])
 app.include_router(fastapi_users.get_verify_router(UserRead), prefix="/auth", tags=["auth"])
 app.include_router(oauth_router)
+app.include_router(analyst_router)
 app.include_router(user_router)
 
 if __name__ == "__main__":

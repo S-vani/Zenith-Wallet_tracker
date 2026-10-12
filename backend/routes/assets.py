@@ -495,6 +495,7 @@ async def search_assets_crypto(asset: str, current_user: User = Depends(current_
         final.append({
             "api_id": coin["symbol"],
             "symbol": coin["symbol"],
+            "coin_id": coin.get("id"),  # CoinGecko id (e.g. "bitcoin"), used by the market analyst
             "type": "crypto",
             "image": coin["image"],  # may or may not use
             "price": coin["current_price"] * conversion,

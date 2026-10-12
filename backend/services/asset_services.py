@@ -682,10 +682,12 @@ async def get_history_of_prices(
         if currency_1 == "USD" or type == "crypto":
             price *= conversion_to_cad
 
+        volume = row.get("Volume") if hasattr(row, "get") else None
         data.append({
             "time": str(index),
-            "price": price * conversion
+            "price": price * conversion,
             # "Closing" price on that interval, for example if time is 10:15:00, then it fetches price at 10:15:59
+            "volume": float(volume) if volume is not None and volume == volume else None,  # traded units (NaN -> None)
         })
 
     return data, s
