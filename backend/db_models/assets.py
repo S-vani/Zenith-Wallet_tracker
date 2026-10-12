@@ -1,3 +1,5 @@
+import asyncio
+import logging
 import os
 import uuid
 from datetime import datetime, timezone
@@ -5,7 +7,7 @@ import smtplib
 from email.mime.text import MIMEText
 
 from dotenv import load_dotenv
-from fastapi_users import BaseUserManager, UUIDIDMixin, models
+from fastapi_users import BaseUserManager, UUIDIDMixin, exceptions, models
 from fastapi_users.db import SQLAlchemyBaseUserTableUUID
 from sqlalchemy import Column, String, DateTime, ForeignKey, Numeric
 from sqlalchemy.dialects.postgresql import UUID
@@ -21,8 +23,8 @@ class Base(DeclarativeBase):
 
 class User(SQLAlchemyBaseUserTableUUID, Base):
     name = Column(String, nullable=False)
-    date_joined = Column(DateTime, default=datetime.now(timezone.utc))
-    currency = Column(String, nullable=False)
+    date_joined = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    currency = Column(String, nullable=False, default="CAD")
 
     transactions = relationship("Transaction", back_populates="user")
 
@@ -30,6 +32,11 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
 class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     reset_password_token_secret = os.getenv("SECRET")
     verification_token_secret = os.getenv("SECRET")
+
+    async def validate_password(self, password: str, user) -> None:
+        # the signup form asks for 8+ characters, enforce it here too so the api can't be used to skip it
+        if len(password) < 8:
+            raise exceptions.InvalidPasswordException(reason="Password must be at least 8 characters.")
 
     async def on_after_register(self,
                                 user: User,
@@ -45,6 +52,11 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
 
         user_email = str(user.email)
 
+        if not sender or not app_pass:
+            # no email account configured (local development): log the link instead of sending an email
+            logging.getLogger("uvicorn.error").warning("Verification link for %s: %s", user_email, verify_url)
+            return
+
         email_body = f"""
         Click on the link below to verify your account:
         
@@ -56,20 +68,14 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         message["From"] = sender
         message["To"] = user_email
 
-        # start the email server
-        server = smtplib.SMTP("smtp.gmail.com", 587)
+        def send():
+            # smtplib is blocking, so it runs in a worker thread to keep the event loop free
+            with smtplib.SMTP("smtp.gmail.com", 587) as server:
+                server.starttls()
+                server.login(str(sender), str(app_pass))
+                server.sendmail(str(sender), user_email, message.as_string())
 
-        server.starttls()
-
-        server.login(str(sender), str(app_pass))
-
-        server.sendmail(
-            str(sender),
-            user_email,
-            message.as_string()
-        )
-
-        server.quit()
+        await asyncio.to_thread(send)
 
 
 class Transaction(Base):
@@ -84,6 +90,6 @@ class Transaction(Base):
     api_id = Column(String, nullable=False)
     price_of_one = Column(Numeric(20, 10), nullable=False)
     quantity = Column(Numeric(20, 10), nullable=False)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="transactions")
