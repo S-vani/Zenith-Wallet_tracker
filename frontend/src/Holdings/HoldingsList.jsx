@@ -3,13 +3,16 @@ import HoldingsItem from "./HoldingsItem.jsx";
 
 function HoldingsList({holdings}) {
 
+    // biggest positions first
+    const sorted = [...holdings].sort((a, b) => b.current_price - a.current_price);
+
     return (
         <div className="holdings-list-items">
-            {holdings.map((t, i) => (
+            {sorted.map((t, i) => (
                 <HoldingsItem
-                    key={t.id}
+                    key={`${t.type}-${t.symbol}`}
                     holding={t}
-                    style={{animationDelay: `${i * 60}ms`}}
+                    index={i}
                 />
             ))}
         </div>

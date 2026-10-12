@@ -1,62 +1,30 @@
-.loading-holdings,
-.error-holdings {
-    text-transform: uppercase;
-    font-size: 1.1rem;
-    padding-top: 2rem;
-    padding-bottom: 2rem;
-    padding-left: 2rem;
-    align-self: center;
-}
-
-.loading-chart {
-    margin-left: 2rem;
-    margin-top: 6rem;
-    text-transform: uppercase;
-    font-size: 1.1rem;
-}
-
 .holdings {
-    margin-left: 9.5rem;
-    margin-top: 2rem;
-    width: 85%;
-    height: auto;
     display: flex;
     flex-direction: column;
-    background: linear-gradient(
-            145deg,
-            #2b2b2b,
-            #1f1f1f
-    );
+    overflow: hidden;
 
-    border-radius: 1.5rem;
-    border: 0.1rem solid #3d3d3d;
+    background: linear-gradient(145deg, #1e2433, #161b28);
+    border-radius: 1.25rem;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
 
+/* header and rows share the same columns so everything lines up */
+.table-header,
+.holding-item {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr 0.8fr 1.5rem;
+    align-items: center;
+    gap: 1rem;
 }
 
 .table-header {
-    padding-bottom: 0.5rem;
-    padding-right: 0;
-    padding-top: 1.2rem;
-    padding-left: 1.5rem;
-    display: grid;
-
-    grid-template-columns:
-        1.5fr
-        1fr
-        1fr
-        1fr
-        0.75fr;
-
-    font-size: 1.2rem;
-    border-bottom: 0.1rem solid #4a4a4a;
-
-}
-
-
-.holdings-header {
-    margin-left: 10rem;
-    margin-top: 2rem;
-    margin-bottom: 1rem;
+    padding: 1rem 1.5rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-subtle);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .holdings-list-items {
@@ -64,68 +32,86 @@
     flex-direction: column;
 }
 
-.holdings-list-items > * {
-    opacity: 0;
-    animation: fadeIn 2s ease forwards;
-}
-
-
 .holding-item-wrapper {
-    cursor: pointer;
-
-    transition: background 0.2s ease;
-    padding: 2.2rem 1.5rem;
-    padding-top: 1.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    opacity: 0;
+    animation: fadeIn 0.4s ease forwards;
 }
 
-.holding-item-wrapper:hover {
-    background: linear-gradient(
-            145deg,
-            #363636,
-            #2a2a2a
-    );
-
-}
-
-.holding-item-wrapper:last-child:hover {
-    border-bottom-left-radius: 1.5rem;
-    border-bottom-right-radius: 1.5rem;
+.holding-item-wrapper:last-child {
+    border-bottom: none;
 }
 
 .holding-item {
-    display: grid;
-    padding-left: 0.5rem;
-    margin-bottom: 1rem;
+    width: 100%;
+    padding: 1.1rem 1.5rem;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    font-size: 1rem;
+    font-variant-numeric: tabular-nums;
+    transition: background 0.15s ease;
+}
 
-    grid-template-columns:
-        1.5fr
-        1fr
-        1fr
-        1fr
-        0.7fr
-        auto;
-
-    align-items: center;
-    font-size: 1.08rem;
+.holding-item:hover,
+.holding-item-wrapper.open .holding-item {
+    background: rgba(255, 255, 255, 0.04);
 }
 
 .position-column {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.15rem;
+    min-width: 0;
 }
 
-.quantity-item {
-    transform: translateX(1rem);
+.holding-item > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.position-symbol {
+    font-weight: 700;
+    font-size: 1.05rem;
+    text-transform: uppercase;
+}
+
+.position-type {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-subtle);
+}
+
+.change-pct.positive {
+    color: var(--positive);
+}
+
+.change-pct.negative {
+    color: var(--negative);
+}
+
+.expand-icon {
+    color: var(--text-subtle);
+    transition: transform 0.2s ease;
+}
+
+.holding-item-wrapper.open .expand-icon {
+    transform: rotate(180deg);
+}
+
+.holding-chart-panel {
+    padding: 0 1.5rem 1.5rem;
+    animation: fadeIn 0.3s ease;
 }
 
 .chart-wrapper {
     width: 100%;
-    height: 25rem;
+    height: 22rem;
 
-    background: linear-gradient(145deg, #2b2b2b, #1f1f1f);
-    border: 1px solid #3d3d3d;
-    border-radius: 1.5rem;
+    background: rgba(6, 10, 18, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 1rem;
 
     padding: 1rem 1.25rem;
 
@@ -139,40 +125,72 @@
     justify-content: flex-end;
 }
 
-.range-buttons {
-    display: flex;
-    gap: 0.5rem;
-    background: #1a1a1a;
-    padding: 0.35rem;
-    border-radius: 0.75rem;
-    border: 1px solid #3d3d3d;
-}
-
-.range-btn {
-    background: transparent;
-    border: none;
-    color: #a0a0a0;
-
-    padding: 0.35rem 0.6rem;
-    border-radius: 0.5rem;
-
-    cursor: pointer;
-    font-size: 0.85rem;
-
-    transition: background 0.15s ease, color 0.15s ease;
-}
-
-.range-btn:hover {
-    background: #2a2a2a;
-    color: #f5f7ff;
-}
-
-.range-btn.active {
-    background: #363636;
-    color: #f5f7ff;
-}
-
 .chart-body {
     flex: 1;
+    min-height: 0;
     width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-0.5rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* small screens: each holding becomes a compact card instead of a 5 column row */
+@media (max-width: 768px) {
+    .table-header {
+        display: none;
+    }
+
+    .holding-item {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.6rem 1rem;
+        padding: 1rem 1.1rem;
+    }
+
+    .position-column {
+        grid-column: 1 / -1;
+        flex-direction: row;
+        align-items: baseline;
+        gap: 0.5rem;
+    }
+
+    .holding-cell::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-subtle);
+    }
+
+    /* keep the chevron so it's clear the card expands */
+    .holding-item {
+        position: relative;
+    }
+
+    .expand-icon {
+        position: absolute;
+        top: 1rem;
+        right: 1.1rem;
+    }
+
+    .holding-chart-panel {
+        padding: 0 0.75rem 1rem;
+    }
+
+    .chart-wrapper {
+        height: 18rem;
+        padding: 0.75rem;
+    }
 }

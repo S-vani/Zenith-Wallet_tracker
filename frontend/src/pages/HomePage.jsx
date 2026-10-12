@@ -1,34 +1,37 @@
-import {useNavigate} from "react-router-dom";
-import {getUserCount} from "../services/api.js";
+import {Link} from "react-router-dom";
+import {getToken, getUserCount} from "../services/api.js";
+import usePageTitle from "../utils/usePageTitle.js";
 
 import "../css/Home.css"
 import {useEffect, useState} from "react";
 
 function HomePage() {
-    const navigate = useNavigate();
-    const [userCount, setUserCount] = useState(0);
-
-    const loadUserCount = async () => {
-        const userAmount = await getUserCount();
-        setUserCount(userAmount)
-    }
+    usePageTitle(null);
+    const [userCount, setUserCount] = useState(null);
+    const loggedIn = Boolean(getToken());
 
     useEffect(() => {
-        loadUserCount()
+        getUserCount().then(setUserCount).catch(() => null);
     }, []);
 
 
     return (
         <div className="home-page">
             <header className="home-topbar">
-                <div className="home-brand">
+                <Link to="/" className="home-brand">
                     <span className="brand-mark">◆</span>
                     <span className="brand-name">Zenith&nbsp;<span className="brand-accent">Wallet Tracker</span></span>
-                </div>
-                <div className="home-auth">
-                    <button onClick={() => navigate("/login")} className="auth-btn login-btn">Log in</button>
-                    <button onClick={() => navigate("/signup")} className="auth-btn signup-btn">Sign up</button>
-                </div>
+                </Link>
+                <nav className="home-auth" aria-label="Account">
+                    {loggedIn ? (
+                        <Link to="/dashboard" className="auth-btn signup-btn">Open dashboard</Link>
+                    ) : (
+                        <>
+                            <Link to="/login" className="auth-btn login-btn">Log in</Link>
+                            <Link to="/signup" className="auth-btn signup-btn">Sign up</Link>
+                        </>
+                    )}
+                </nav>
             </header>
 
             <main className="home-hero">
@@ -42,17 +45,24 @@ function HomePage() {
                         evolve in real time — all in one calm, focused dashboard.
                     </p>
                     <div className="hero-actions">
-                        <button onClick={() => navigate("/signup")} className="auth-btn signup-btn large">Create free
-                            account
-                        </button>
-                        <button className="hero-link-btn">See how it works →</button>
+                        <Link to={loggedIn ? "/dashboard" : "/signup"} className="auth-btn signup-btn large">
+                            {loggedIn ? "Go to your dashboard" : "Create free account"}
+                        </Link>
+                        <a href="#features" className="hero-link-btn">See how it works →</a>
                     </div>
 
                     <div className="hero-stats">
-                        <div className="hero-stat">
-                            <span className="hero-stat-value positive">{userCount}</span>
-                            <span className="hero-stat-label">Current users</span>
-                        </div>
+                        {userCount >= 100 ? (
+                            <div className="hero-stat">
+                                <span className="hero-stat-value positive">{userCount.toLocaleString()}</span>
+                                <span className="hero-stat-label">Investors tracking</span>
+                            </div>
+                        ) : (
+                            <div className="hero-stat">
+                                <span className="hero-stat-value positive">Free</span>
+                                <span className="hero-stat-label">No credit card</span>
+                            </div>
+                        )}
                         <div className="hero-stat-divider"/>
                         <div className="hero-stat">
                             <span className="hero-stat-value">24/7</span>
@@ -75,7 +85,7 @@ function HomePage() {
                         <div className="preview-value">$84,920.18</div>
                         <div className="preview-change positive">+ $9,213.42 (12.2%)</div>
 
-                        <svg className="preview-chart" viewBox="0 0 320 120" preserveAspectRatio="none">
+                        <svg className="preview-chart" viewBox="0 0 320 120" preserveAspectRatio="none" aria-hidden="true">
                             <defs>
                                 <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="0%" stopColor="rgba(59,130,246,0.35)"/>
@@ -124,7 +134,7 @@ function HomePage() {
                 </div>
             </main>
 
-            <section className="home-features">
+            <section className="home-features" id="features">
                 <div className="feature-card">
                     <span className="feature-icon">⟳</span>
                     <h3>Real-time tracking</h3>

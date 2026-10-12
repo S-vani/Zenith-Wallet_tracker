@@ -1,52 +1,34 @@
 import HoldingsChart from "./HoldingsChart.jsx"
 import {useState} from "react";
+import {useUser} from "../context/UserContext.jsx";
+import {changeClass, formatMoney, formatPercent, formatQuantity, formatSignedMoney} from "../utils/format.js";
 
-function HoldingsItem({holding}) {
-    const [expanded, setExpanded] = useState(false);
+function HoldingsItem({holding, index}) {
     const [isOpen, setIsOpen] = useState(false)
+    const {currency} = useUser();
 
-    const onclick = () => {
-        setIsOpen(!isOpen);
-        setExpanded(!expanded)
-    }
-
-    const data = {
-        "symbol": holding.symbol,
-        "type": holding.type,
-        "current_total_price": holding.current_price.toFixed(2),
-        "quantity": holding.quantity,
-        "return": (holding.current_price - holding.price_paid).toFixed(2),
-        "return_pct": (100 * ((holding.current_price - holding.price_paid) / holding.price_paid)).toFixed(2)
-    }
-
-    let classReturn = "change-pct"
-    if (data.return_pct > 0) {
-        classReturn += " positive"
-    } else {
-        classReturn += " negative"
-    }
+    const gain = holding.current_price - holding.price_paid;
+    const gainPct = holding.price_paid > 0 ? (gain / holding.price_paid) * 100 : null;
+    const classReturn = `change-pct ${changeClass(gain)}`;
 
     return (
-        <div className="holding-item-wrapper">
-            <div className="holding-item" onClick={onclick}>
+        <div className={`holding-item-wrapper${isOpen ? " open" : ""}`} style={{animationDelay: `${index * 60}ms`}}>
+            <button className="holding-item" onClick={() => setIsOpen(!isOpen)} aria-expanded={isOpen}>
                 <div className="position-column">
-                    <p>{data.symbol}</p>
-                    <p>{data.type}</p>
+                    <span className="position-symbol">{holding.symbol}</span>
+                    <span className="position-type">{holding.type}</span>
                 </div>
 
-                <span>$ {data.current_total_price} CAD</span>
-                <span className="quantity-item">{data.quantity} </span>
-                <span className={classReturn}>$ {data.return} CAD</span>
-                <span className={classReturn}>{data.return_pct}%</span>
+                <span className="holding-cell" data-label="Value">{formatMoney(holding.current_price, currency)}</span>
+                <span className="holding-cell" data-label="Quantity">{formatQuantity(holding.quantity)}</span>
+                <span className={`holding-cell ${classReturn}`} data-label="Return">{formatSignedMoney(gain, currency)}</span>
+                <span className={`holding-cell ${classReturn}`} data-label="Return %">{formatPercent(gainPct)}</span>
 
-                <span className="expand-icon">
-                    {expanded ? "▲" : "▼"}
-                </span>
-            </div>
-
+                <span className="expand-icon" aria-hidden="true">▾</span>
+            </button>
 
             {isOpen && (
-                <div>
+                <div className="holding-chart-panel">
                     <HoldingsChart symbol={holding.symbol} type={holding.type}/>
                 </div>
             )}

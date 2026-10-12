@@ -3,6 +3,7 @@
     align-items: center;
     justify-content: center;
     width: 50%;
+    padding: 2rem;
 }
 
 .signup-form-card {
@@ -223,4 +224,33 @@
 .signup-field select:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+    .signup-page-wrapper {
+        flex-direction: column-reverse;
+        justify-content: flex-end;
+    }
+
+    .signup-page-right-side {
+        width: 100%;
+        padding: 1.25rem 1.25rem 0;
+        background: none;
+        border-left: none;
+    }
+
+    /* keep the brand, hide the benefits list so the form is above the fold */
+    .signup-page-information {
+        display: none;
+    }
+
+    .signup-form-side {
+        width: 100%;
+        align-items: flex-start;
+        padding: 1.5rem 1rem 2rem;
+    }
+
+    .signup-form-card {
+        padding: 1.5rem;
+    }
 }

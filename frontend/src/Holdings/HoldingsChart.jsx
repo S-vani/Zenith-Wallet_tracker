@@ -1,42 +1,123 @@
 import {useEffect, useState} from "react";
 import {getPriceHistory} from "../services/api.js";
-import {LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer} from "recharts";
+import {AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer} from "recharts";
+import {useUser} from "../context/UserContext.jsx";
+import {formatMoney} from "../utils/format.js";
+import {CHART_DOWN, CHART_UP, INITIAL_DIMENSION, TOOLTIP_STYLE, dailyTicks, tooltipDate} from "../utils/chart.js";
 
-function HoldingChart({symbol, type}) {
-    const [range, setRange] = useState("1M");
+const RANGES = ["1D", "1W", "1M", "1Y", "5Y"];
+
+function HoldingChart({symbol, type, initialRange = "1M", compact = false}) {
+    const {currency} = useUser();
+    const [range, setRange] = useState(initialRange);
     const [data, setData] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
+        let ignore = false;
+
         const load = async () => {
-            setLoading(true);
-
-            const res = await getPriceHistory(symbol, type, range);
-
-            // transform backend → recharts format
-            const formatted = res.data.map(p => ({
-                time: p.time,
-                price: p.price
-            }));
-
-            setData(formatted);
-            setLoading(false);
+            try {
+                setLoading(true);
+                setError(null);
+                const res = await getPriceHistory(symbol, type, range);
+                if (!ignore) setData(res.data.map(p => ({time: p.time, price: p.price})));
+            } catch (err) {
+                if (!ignore) setError(err.message);
+            } finally {
+                if (!ignore) setLoading(false);
+            }
         };
 
         load();
+        return () => {
+            ignore = true;
+        };
     }, [symbol, range, type]);
 
-    const ranges = ["1D", "1W", "1M", "1Y", "5Y"];
+    const isUp = data.length > 1 && data[data.length - 1].price >= data[0].price;
+    const color = isUp ? CHART_UP : CHART_DOWN;
+    const gradientId = `holdingFill-${type}-${symbol}`;
+    const intraday = range === "1D" || range === "1W";
+
+    const formatTick = (v) => {
+        const date = new Date(v);
+        if (range === "1D") return date.toLocaleTimeString(undefined, {hour: "numeric", minute: "2-digit"});
+        if (range === "5Y") return date.toLocaleDateString(undefined, {month: "short", year: "numeric"});
+        return date.toLocaleDateString(undefined, {month: "short", day: "numeric"});
+    };
+
+    // big prices (e.g. BTC) get compact axis labels so they don't eat the chart width
+    const maxPrice = Math.max(0, ...data.map((d) => d.price));
+    const formatPriceTick = (value) => formatMoney(value, currency, maxPrice >= 10000
+        ? {notation: "compact", minimumFractionDigits: 0, maximumFractionDigits: 1}
+        : {maximumFractionDigits: maxPrice < 1 ? 4 : 2});
+
+    let body;
+    if (loading) {
+        body = <div className="state-message"><div className="spinner"/></div>;
+    } else if (error) {
+        body = <div className="state-message"><p className="alert-error">{error}</p></div>;
+    } else if (data.length === 0) {
+        body = <div className="state-message">No price data available for this range.</div>;
+    } else {
+        body = (
+            <ResponsiveContainer width="100%" height="100%" initialDimension={INITIAL_DIMENSION}>
+                <AreaChart data={data} margin={{top: 10, right: 10, left: 0, bottom: 0}}>
+                    <defs>
+                        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={color} stopOpacity={0.25}/>
+                            <stop offset="100%" stopColor={color} stopOpacity={0}/>
+                        </linearGradient>
+                    </defs>
+                    <XAxis
+                        dataKey="time"
+                        ticks={range === "1W" ? dailyTicks(data) : undefined}
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{fill: "#8b93a1", fontSize: 11}}
+                        tickFormatter={formatTick}
+                        minTickGap={48}
+                        tickMargin={10}
+                    />
+                    <YAxis
+                        domain={["auto", "auto"]}
+                        tickFormatter={formatPriceTick}
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{fill: "#8b93a1", fontSize: 11}}
+                        width={72}
+                    />
+                    <Tooltip
+                        contentStyle={TOOLTIP_STYLE}
+                        separator=": "
+                        formatter={(value) => [formatMoney(value, currency), "Price"]}
+                        labelFormatter={(value) => tooltipDate(value, intraday)}
+                    />
+                    <Area
+                        type="monotone"
+                        dataKey="price"
+                        stroke={color}
+                        strokeWidth={2}
+                        fill={`url(#${gradientId})`}
+                        dot={false}
+                    />
+                </AreaChart>
+            </ResponsiveContainer>
+        );
+    }
 
     return (
-        <div className="chart-wrapper">
+        <div className={`chart-wrapper${compact ? " compact" : ""}`}>
             <div className="chart-header">
-                <div className="range-buttons">
-                    {ranges.map(r => (
+                <div className="segmented" role="group" aria-label="Chart range">
+                    {RANGES.map(r => (
                         <button
                             key={r}
                             onClick={() => setRange(r)}
-                            className={`range-btn ${range === r ? "active" : ""}`}
+                            className={range === r ? "active" : ""}
+                            aria-pressed={range === r}
                         >
                             {r}
                         </button>
@@ -44,73 +125,7 @@ function HoldingChart({symbol, type}) {
                 </div>
             </div>
 
-            <div className="chart-body">
-                {loading ? (
-                    <div className="loading-chart">Loading...</div>
-                ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart
-                            data={data}
-                            margin={{top: 10, right: 20, left: 30, bottom: 20}}
-                        >
-                            <XAxis
-                                dataKey="time"
-                                axisLine={false}
-                                tickLine={false}
-                                stroke="#8a8a8a"
-                                tickFormatter={(v) =>
-                                    new Date(v).toLocaleDateString(undefined, {
-                                        month: "short",
-                                        day: "numeric"
-                                    })
-                                }
-                                ticks={data
-                                    .filter((_, i) => i % Math.ceil(data.length / 6) === 0)
-                                    .map(d => d.time)
-                                }
-                                interval="preserveStartEnd"
-                                minTickGap={40}
-                                tickMargin={20}
-                            />
-                            <YAxis
-                                domain={["dataMin", "dataMax"]}
-                                tickFormatter={(value) => value.toFixed(2)}
-                                axisLine={false}
-                                tickLine={false}
-                                stroke="#8a8a8a"
-                                tickMargin={30}
-                                width={100}
-                            />
-                            <Tooltip
-                                contentStyle={{
-                                    backgroundColor: "#1f1f1f",
-                                    border: "1px solid #3d3d3d",
-                                    borderRadius: "12px",
-                                    color: "#f5f7ff"
-                                }}
-                                labelFormatter={(value) => {
-                                    const date = new Date(value);
-                                    return date.toLocaleDateString(undefined, {
-                                        month: "short",
-                                        day: "numeric",
-                                        year: "numeric",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                        hour12: true
-                                    });
-                                }}
-                            />
-                            <Line
-                                type="monotone"
-                                dataKey="price"
-                                stroke="#3b82f6"
-                                strokeWidth={2.5}
-                                dot={false}
-                            />
-                        </LineChart>
-                    </ResponsiveContainer>
-                )}
-            </div>
+            <div className="chart-body">{body}</div>
         </div>
     );
 }

@@ -1,121 +1,90 @@
-import {useState} from "react";
+import {useRef, useState} from "react";
 import {searchCrypto, searchStock} from "../services/api.js";
 import TransactionSymbolList from "./TransactionSymbolList.jsx";
+import TransactionSymbolItem from "./TransactionSymbolItem.jsx";
 
 function TransactionSymbolSearch({onSub}) {
-    const [type, setType] = useState("")
+    const [type, setType] = useState("stock")
     const [symbol, setSymbol] = useState("");
-    const [results, setResults] = useState([]);
-    const [showSymbols, setShowSymbols] = useState(false)
+    const [results, setResults] = useState(null);
     const [selectedSymbol, setSelectedSymbol] = useState(null);
     const [loading, setLoading] = useState(false)
-
-    const getPlaceholder = () => {
-        if (type === "stock") {
-            return "AAPL, NVDA, GOOG"
-        } else if (type === "crypto") {
-            return "BTC, SOL, ETH"
-        } else {
-            return "Select a type above"
-        }
-    }
+    const [error, setError] = useState(null);
+    const searchId = useRef(0); // only the newest search may update the results
 
     const onSubSymbols = (data, selected) => {
         onSub(data);
-        setShowSymbols(false)
+        setResults(null)
         setSelectedSymbol(selected)
     }
 
-
-    const handleChange = (e) => {
-        setSymbol(e.target.value)
-    }
+    const changeType = (newType) => {
+        searchId.current += 1;
+        setLoading(false);
+        setType(newType);
+        setResults(null);
+        setError(null);
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (!symbol.trim()) return;
+
+        const id = ++searchId.current;
         setLoading(true)
-
-        if (type === "stock") {
-            const data = await searchStock(symbol)
-            setResults(data)
-            setShowSymbols(true)
-        } else if (type === "crypto") {
-            const data = await searchCrypto(symbol)
-            setResults(data)
-            setShowSymbols(true)
+        setError(null);
+        try {
+            const data = type === "stock" ? await searchStock(symbol) : await searchCrypto(symbol);
+            if (id === searchId.current) setResults(data)
+        } catch (err) {
+            if (id === searchId.current) setError(err.message);
+        } finally {
+            if (id === searchId.current) setLoading(false)
         }
-        setLoading(false)
-
     };
 
     return (
         <div className="transaction-symbol-wrapper">
-            <h2>Search</h2>
-            <div className="search-buttons">
-                <button
-                    className={type === "stock" ? "search-button active" : "search-button"}
-                    onClick={() => setType("stock")}>
+            <div className="segmented" role="group" aria-label="Asset type">
+                <button className={type === "stock" ? "active" : ""} aria-pressed={type === "stock"}
+                        onClick={() => changeType("stock")}>
                     Stock
                 </button>
-                <button
-                    className={type === "crypto" ? "search-button active" : "search-button"}
-                    onClick={() => setType("crypto")}>
+                <button className={type === "crypto" ? "active" : ""} aria-pressed={type === "crypto"}
+                        onClick={() => changeType("crypto")}>
                     Crypto
                 </button>
             </div>
-            <form className="symbol-search-form" onSubmit={handleSubmit}>
+
+            <form className="symbol-search-form" onSubmit={handleSubmit} role="search">
                 <input
                     className="symbol-search-input"
                     name="symbol"
-                    placeholder={getPlaceholder()}
-                    onChange={handleChange}
-                    autoComplete="off"/>
-
-
-                <button className={type === "" ? "search-button red" : "search-button"} type="submit">Search</button>
+                    type="search"
+                    aria-label={`Search ${type} symbols`}
+                    placeholder={type === "stock" ? "Search stocks, e.g. AAPL, NVDA" : "Search crypto, e.g. BTC, ETH"}
+                    value={symbol}
+                    onChange={(e) => setSymbol(e.target.value)}
+                    autoComplete="off"
+                    autoFocus
+                />
+                <button className="btn btn-primary" type="submit" disabled={loading || !symbol.trim()}>
+                    {loading ? "Searching…" : "Search"}
+                </button>
             </form>
 
-            {loading && (
-                <h3 className="loading-search">Loading...</h3>
+            {error && <p className="alert-error" role="alert">{error}</p>}
+
+            {results && (
+                results.length > 0 ? (
+                    <TransactionSymbolList data={results} onSub={onSubSymbols}/>
+                ) : (
+                    <p className="state-message">No matches for “{symbol}”. Check the symbol and try again.</p>
+                )
             )}
 
-            {showSymbols && (
-                <TransactionSymbolList
-                    data={results}
-                    onSub={onSubSymbols}
-                />
-            )}
-
-            {selectedSymbol !== null && (
-                <div className="transaction-symbol-item-wrapper">
-                    <div className="symbol">
-                        <span className="symbol-image">
-                            {
-                                selectedSymbol.image !== "" && (
-                                    <img src={selectedSymbol.image} alt=""/>
-                                )}
-                        </span>
-
-                        <span className="symbol-text">{selectedSymbol.symbol}</span>
-                    </div>
-
-                    <div className="price">
-                        ${Number(selectedSymbol.price).toFixed(2)}
-                    </div>
-
-                    <div className="type">
-                        {selectedSymbol.type}
-                    </div>
-
-                    <div className="change">
-                        <span>
-                            ${Number(selectedSymbol.change).toFixed(2)}
-                        </span>
-                        <span>
-                            ({selectedSymbol.change_pct.toFixed(2)}%)
-                        </span>
-                    </div>
-                </div>
+            {!results && selectedSymbol !== null && (
+                <TransactionSymbolItem data={selectedSymbol} selected/>
             )}
         </div>
     );

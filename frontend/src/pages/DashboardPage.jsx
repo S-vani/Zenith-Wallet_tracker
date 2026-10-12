@@ -1,8 +1,10 @@
 import {useEffect, useState} from "react";
-import {getDashboardStats, getUser} from "../services/api.js";
+import {Link} from "react-router-dom";
+import {getDashboardStats} from "../services/api.js";
 import DashboardStats from "../Dashboard/DashboardStats.jsx";
-import {useNavigate} from "react-router-dom";
 import DashboardChart from "../Dashboard/DashboardChart.jsx";
+import {useUser} from "../context/UserContext.jsx";
+import usePageTitle from "../utils/usePageTitle.js";
 
 import "../css/Dashboard.css";
 
@@ -14,83 +16,79 @@ const TIME_RANGES = [
     {label: "All", value: "all"},
 ];
 
+const greeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return "Good morning";
+    if (h < 17) return "Good afternoon";
+    return "Good evening";
+};
+
 function DashboardPage() {
-    const [loading, setLoading] = useState(false);
+    usePageTitle("Dashboard");
+
+    const {user, currency} = useUser();
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [user, setUser] = useState({});
     const [activeRange, setActiveRange] = useState("day");
     const [stats, setStats] = useState({value: 0.0, curr_timeperiod: 0.0});
-    const navigate = useNavigate();
-
-    const loadDashboard = async (time_span) => {
-        try {
-            setLoading(true);
-            setError(null);
-            const data = await getDashboardStats(time_span);
-            setStats(data);
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const loadUser = async () => {
-        const userInfo = await getUser();
-        setUser(userInfo);
-    };
 
     useEffect(() => {
-        loadUser();
-        loadDashboard("day");
-    }, []);
+        let ignore = false; // ignore responses for a range the user already clicked away from
 
-    const handleRangeClick = (value) => {
-        setActiveRange(value);
-        loadDashboard(value);
-    };
+        const loadDashboard = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                const data = await getDashboardStats(activeRange);
+                if (!ignore) setStats(data);
+            } catch (err) {
+                if (!ignore) setError(err.message);
+            } finally {
+                if (!ignore) setLoading(false);
+            }
+        };
 
-    const greeting = () => {
-        const h = new Date().getHours();
-        if (h < 12) return "Good morning";
-        if (h < 17) return "Good afternoon";
-        return "Good evening";
-    };
+        loadDashboard();
+        return () => {
+            ignore = true;
+        };
+    }, [activeRange]);
+
+    const firstName = user?.name?.split(" ")[0];
 
     return (
-        <div className="dashboard-page">
-            <h1 className="page-headers" id="dashboard-header">
-                {greeting()}, {user.name}
-            </h1>
+        <div className="app-page dashboard-page">
+            <header>
+                <h1 className="page-headers">
+                    {greeting()}{firstName ? `, ${firstName}` : ""}
+                </h1>
+                <p className="page-subtitle">Here's how your portfolio is doing.</p>
+            </header>
 
-            {error && <p className="error">{error}</p>}
+            {error && <p className="alert-error" role="alert">{error}</p>}
 
-            <DashboardStats stats={stats}/>
+            <DashboardStats stats={stats} loading={loading} currency={currency} range={activeRange}/>
 
             <div className="dashboard-controls">
-                {TIME_RANGES.map(({label, value}) => (
-                    <button
-                        key={label}
-                        className={`chart-range-btn${activeRange === (value ?? "all") ? " active" : ""}`}
-                        onClick={() => handleRangeClick(value)}
-                    >
-                        {label}
-                    </button>
-                ))}
+                <div className="segmented" role="group" aria-label="Time range">
+                    {TIME_RANGES.map(({label, value}) => (
+                        <button
+                            key={label}
+                            className={activeRange === value ? "active" : ""}
+                            aria-pressed={activeRange === value}
+                            onClick={() => setActiveRange(value)}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
 
-                <button
-                    className="dashboard-nav-btn"
-                    onClick={() => navigate("/Holdings")}
-                >
+                <Link className="btn btn-primary dashboard-nav-btn" to="/holdings">
                     Holdings →
-                </button>
+                </Link>
             </div>
 
-            {loading ? (
-                <p className="loading-dashboard">Fetching Portfolio History...</p>
-            ) : (
-                <DashboardChart range={activeRange}/>
-            )}
+            <DashboardChart range={activeRange} currency={currency} dateJoined={user?.date_joined}/>
         </div>
     );
 }
