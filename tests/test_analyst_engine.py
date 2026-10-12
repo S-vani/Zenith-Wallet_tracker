@@ -30,9 +30,9 @@ MIXED_FUNDAMENTALS = {**BAD_FUNDAMENTALS, "trailingPE": 80.0, "targetMeanPrice":
 # --------------------------------------------------------------------------- sentiment and confidence
 @pytest.mark.parametrize("data,sentiment,confidence", [
     (make_data("up", fundamentals=dict(GOOD_FUNDAMENTALS)), "bullish", "high"),
-    (make_data("up"), "bullish", "medium"),
+    (make_data("up"), "bullish", "high"),  # strong, one-sided price trend: 3 agreeing signals are enough
     (make_data("up", fundamentals=dict(BAD_FUNDAMENTALS)), "bullish", "medium"),
-    (make_data("down"), "bearish", "medium"),
+    (make_data("down"), "bearish", "high"),
     (make_data("down", fundamentals=dict(BAD_FUNDAMENTALS)), "bearish", "high"),
     (make_data("flat"), "neutral", "medium"),
     (make_data("flat", asset_type="crypto", symbol="SOL"), "neutral", "low"),
@@ -97,8 +97,12 @@ def test_insufficient_data_below_30_points(n):
     assert report.sentiment is None and report.confidence is None and report.score is None
     assert report.scenarios == [] and report.insights == [] and report.reasons == [] and report.watch == []
     assert report.main_risk is None and report.bottom_line is None
-    assert f"({n} daily data points; at least 30 are needed)" in report.summary
-    assert "enough price history" in report.summary
+    if n == 0:
+        # no data at all reads as "not found", not "too short"
+        assert "No market data was found" in report.summary
+    else:
+        assert f"({n} daily data points; at least 30 are needed)" in report.summary
+        assert "enough price history" in report.summary
     assert report.disclaimer
 
 
@@ -214,7 +218,7 @@ def test_analyst_target_is_converted_to_the_users_currency():
     assert target.value == expected
     insight = engine.analysts_signal(data).insight
     assert expected in insight.detail
-    assert "+20.0%" in insight.detail  # upside is currency independent
+    assert "20.0% above the last price" in insight.detail  # upside is currency independent
     assert "20 analysts" in insight.detail
 
 
@@ -232,9 +236,9 @@ def test_upcoming_earnings_is_watched_and_is_the_main_risk():
                                                     "Earnings Low": 1.1, "Earnings High": 1.4}))
     assert report.watch[0].kind == "earnings"
     assert report.watch[0].date.date() == earnings
-    assert "1.25" in report.watch[0].detail and "1.10–1.40" in report.watch[0].detail
+    assert "1.25" in report.watch[0].detail and "1.10 to 1.40" in report.watch[0].detail
     assert report.main_risk.title == "Upcoming earnings"
-    assert any("Earnings on" in c for c in report.scenarios[0].conditions)
+    assert any("earnings report" in c for c in report.scenarios[0].conditions)
 
 
 def test_earnings_between_21_and_90_days_is_watched_but_not_the_main_risk():

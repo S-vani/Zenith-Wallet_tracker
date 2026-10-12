@@ -206,7 +206,7 @@ def test_stock_collection(monkeypatch):
                                  "marketCap": 3e12, "currentPrice": 180.0}
     assert data.calendar == {"Earnings Date": date(2030, 2, 20), "Earnings Average": 1.2}
     assert data.coin == {} and data.btc_closes == []
-    assert [s["name"] for s in data.sources] == ["Yahoo Finance (daily prices & volume)",
+    assert [s["name"] for s in data.sources] == ["Yahoo Finance (daily prices & volume, adjusted for splits and dividends)",
                                                  "Yahoo Finance (fundamentals, analyst estimates & calendar)"]
 
 
