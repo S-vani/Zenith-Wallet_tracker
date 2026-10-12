@@ -39,6 +39,10 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
 - Quantities/prices are `Numeric(20, 10)`; compare quantities as `Decimal` (see `current_quantity`).
 - Timestamps are stored as naive UTC; filters convert offset-aware input to UTC first.
 - Crypto `api_id` is the lowercase CoinGecko symbol (e.g. `btc`); search results also carry `coin_id` (`bitcoin`).
+- Stock prices come in the listing currency (Yahoo `info.currency`, e.g. USD, CAD, EUR, `GBp` = pence) and are
+  converted to CAD with `get_native_to_cad_factor` (USD cross rates, cached 1 h), then to the user's currency.
+  Rows with a missing (NaN) close are skipped.
+- `/prices/history` falls back to CoinGecko for coins Yahoo doesn't list as `SYMBOL-USD` (e.g. PEPE).
 
 ## Market analyst (`GET /analyst?symbol=&type=stock|crypto[&coin_id=][&refresh=true]`)
 - Free: no paid AI. A rules engine scores trend (50/200-day averages), momentum (30/90-day returns), RSI, volume
@@ -49,6 +53,10 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
   bull/bear = 75–95th / 5–25th percentiles); omitted with < 60 data points. Not predictions — the UI says so.
 - Optional `GEMINI_API_KEY` (free tier) rewords the text only; `validate_rewrite` rejects any new numbers, changed
   list sizes, contradictions → falls back to rules wording. `engine` field tells the UI which wrote it.
+- Stablecoins (CoinGecko "Stablecoins" category) are always neutral with a peg/exchange-rate story; ETFs skip
+  company fundamentals; histories under 120 days cap confidence at low and relabel windows honestly.
+- Wording rules: no buy/sell advice (analyst consensus is shown as words + 1–5 score), conditions and price-level
+  advice are written from where the price actually is, numbers use a real minus sign.
 - Cached in table `analyst_reports` (1 h stocks / 30 min crypto, per asset + currency). Manual refresh after 5 min;
   30 fresh reports per user per hour. No news feed is connected (stated in `limitations`).
 
@@ -68,5 +76,5 @@ this was missed before, leaving the old API running). Check: `curl https://api.z
 - Keep changes in the existing style (JSX with 4-space indent, plain CSS files per area, small comments explaining
   "why"). Don't commit `.idea/` or `__pycache__/`.
 - For local manual testing without touching the real DB, run the backend with `DATABASE_URL` pointing at a scratch
-  copy and `GMAIL_USER=`/`GMAIL_PASS=` so no email is sent.
+  copy and `GMAIL_USER=`/`GMAIL_PASS=` so no email is sent. Don't commit `.claude/launch.json` (machine-specific).
 - Never log in to production with real credentials from automation; test on localhost with test accounts.
