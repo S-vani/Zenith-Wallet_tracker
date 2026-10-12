@@ -419,7 +419,6 @@ async def get_stock_prices_at(symbols: list[str], timestamp: datetime, currency:
         return {}
 
     rates = await get_all_conversion_rates()
-    conversion_to_cad = rates["usd_to_cad"]
     conversion = get_conversion_factor(rates, currency)
 
     async def fetch_one(symbol):
@@ -696,7 +695,6 @@ async def get_history_of_prices(
     currency_1 = "USD" if type == "crypto" else await get_ticker_currency(s)
     to_cad = await get_native_to_cad_factor(currency_1)
     rates = await get_all_conversion_rates()
-    conversion_to_cad = rates["usd_to_cad"]
     conversion = get_conversion_factor(rates, currency)
 
     hist = await asyncio.to_thread(

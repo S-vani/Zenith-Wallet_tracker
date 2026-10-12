@@ -12,9 +12,6 @@ import backend.services.asset_services as services
 from backend.analyst.engine import build_report, fmt_money, fmt_pct
 from tests.analyst_helpers import COIN, GOOD_FUNDAMENTALS, make_closes, make_data
 
-ALL_TEXT_FIELDS = ("summary", "bottom_line")
-
-
 def all_text(report) -> str:
     parts = [report.summary, report.bottom_line or "", *report.reasons]
     parts += [i.title + " " + i.detail for i in report.insights]

@@ -37,7 +37,7 @@ def fmt_pct(value: float, signed: bool = True, digits: int = 1) -> str:
     if round(abs(value) * 100, digits) == 0:
         return text  # no sign on 0.0%
     if not signed:
-        return (MINUS if value < 0 else "") + text if value < 0 and signed is None else text
+        return text  # magnitude only, e.g. "32.9% below"
     return ("+" if value > 0 else MINUS) + text
 
 
