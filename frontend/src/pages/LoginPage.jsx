@@ -1,5 +1,6 @@
 import {Link, Navigate} from "react-router-dom";
 import LoginForm from "../Authentication/LoginForm.jsx";
+import LoginVisual from "../Authentication/LoginVisual.jsx";
 import {getToken, loginAuthentication} from "../services/api";
 import usePageTitle from "../utils/usePageTitle.js";
 
@@ -32,7 +33,7 @@ function LoginPage() {
                         See your performance, monitor your holdings, and make informed decisions with a clean
                         dashboard built for long-term investors.
                     </p>
-                    <img src="/assets/login_page_logo.png" alt="" loading="lazy" decoding="async"/>
+                    <LoginVisual/>
                 </div>
 
             </div>
