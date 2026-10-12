@@ -11,6 +11,7 @@ from fastapi_users import exceptions
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.analyst.data import coingecko_chart
 from backend.authentication.authentication import current_active_user, get_user_manager
 from backend.db.database import get_async_session
 from backend.db_models.assets import Transaction, User, UserManager
@@ -334,6 +335,13 @@ async def get_price_history(
         data, s = await get_history_of_prices(symbol, type, range, current_user.currency)
     except Exception:  # unknown ticker or the price source is down
         data, s = [], symbol
+
+    if not data and type == "crypto":
+        # Yahoo doesn't list every coin under "SYMBOL-USD" (e.g. PEPE), so fall back to CoinGecko
+        try:
+            data = await coingecko_chart(symbol, range, current_user.currency)
+        except Exception:
+            data = []
 
     if range == "1D" and data:
         if type == "crypto":

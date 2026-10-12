@@ -32,7 +32,7 @@ async def get_ticker_currency(symbol: str) -> str:
     try:
         ticker = yf.Ticker(symbol)
         info = await asyncio.to_thread(lambda: ticker.info)
-        currency = (info.get("currency") or "USD").upper()
+        currency = info.get("currency") or "USD"  # not uppercased: "GBp" (pence) and "GBP" (pounds) differ 100x
     except Exception:
         currency = "USD"
 
@@ -272,6 +272,39 @@ def get_holdings_helper(curr_avg: float, new_price: float, curr_quantity: float,
     return total_cost / float((float(curr_quantity) + float(new_quantity)))
 
 
+_usd_rates_cache: dict = {"time": 0.0, "rates": {}}
+
+
+async def get_native_to_cad_factor(currency: str) -> float:
+    """
+    Multiplier that turns a price quoted in `currency` (a stock's listing currency from Yahoo) into CAD.
+    Handles any currency (EUR, GBP, JPY, ...) via USD cross rates; London prices quoted in pence ("GBp") are / 100.
+    """
+    if currency in ("GBp", "GBX", "GBx"):
+        return (await get_native_to_cad_factor("GBP")) / 100
+    code = (currency or "USD").upper()
+    if code == "CAD":
+        return 1.0
+    rates = await get_all_conversion_rates()
+    if code == "USD":
+        return float(rates["usd_to_cad"])
+
+    # other currencies: CAD per 1 unit = (CAD per USD) / (units per USD), cached for an hour
+    if not _usd_rates_cache["rates"] or time.time() - _usd_rates_cache["time"] > 3600:
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                res = await client.get("https://open.er-api.com/v6/latest/USD")
+            _usd_rates_cache["rates"] = res.json().get("rates", {})
+            _usd_rates_cache["time"] = time.time()
+        except Exception:
+            pass
+    per_usd = _usd_rates_cache["rates"].get(code)
+    if not per_usd:
+        logging.getLogger("uvicorn.error").warning("No exchange rate for %s, treating it as USD", code)
+        return float(rates["usd_to_cad"])
+    return float(rates["usd_to_cad"]) / float(per_usd)
+
+
 async def get_usd_to_cad():
     """
     use an api to get the current usd to cad value
@@ -391,7 +424,7 @@ async def get_stock_prices_at(symbols: list[str], timestamp: datetime, currency:
 
     async def fetch_one(symbol):
         ticker_currency = await get_ticker_currency(symbol)  # cached after first call
-        to_cad = 1.0 if ticker_currency == "CAD" else conversion_to_cad  # If already CAD no conversion needed
+        to_cad = await get_native_to_cad_factor(ticker_currency)  # listing currency -> CAD (1.0 for CAD listings)
 
         ticker = yf.Ticker(symbol)
         now = datetime.now(timezone.utc)
@@ -661,6 +694,7 @@ async def get_history_of_prices(
     ticker = yf.Ticker(s)  # create object representing the specific stock or crypto
 
     currency_1 = "USD" if type == "crypto" else await get_ticker_currency(s)
+    to_cad = await get_native_to_cad_factor(currency_1)
     rates = await get_all_conversion_rates()
     conversion_to_cad = rates["usd_to_cad"]
     conversion = get_conversion_factor(rates, currency)
@@ -678,9 +712,10 @@ async def get_history_of_prices(
 
     for index, row in hist.iterrows():  # iterate row by row with index being the specific row label (date)
         price = float(row["Close"])
+        if price != price or price <= 0:  # Yahoo sometimes returns today's row with a missing (NaN) close
+            continue
 
-        if currency_1 == "USD" or type == "crypto":
-            price *= conversion_to_cad
+        price *= to_cad  # listing currency -> CAD, then CAD -> the user's currency below
 
         volume = row.get("Volume") if hasattr(row, "get") else None
         data.append({
