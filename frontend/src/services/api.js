@@ -1,56 +1,133 @@
-
 const BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
-function getAuthHeaders() {
-    const token = localStorage.getItem("token");
+// Friendly messages for the error codes fastapi-users sends back
+const ERROR_MESSAGES = {
+    LOGIN_BAD_CREDENTIALS: "Incorrect email or password.",
+    LOGIN_USER_NOT_VERIFIED: "Please verify your email before logging in.",
+    REGISTER_USER_ALREADY_EXISTS: "An account with that email already exists.",
+    REGISTER_INVALID_PASSWORD: "That password isn't allowed. Try a longer one.",
+    VERIFY_USER_BAD_TOKEN: "This verification link is invalid or has expired.",
+    VERIFY_USER_ALREADY_VERIFIED: "Your email is already verified. You can log in.",
+};
 
+export function getToken() {
+    return localStorage.getItem("token");
+}
+
+export function logout() {
+    localStorage.removeItem("token");
+}
+
+function getAuthHeaders() {
     return {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${getToken()}`,
     };
+}
+
+const FIELD_LABELS = {
+    name: "Name",
+    email: "Email",
+    password: "Password",
+    currency: "Currency",
+    quantity: "Quantity",
+    price_of_one: "Price",
+    asset_type: "Asset type",
+};
+
+// Turn a FastAPI/pydantic validation error into something a person can read
+function validationMessage({loc = [], msg = "", ctx = {}}) {
+    const field = FIELD_LABELS[loc[loc.length - 1]] ?? "This field";
+
+    if (field === "Email" || msg.includes("email address")) return "Please enter a valid email address.";
+    if (msg.includes("at least 1 character")) return `${field} can't be empty.`;
+    if (ctx.max_length) return `${field} must be ${ctx.max_length} characters or fewer.`;
+    if (ctx.min_length) return `${field} must be at least ${ctx.min_length} characters.`;
+    if (ctx.le !== undefined) return `${field} is too large.`;
+    if (ctx.gt !== undefined) return `${field} must be greater than ${ctx.gt}.`;
+    return `${field}: ${msg.replace(/^Value error, /, "")}`;
+}
+
+async function errorMessage(res, fallback) {
+    try {
+        const body = await res.json();
+        const detail = body?.detail;
+
+        if (typeof detail === "string") {
+            return ERROR_MESSAGES[detail] ?? detail;
+        }
+        if (detail?.code) {
+            return ERROR_MESSAGES[detail.code] ?? detail.reason ?? fallback;
+        }
+        if (Array.isArray(detail) && detail[0]?.msg) {
+            return validationMessage(detail[0]);
+        }
+    } catch {
+        // body wasn't json, use the fallback
+    }
+    return fallback;
+}
+
+// Shared fetch wrapper: attaches the token, turns error responses into readable messages,
+// and signs the user out when their session is no longer valid
+async function request(path, {auth = true, fallbackError = "Something went wrong. Please try again.", ...options} = {}) {
+    let res;
+    try {
+        res = await fetch(`${BASE_URL}${path}`, {
+            ...options,
+            headers: auth ? getAuthHeaders() : {"Content-Type": "application/json", ...options.headers},
+        });
+    } catch {
+        throw new Error("Can't reach the server. Check your connection and try again.");
+    }
+
+    if (auth && (res.status === 401 || res.status === 403)) {
+        logout();
+        window.dispatchEvent(new Event("auth:expired"));
+        throw new Error("Your session has expired. Please log in again.");
+    }
+
+    if (!res.ok) {
+        throw new Error(await errorMessage(res, fallbackError));
+    }
+
+    return res.json();
+}
+
+// Date inputs give "YYYY-MM-DD", which JS reads as UTC midnight. Use the local start/end of the day instead
+function startOfDay(date) {
+    return new Date(`${date}T00:00:00`).toISOString();
+}
+
+function endOfDay(date) {
+    return new Date(`${date}T23:59:59.999`).toISOString();
 }
 
 export async function getTransactions(filters = {}) {
     const params = new URLSearchParams()
 
     if (filters.symbol) {
-        params.append("symbol", filters.symbol)
+        params.append("symbol", filters.symbol.trim())
     }
     if (filters.action) {
         params.append("action", filters.action)
     }
     if (filters.start_date) {
-        params.append("start_date", new Date(filters.start_date).toISOString())
+        params.append("start_date", startOfDay(filters.start_date))
     }
     if (filters.end_date) {
-        params.append("end_date", new Date(filters.end_date).toISOString())
+        params.append("end_date", endOfDay(filters.end_date))
     }
 
-
-    const res = await fetch(`${BASE_URL}/transactions?${params.toString()}`, {
-        headers: getAuthHeaders(),
-    });
-
-    if (!res.ok) {
-        throw new Error("Failed to fetch transactions");
-    }
-
-    return res.json();
+    return request(`/transactions?${params.toString()}`, {fallbackError: "Failed to load transactions."});
 }
 
 export async function createTransaction(data) {
-
-    const res = await fetch(`${BASE_URL}/transactions`, {
+    return request("/transactions", {
         method: "POST",
-        headers: getAuthHeaders(),
         body: JSON.stringify(data),
+        fallbackError: "Failed to create transaction.",
     });
-
-    if (!res.ok) {
-        throw new Error("Failed to create transaction");
-    }
-
-    return res.json();
 }
 
 export async function getDashboardStats(time_span) {
@@ -60,81 +137,44 @@ export async function getDashboardStats(time_span) {
         times.append("current_timeperiod", time_span)
     }
 
-    const url = times.toString()
-        ? `${BASE_URL}/dashboard?${times.toString()}`
-        : `${BASE_URL}/dashboard`;
-
-    const res = await fetch(url, {
-        headers: getAuthHeaders(),
-    })
-
-    if (!res.ok) {
-        throw new Error(`Dashboard fetch failed: ${res.status}`);
-    }
-
-    return res.json();
+    return request(`/dashboard?${times.toString()}`, {fallbackError: "Failed to load your portfolio stats."});
 }
 
 export async function getHoldings() {
-
-    const res = await fetch(`${BASE_URL}/holdings?}`, {
-        headers: getAuthHeaders(),
-    });
-
-    if (!res.ok) {
-        throw new Error(`Holdings fetch failed: ${res.status}`);
-    }
-
-    return res.json();
+    return request("/holdings", {fallbackError: "Failed to load your holdings."});
 }
 
 export async function getPriceHistory(symbol, type, range) {
-    const res = await fetch(
-        `${BASE_URL}/prices/history?symbol=${symbol}&type=${type}&range=${range}`, {
-            headers: getAuthHeaders()
-        }
-    );
+    const params = new URLSearchParams({symbol, type, range});
 
-    if (!res.ok) {
-        throw new Error("Failed to load chart data");
-    }
-
-    return res.json();
+    return request(`/prices/history?${params.toString()}`, {fallbackError: "Failed to load chart data."});
 }
 
 export async function getPortfolioHistory(range) {
-    const res = await fetch(
-        `${BASE_URL}/portfolio/history?range=${range}`, {
-            headers: getAuthHeaders()
-        }
-    );
-
-    if (!res.ok) {
-        throw new Error("Failed to load portfolio chart")
-    }
-
-    return res.json()
+    return request(`/portfolio/history?range=${encodeURIComponent(range)}`, {
+        fallbackError: "Failed to load portfolio chart."
+    });
 }
 
-export async function loginAuthentication(form, navigate) {
+export async function loginAuthentication(form) {
     const formData = new URLSearchParams();
 
-    formData.append("username", form["username"]);
-    formData.append("password", form["password"]);
+    formData.append("username", form.email.trim());
+    formData.append("password", form.password);
 
-    const res = await fetch(
-        `${BASE_URL}/auth/jwt/login`, {
+    let res;
+    try {
+        res = await fetch(`${BASE_URL}/auth/jwt/login`, {
             method: "POST",
             headers: {"Content-Type": "application/x-www-form-urlencoded"},
             body: formData
-        }
-    )
+        });
+    } catch {
+        throw new Error("Can't reach the server. Check your connection and try again.");
+    }
 
     if (!res.ok) {
-        throw new Error("Invalid username or password")
-    }
-    else{
-        navigate("/Dashboard ")
+        throw new Error(await errorMessage(res, "Incorrect email or password."));
     }
 
     const data = await res.json()
@@ -145,114 +185,69 @@ export async function loginAuthentication(form, navigate) {
 }
 
 export async function signupAuthentication(form) {
-    const res = await fetch(
-        `${BASE_URL}/auth/register`, {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({
-                email: form.email,
-                password: form.password,
-                name: form.name,
-                currency: form.currency,
-            })
-        }
-    )
-
-    if (!res.ok) {
-        throw new Error("Signup Error")
-    }
-
-    return res.json()
+    return request("/auth/register", {
+        auth: false,
+        method: "POST",
+        body: JSON.stringify({
+            email: form.email.trim(),
+            password: form.password,
+            name: form.name.trim(),
+            currency: form.currency,
+        }),
+        fallbackError: "Couldn't create your account. Please try again.",
+    });
 }
 
-export async function verify(params) {
-    const token = params.get("token");
+export async function requestVerification(email) {
+    return request("/auth/request-verify-token", {
+        auth: false,
+        method: "POST",
+        body: JSON.stringify({email: email.trim()}),
+        fallbackError: "Couldn't send the verification email.",
+    });
+}
 
-    const res = await fetch(
-        `${BASE_URL}/auth/verify`,
-        {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                token: token,
-            }),
-        }
-    );
-
-    return res.json()
+export async function verify(token) {
+    return request("/auth/verify", {
+        auth: false,
+        method: "POST",
+        body: JSON.stringify({token}),
+        fallbackError: "This verification link is invalid or has expired.",
+    });
 }
 
 export async function searchStock(symbol) {
-    const res = await fetch(`${BASE_URL}/assets/search/stock?asset=${symbol}`, {
-        headers: getAuthHeaders()
+    return request(`/assets/search/stock?asset=${encodeURIComponent(symbol)}`, {
+        fallbackError: "Stock search failed. Please try again."
     });
-
-    if (!res.ok) {
-        throw new Error("search stock error")
-    }
-
-    return res.json()
 }
 
 export async function searchCrypto(symbol) {
-    const res = await fetch(`${BASE_URL}/assets/search/crypto?asset=${symbol}`, {
-        headers: getAuthHeaders()
+    return request(`/assets/search/crypto?asset=${encodeURIComponent(symbol)}`, {
+        fallbackError: "Crypto search failed. Please try again."
     });
-
-    if (!res.ok) {
-        throw new Error("search crypto error")
-    }
-
-    return res.json()
 }
 
 export async function getUser() {
-    const res = await fetch(`${BASE_URL}/user`, {headers: getAuthHeaders()});
-
-    if (!res.ok) {
-        throw new Error("error fetching user information")
-    }
-
-    return res.json()
+    return request("/user", {fallbackError: "Failed to load your account."});
 }
 
 export async function getUserCount() {
-    const res = await fetch(`${BASE_URL}/users`);
-
-    if (!res.ok) {
-        throw new Error("error fetching user information")
-    }
-
-    return res.json()
+    return request("/users", {auth: false});
 }
 
-
-export async function putUserInfo(new_info){
-    const res = await fetch(`${BASE_URL}/user/information`, {
+export async function putUserInfo(new_info) {
+    return request("/user/information", {
         method: "PUT",
-        headers: getAuthHeaders(),
         body: JSON.stringify(new_info),
-    })
-
-    if (!res.ok){
-        throw new Error("error setting user information")
-    }
-
-    return res.json()
+        fallbackError: "Couldn't save your changes.",
+    });
 }
 
 export async function putUserEmail(new_email) {
-    const res = await fetch(`${BASE_URL}/user/email`, {
+    return request("/user/email", {
         method: "PUT",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(new_email),
-    })
-
-    if (!res.ok){
-        throw new Error("error sending email verification")
-    }
-
-    return res.json()
+        body: JSON.stringify({email: new_email.trim()}),
+        fallbackError: "Couldn't send the verification email.",
+    });
 }

@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator
 import os
+from pathlib import Path
 
 from fastapi import Depends
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
@@ -7,7 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sess
 
 from backend.db_models.assets import Base, User
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./walletdatabase.db")
+
+# A relative sqlite path like ./walletdatabase.db would depend on the folder the server was started from,
+# so anchor it to the project root to always use the same database file
+if DATABASE_URL.startswith("sqlite+aiosqlite:///./"):
+    DATABASE_URL = "sqlite+aiosqlite:///" + (PROJECT_ROOT / DATABASE_URL.removeprefix("sqlite+aiosqlite:///./")).as_posix()
 
 engine = create_async_engine(
     DATABASE_URL,

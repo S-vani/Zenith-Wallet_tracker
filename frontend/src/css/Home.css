@@ -39,6 +39,10 @@
 }
 
 .auth-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
     border-radius: 0.625rem;
     font-size: 0.85rem;
     font-weight: 600;
@@ -93,7 +97,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.12em;
-    color: #6b7280;
+    color: var(--text-subtle);
 }
 
 .hero-title {
@@ -163,7 +167,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: #6b7280;
+    color: var(--text-subtle);
 }
 
 .hero-stat-divider {
@@ -203,7 +207,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: #6b7280;
+    color: var(--text-subtle);
 }
 
 .range-pill {
@@ -296,8 +300,10 @@
 
 /* Feature cards */
 .home-features {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 1.5rem;
+    scroll-margin-top: 2rem;
 }
 
 .feature-card {
@@ -340,11 +346,101 @@
     justify-content: center;
     gap: 0.6rem;
     font-size: 0.8rem;
-    color: #6b7280;
+    color: var(--text-subtle);
     padding-top: 1rem;
     border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .footer-dot {
     color: rgba(255, 255, 255, 0.15);
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+.home-brand {
+    color: var(--text);
+}
+
+/* 404 page */
+.not-found-page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.not-found-code {
+    font-size: clamp(4rem, 12vw, 7rem);
+    font-weight: 900;
+    line-height: 1;
+    color: var(--accent);
+}
+
+.not-found-page p {
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+@media (max-width: 900px) {
+    .home-page {
+        max-width: 100%;
+        padding: 1rem 1.25rem 2.5rem;
+        gap: 2.5rem;
+    }
+
+    .home-hero {
+        flex-direction: column;
+        align-items: stretch;
+        padding-top: 0.5rem;
+    }
+
+    .home-features {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 520px) {
+    .home-brand {
+        font-size: 1.05rem;
+    }
+
+    /* "Wallet Tracker" wraps awkwardly on small phones */
+    .home-brand .brand-accent {
+        display: none;
+    }
+
+    .auth-btn {
+        padding: 0.5rem 0.9rem;
+    }
+
+    .hero-actions {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+
+    .hero-stats {
+        gap: 1rem;
+        justify-content: space-between;
+    }
+
+    .hero-stat-value {
+        font-size: 1.1rem;
+    }
+
+    .home-footer {
+        flex-direction: column;
+        gap: 0.25rem;
+        text-align: center;
+    }
+
+    .footer-dot {
+        display: none;
+    }
 }

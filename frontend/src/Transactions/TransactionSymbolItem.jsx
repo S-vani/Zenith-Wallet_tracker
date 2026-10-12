@@ -1,53 +1,43 @@
-function TransactionSymbolItem({data, onSub}) {
-    const change = data.change < 0 ? -data.change : data.change
-    const pct = data.change_pct > 0 ? "+" + data.change_pct.toFixed(2) : data.change_pct.toFixed(2).toString()
+import {useUser} from "../context/UserContext.jsx";
+import {changeClass, formatMoney, formatPercent, formatSignedMoney} from "../utils/format.js";
+
+function TransactionSymbolItem({data, onSub, selected = false}) {
+    const {currency} = useUser();
+
+    const select = () => onSub({
+        api_id: data.api_id,
+        symbol: data.symbol,
+        type: data.type,
+        price: data.price
+    }, data);
 
     return (
-        <div className="transaction-symbol-item-wrapper">
+        <div className={`transaction-symbol-item-wrapper${selected ? " selected" : ""}`}>
 
-            <div className="symbol">
-                <span className="symbol-image">
-                    {
-                        data.image !== "" && (
-                            <img src={data.image} alt=""/>
-                        )}
-                </span>
-
+            <div className="symbol-cell">
+                {data.image && <img className="symbol-image" src={data.image} alt=""/>}
                 <span className="symbol-text">{data.symbol}</span>
             </div>
 
-            <div className="price">
-                ${Number(data.price).toFixed(3)}
+            <div className="symbol-price">
+                {formatMoney(data.price, currency, {maximumFractionDigits: data.price < 1 ? 6 : 2})}
             </div>
 
-            <div className="type">
+            <div className="symbol-type">
                 {data.type}
             </div>
 
-            <div className="change">
-                <span className={data.change < 0 ? "change-number negative" : "change-number positive"}>
-                    ${Number(change).toFixed(3)}
-                </span>
-
-                <span>(</span>
-                <span className={data.change_pct < 0 ? "change-pct negative" : "change-pct positive"}>
-                    {pct}%
-                </span>
-                <span>)</span>
+            <div className={`symbol-change ${changeClass(data.change_pct)}`}>
+                {formatSignedMoney(data.change, currency)} ({formatPercent(data.change_pct)})
             </div>
 
-            <button
-                className="select-btn"
-                onClick={() =>
-                    onSub({
-                        api_id: data.api_id,
-                        symbol: data.symbol,
-                        type: data.type
-                    }, data)
-                }
-            >
-                Select
-            </button>
+            {selected ? (
+                <span className="selected-badge">Selected</span>
+            ) : (
+                <button className="btn btn-primary select-btn" onClick={select}>
+                    Select
+                </button>
+            )}
         </div>
     )
 }

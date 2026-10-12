@@ -1,15 +1,21 @@
 import {useState} from "react";
-import {useNavigate} from "react-router-dom";
+import {Link} from "react-router-dom";
+import {requestVerification} from "../services/api.js";
+import PasswordInput from "./PasswordInput.jsx";
 
 function SignupForm({onSubmit}) {
     const [form, setForm] = useState({
         email: "",
         password: "",
         name: "",
-        currency: ""
+        currency: "CAD"
     });
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState(null);
+    const [registeredEmail, setRegisteredEmail] = useState(null);
+    const [resent, setResent] = useState(false);
 
-    const handleChange = async (e) => {
+    const handleChange = (e) => {
         setForm({
             ...form,
             [e.target.name]: e.target.value
@@ -18,29 +24,79 @@ function SignupForm({onSubmit}) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        onSubmit(form);
+        if (!form.name.trim()) {
+            setError("Please enter your name.");
+            return;
+        }
+        setSubmitting(true);
+        setError(null);
+
+        try {
+            await onSubmit(form);
+            setRegisteredEmail(form.email.trim());
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
-    const navigate = useNavigate();
-
+    if (registeredEmail) {
+        return (
+            <div className="signup-form-side">
+                <div className="signup-form-card signup-success">
+                    <div className="success-icon" aria-hidden="true">✓</div>
+                    <div className="signup-form-header">
+                        <h1>Check your inbox</h1>
+                        <p>
+                            We sent a verification link to <strong>{registeredEmail}</strong>. Click it to activate your
+                            account, then log in.
+                        </p>
+                    </div>
+                    <Link to="/login" className="auth-btn signup-btn large signup-submit-btn">Go to log in</Link>
+                    <div className="signup-form-footer">
+                        <span>Didn't get it?</span>
+                        <button
+                            type="button"
+                            className="hero-link-btn"
+                            disabled={resent}
+                            onClick={async () => {
+                                await requestVerification(registeredEmail).catch(() => null);
+                                setResent(true);
+                            }}
+                        >
+                            {resent ? "Sent again" : "Resend email"}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="signup-form-side">
             <div className="signup-form-card">
                 <div className="signup-form-header">
                     <span className="preview-label">Get started</span>
-                    <h2>Create your account</h2>
+                    <h1>Create your account</h1>
                     <p>Set up your dashboard and start tracking your investments.</p>
                 </div>
 
+                {error && <p className="alert-error" role="alert">{error}</p>}
+
                 <form className="signup-form" onSubmit={handleSubmit}>
                     <div className="signup-field">
-                        <label htmlFor="name">Full Name</label>
+                        <label htmlFor="name">Full name</label>
                         <input
                             id="name"
                             name="name"
-                            placeholder="Enter your full name"
+                            placeholder="Jane Doe"
+                            value={form.name}
                             onChange={handleChange}
+                            autoComplete="name"
+                            maxLength={100}
+                            required
+                            autoFocus
                         />
                     </div>
 
@@ -49,25 +105,31 @@ function SignupForm({onSubmit}) {
                         <input
                             id="email"
                             name="email"
-                            placeholder="Enter your email"
+                            type="email"
+                            placeholder="you@example.com"
+                            value={form.email}
                             onChange={handleChange}
+                            autoComplete="email"
+                            required
                         />
                     </div>
 
                     <div className="signup-field">
                         <label htmlFor="password">Password</label>
-                        <input
+                        <PasswordInput
                             id="password"
                             name="password"
-                            placeholder="Create a password"
+                            placeholder="At least 8 characters"
+                            value={form.password}
                             onChange={handleChange}
-                            type="password"
-                            autoComplete="off"
+                            autoComplete="new-password"
+                            minLength={8}
+                            required
                         />
                     </div>
 
                     <div className="signup-field">
-                        <label htmlFor="currency">Preferred Currency</label>
+                        <label htmlFor="currency">Preferred currency</label>
                         <select
                             id="currency"
                             name="currency"
@@ -81,14 +143,14 @@ function SignupForm({onSubmit}) {
                         </select>
                     </div>
 
-                    <button type="submit" className="auth-btn signup-btn large signup-submit-btn">
-                        Submit
+                    <button type="submit" className="auth-btn signup-btn large signup-submit-btn" disabled={submitting}>
+                        {submitting ? "Creating account…" : "Create account"}
                     </button>
                 </form>
 
                 <div className="signup-form-footer">
                     <span>Already have an account?</span>
-                    <button onClick={() => navigate("/login")} type="button" className="hero-link-btn">Log in</button>
+                    <Link to="/login" className="hero-link-btn">Log in</Link>
                 </div>
             </div>
         </div>

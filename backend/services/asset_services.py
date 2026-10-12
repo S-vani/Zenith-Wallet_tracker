@@ -1,4 +1,5 @@
 import asyncio
+from decimal import Decimal
 from datetime import datetime, timedelta, timezone
 
 import httpx
@@ -30,7 +31,8 @@ async def get_ticker_currency(symbol: str) -> str:
 
     try:
         ticker = yf.Ticker(symbol)
-        currency = ticker.info.get("currency", "USD").upper()
+        info = await asyncio.to_thread(lambda: ticker.info)
+        currency = (info.get("currency") or "USD").upper()
     except Exception:
         currency = "USD"
 
@@ -68,6 +70,7 @@ def get_conversion_factor(rates: dict, currency: str) -> float:
     """
     Function with a bunch of if statements just to avoid repeating if statements on all functions
     """
+    currency = (currency or "").upper()
     if currency == "USD":
         return rates["usd"]
     elif currency == "EUR":
@@ -98,7 +101,7 @@ async def get_curr_holdings_prices(holdings: dict[str, dict[str, float | str]], 
 
     for ids in holdings:
         if str(holdings[ids]["type"]) == "crypto":
-            crypto.append(str(ids).upper())  # .upper for yahoo finance
+            crypto.append(str(ids))  # keep the stored id as the key, get_crypto_prices_at uppercases it for yahoo
         elif str(holdings[ids]["type"]) == "stock":
             stocks.append(str(ids))
 
@@ -214,6 +217,9 @@ async def get_holdings_at_time(
             if api_id in holdings_at_timestamp:
                 holdings_at_timestamp[api_id]["quantity"] -= float(t.quantity)
 
+                if holdings_at_timestamp[api_id]["quantity"] <= 1e-9:  # fully sold, so it's no longer a holding
+                    del holdings_at_timestamp[api_id]
+
     return holdings_at_timestamp
 
 
@@ -245,7 +251,7 @@ async def get_holdings_at_time_list(
 
     for key, value in result.items():
         prices = stock_prices if value["type"] == "stock" else crypto_prices
-        current_price = float(prices[key])
+        current_price = float(prices.get(key) or 0.0)
 
         curr_holdings_list.append({
             "symbol": key,
@@ -345,16 +351,17 @@ async def get_crypto_prices_at(api_ids: list[str], timestamp: datetime, currency
         # FALLBACK SECTION - IF NO MINUTE DATA EXISTS
         fallback_start = timestamp - timedelta(days=5)
         fallback_end = min(timestamp + timedelta(days=1), now)
-        hist_fallback = ticker.history(start=fallback_start, end=fallback_end, interval="1d")
+        hist_fallback = await asyncio.to_thread(ticker.history, start=fallback_start, end=fallback_end,
+                                                interval="1d")
 
         if hist_fallback.empty:
-            return api_id, None
+            return api_id, 0.0
 
         hist_before = hist_fallback[
             hist_fallback.index.tz_convert("UTC") <= timestamp]  # only get dates before our target timestamp
 
         if hist_before.empty:
-            return api_id, None
+            return api_id, 0.0
 
         price = float(hist_before.iloc[-1]["Close"])  # closest daily close price
         return api_id, price * conversion
@@ -378,16 +385,10 @@ async def get_stock_prices_at(symbols: list[str], timestamp: datetime, currency:
 
     async def fetch_one(symbol):
         ticker_currency = await get_ticker_currency(symbol)  # cached after first call
-        to_cad = 1.0 if ticker_currency == "CAD" else conversion_to_cad  # check what currency the stock is being returned in
+        to_cad = 1.0 if ticker_currency == "CAD" else conversion_to_cad  # If already CAD no conversion needed
 
         ticker = yf.Ticker(symbol)
         now = datetime.now(timezone.utc)
-
-        # If already CAD no conversion needed, otherwise convert to CAD first
-        if ticker_currency == "CAD":
-            to_cad = 1.0
-        else:
-            to_cad = conversion_to_cad
 
         # get the start and end windows around the timestamp
         narrow_start = timestamp - timedelta(minutes=5)
@@ -405,7 +406,8 @@ async def get_stock_prices_at(symbols: list[str], timestamp: datetime, currency:
         # FALLBACK SECTION - IF NO MINUTE DATA EXISTS
         fallback_start = timestamp - timedelta(days=5)
         fallback_end = min(timestamp + timedelta(days=1), now)
-        hist_fallback = ticker.history(start=fallback_start, end=fallback_end, interval="1d")
+        hist_fallback = await asyncio.to_thread(ticker.history, start=fallback_start, end=fallback_end,
+                                                interval="1d")
 
         if hist_fallback.empty:
             return symbol, 0.0
@@ -462,9 +464,6 @@ async def calculate_profit_for_one_transaction(db: AsyncSession, user_id: UUID, 
 
     profit = (sell_price - avg_cost) * sell_qty
 
-    rates = await get_all_conversion_rates()
-    conversion = get_conversion_factor(rates, currency)
-
     return profit
 
 
@@ -481,7 +480,9 @@ def create_holding_filter(
     query = select(Transaction).where(Transaction.user_id == user_id)
 
     if symbol:
-        query = query.where(Transaction.symbol.ilike(f"{symbol}%"))
+        # escape LIKE wildcards so typing "_" or "%" doesn't match everything
+        escaped = symbol.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        query = query.where(Transaction.symbol.ilike(f"{escaped}%", escape="\\"))
 
     if action:
         query = query.where(Transaction.action == action)
@@ -497,13 +498,14 @@ def create_holding_filter(
     return query
 
 
-async def current_quantity(db: AsyncSession, user_id: UUID, symbol: str) -> float:
+async def current_quantity(db: AsyncSession, user_id: UUID, symbol: str) -> Decimal:
     """
-    Calculate how much of a specific symbol a user has, for example how much BTC is currently in their account
+    Calculate how much of a specific symbol a user has, for example how much BTC is currently in their account.
+    Quantities are summed as Decimals (how the database stores them) so 0.3 - 0.1 is exactly 0.2
     """
     lst = await get_holdings_from_symbol(db, user_id, symbol)
-    selling = 0
-    buying = 0
+    selling = Decimal(0)
+    buying = Decimal(0)
     for trans in lst:
         if str(trans.action) == "SELL":
             selling += trans.quantity
@@ -513,9 +515,10 @@ async def current_quantity(db: AsyncSession, user_id: UUID, symbol: str) -> floa
     return buying - selling
 
 
-def turn_list_to_dict(lst):
+def turn_list_to_dict(lst, conversion: float = 1.0):
     """
-    loop through a list of transactions and turn it into a list of dictionaries that are easier to use
+    loop through a list of transactions and turn it into a list of dictionaries that are easier to use,
+    with prices converted from CAD into the users currency
     """
     transactions_data = []
     for trans in lst:
@@ -524,13 +527,13 @@ def turn_list_to_dict(lst):
                 "id": str(trans.id),
                 "user_id": str(trans.user_id),
                 "action": str(trans.action),
-                "profit": float(trans.profit),
+                "profit": float(trans.profit or 0) * conversion,
                 "asset_type": str(trans.asset_type),
                 "symbol": str(trans.symbol),
                 "api_ids": str(trans.api_id),
-                "price_of_one": float(trans.price_of_one),
+                "price_of_one": float(trans.price_of_one) * conversion,
                 "quantity": float(trans.quantity),
-                "created_at": trans.created_at.isoformat()
+                "created_at": trans.created_at.replace(tzinfo=timezone.utc).isoformat()
             }
         )
     return transactions_data
@@ -610,22 +613,19 @@ async def get_history_of_prices(
 
     ticker = yf.Ticker(s)  # create object representing the specific stock or crypto
 
-    currency_1 = ticker.info.get("currency")
+    currency_1 = "USD" if type == "crypto" else await get_ticker_currency(s)
     rates = await get_all_conversion_rates()
     conversion_to_cad = rates["usd_to_cad"]
     conversion = get_conversion_factor(rates, currency)
 
-    hist = ticker.history(
+    hist = await asyncio.to_thread(
+        ticker.history,
         period=period,
         interval=interval
     )  # fetch its historical prices as a dataframe(SQL) table over a time period with specific intervals
 
     if hist.empty:
-        return {
-            "symbol": s,
-            "range": range,
-            "data": []
-        }
+        return [], s
 
     data = []  # A list with each entry being a dictionary in the form {"time": str, "price": float}
 
@@ -650,7 +650,7 @@ def calculate_timespans_for_portfolio_history(ranges: int):
     Returns a list of timedelta objects.
     """
     now = datetime.now(timezone.utc)
-    end = now - timedelta(minutes=10)  # stop 10 minutes before now to avoid boundary issues
+    end = now  # end at now so the last point matches the portfolio value card
     start = now - timedelta(days=ranges)
 
     if ranges == 1:
@@ -659,7 +659,7 @@ def calculate_timespans_for_portfolio_history(ranges: int):
     elif ranges == 7:
         points = 169
         t = "1W"
-    elif ranges == 31:
+    elif ranges in (30, 31):
         points = 121
         t = "1M"
     else:
@@ -718,6 +718,9 @@ async def get_portfolio_value_history(
                     })
 
                 cached_histories[symbol] = parsed  # store the information into our cached history
+
+            if not cached_histories[symbol]:  # no price data for this holding
+                continue
 
             # find closest candle
             closest = min(

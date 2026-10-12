@@ -1,54 +1,52 @@
-.login-page-wrapper{
+.login-page-wrapper {
     display: flex;
     flex-direction: row;
     width: 100%;
-    margin-top: 1.5rem;
+    min-height: 100vh;
 }
 
-
-
-.login-page-left-side{
+.login-page-left-side {
     display: flex;
     flex-direction: column;
-    align-items: center;
     width: 50%;
-    gap: 5rem;
+    padding: 2rem 3rem;
+    gap: 2rem;
 }
 
-.login-page-information{
+.login-page-information {
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
+    text-align: center;
     gap: 1rem;
 }
 
-.login-page-information h3{
-    font-size: 2rem;
+.login-page-information h2 {
+    font-size: clamp(2rem, 3.2vw, 2.8rem);
+    font-weight: 800;
+    line-height: 1.15;
+    max-width: 30rem;
 }
 
-.login-page-information h2{
-    font-size: 3rem;
+.login-page-information p {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    max-width: 30rem;
 }
 
-.login-page-information p{
-    font-size: 1.2rem;
-    text-align: center;
-    width: 70%;
+.login-page-information img {
+    width: min(24rem, 80%);
+    height: auto;
+    aspect-ratio: 1;
+    object-fit: contain;
+    margin-top: 1rem;
 }
 
-.login-page-information img{
-    width: 30rem;
-    height: 30rem;
-}
-
-.login-page-brand div{
-    font-size: 2rem;
-}
-
-.login-page-brand{
-    align-self: start;
-    margin-left: 3rem;
-
+.login-page-brand {
+    align-self: flex-start;
 }
 
 .login-form-side {
@@ -56,8 +54,7 @@
     align-items: center;
     justify-content: center;
     width: 50%;
-    margin-bottom: 1rem;
-    margin-right: 5rem;
+    padding: 2rem;
 }
 
 .login-form-card {
@@ -146,4 +143,31 @@
     color: #9aa0a6;
     padding-top: 1rem;
     border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+@media (max-width: 900px) {
+    .login-page-wrapper {
+        flex-direction: column;
+    }
+
+    .login-page-left-side {
+        width: 100%;
+        padding: 1.25rem 1.25rem 0;
+    }
+
+    /* on phones the marketing copy gets out of the way of the form */
+    .login-page-information {
+        display: none;
+    }
+
+    .login-form-side {
+        width: 100%;
+        flex: 1;
+        align-items: flex-start;
+        padding: 1.5rem 1rem 2rem;
+    }
+
+    .login-form-card {
+        padding: 1.5rem;
+    }
 }

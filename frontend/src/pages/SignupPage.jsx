@@ -1,21 +1,30 @@
+import {Link, Navigate} from "react-router-dom";
 import SignupForm from "../Authentication/SignupForm.jsx";
-import { signupAuthentication } from "../services/api";
+import {getToken, signupAuthentication} from "../services/api";
+import usePageTitle from "../utils/usePageTitle.js";
 
+import "../css/Home.css";
+import "../css/Auth.css";
 import "../css/Signup.css";
 
 function SignupPage() {
+    usePageTitle("Sign up");
+
+    if (getToken()) {
+        return <Navigate to="/dashboard" replace/>;
+    }
 
     return (
         <div className="signup-page-wrapper">
-            <SignupForm onSubmit={signupAuthentication} />
+            <SignupForm onSubmit={signupAuthentication}/>
 
             <div className="signup-page-right-side">
                 <div className="signup-page-brand">
-                    <div className="home-brand">
+                    <Link to="/" className="home-brand">
                         <span className="brand-mark">◆</span>
                         <span className="brand-name">Zenith&nbsp;<span
                             className="brand-accent">Wallet Tracker</span></span>
-                    </div>
+                    </Link>
                 </div>
 
                 <div className="signup-page-information">
@@ -38,8 +47,8 @@ function SignupPage() {
                         <li>
                             <span className="feature-icon">◆</span>
                             <div>
-                                <h3>One dashboard, all accounts</h3>
-                                <p>Connect multiple brokerages and wallets in a single view.</p>
+                                <h3>Stocks and crypto, one dashboard</h3>
+                                <p>Log every buy and sell and see your whole portfolio in a single view.</p>
                             </div>
                         </li>
                     </ul>

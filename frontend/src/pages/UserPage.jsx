@@ -1,185 +1,214 @@
-import {useState, useEffect} from "react";
+import {useState} from "react";
+import {useNavigate} from "react-router-dom";
 import "../css/User.css"
 
-import {getUser, putUserInfo, putUserEmail} from "../services/api.js"
+import {putUserInfo, putUserEmail, logout} from "../services/api.js"
+import {useUser} from "../context/UserContext.jsx";
+import usePageTitle from "../utils/usePageTitle.js";
 
 function UserPage() {
-    const [userInformation, setUserInformation] = useState({
-        "name": "",
-        "email": "",
-        "isVerified": false,
-        "currency": "",
-        "dateJoined": ""
-    })
-    const [displayName, setDisplayName] = useState("");
-    const [sendingVerification, setSendingVerification] = useState(false);
-    const [verificationSent, setVerificationSent] = useState(false);
+    usePageTitle("Account");
+
+    const {user, setUser} = useUser();
+
+    if (!user) {
+        return (
+            <div className="app-page">
+                <div className="state-message"><div className="spinner"/>Loading your account…</div>
+            </div>
+        );
+    }
+
+    return <UserSettings user={user} setUser={setUser}/>;
+}
+
+// Rendered once the user is loaded, so the form can start from their saved values
+function UserSettings({user, setUser}) {
+    const navigate = useNavigate();
+    const [form, setForm] = useState({name: user.name, currency: user.currency, email: user.email});
+    const [saving, setSaving] = useState(false);
     const [savedInfo, setSavedInfo] = useState(false);
-
-    const handleSave = async () => {
-        const userinfo = await putUserInfo(userInformation)
-        setSavedInfo(true)
-        setTimeout(() => {
-            setSavedInfo(false);
-        }, 3000);
-        setDisplayName(userInformation.name)
-    };
-
-    const handleVerify = async () => {
-        setSendingVerification(true);
-        try {
-            const emailVerification = await putUserEmail(userInformation.email)
-            setVerificationSent(true);
-        } finally {
-            setSendingVerification(false);
-        }
-    };
+    const [saveError, setSaveError] = useState(null);
+    const [sendingVerification, setSendingVerification] = useState(false);
+    const [emailError, setEmailError] = useState(null);
 
     const setInformation = (info, change) => {
-        setUserInformation((prev) => ({
+        setForm((prev) => ({
             ...prev,
             [info]: change
         }))
     }
 
+    const profileChanged = form.name.trim() !== user.name || form.currency !== user.currency;
+    const emailChanged = form.email.trim().toLowerCase() !== user.email.toLowerCase();
 
-    useEffect(() => {
-        async function getUserInformation() {
-            const info = await getUser();
-
-
-            const formattedDate = new Date(info.date_joined).toLocaleDateString(
-                "en-US",
-                {
-                    month: "long",
-                    year: "numeric",
-                }
-            );
-
-            const formattedInfo = {
-                name: info.name,
-                email: info.email,
-                isVerified: info.isVerified,
-                currency: info.currency,
-                dateJoined: formattedDate,
-            };
-
-            setDisplayName(formattedInfo.name)
-            setUserInformation(formattedInfo)
+    const handleSave = async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        setSaveError(null);
+        try {
+            const updated = await putUserInfo({name: form.name.trim(), currency: form.currency});
+            setUser(updated);
+            setSavedInfo(true)
+            setTimeout(() => setSavedInfo(false), 3000);
+        } catch (err) {
+            setSaveError(err.message);
+        } finally {
+            setSaving(false);
         }
+    };
 
-        getUserInformation()
-    }, [])
+    // Changing the email unverifies the account, so the user is signed out until they confirm the new address
+    const handleEmailChange = async () => {
+        setSendingVerification(true);
+        setEmailError(null);
+        try {
+            await putUserEmail(form.email)
+            logout();
+            navigate("/login", {
+                replace: true,
+                state: {notice: `We sent a verification link to ${form.email.trim()}. Verify it, then log in with your new email.`}
+            });
+        } catch (err) {
+            setEmailError(err.message);
+            setSendingVerification(false);
+        }
+    };
+
+    const handleLogout = () => {
+        logout();
+        navigate("/login", {replace: true});
+    };
+
+    const initials = user.name
+        .split(" ")
+        .filter(Boolean)
+        .map((part) => Array.from(part)[0]) // Array.from keeps emoji whole instead of half a character
+        .join("")
+        .slice(0, 2)
+        .toUpperCase();
+
+    const memberSince = new Date(user.date_joined).toLocaleDateString(undefined, {month: "long", year: "numeric"});
 
     return (
         <div className="user-page-wrapper">
             {savedInfo && (
-                <div className="saving-popup">Changes Saved</div>
+                <div className="saving-popup" role="status">Changes saved</div>
             )}
             <div className="user-page">
                 <div className="user-header">
-                    <div className="user-avatar">
-                        {displayName
-                            .split(" ")
-                            .map((part) => part[0])
-                            .join("")
-                            .slice(0, 2)
-                            .toUpperCase()}
-                    </div>
+                    <div className="user-avatar" aria-hidden="true">{initials}</div>
                     <div className="user-header-info">
-                        <span className="user-header-name">{displayName}</span>
+                        <h1 className="user-header-name">{user.name}</h1>
                         <span className="user-header-sub">Account settings</span>
                     </div>
                 </div>
 
-                <div className="user-card">
+                <form className="user-card" onSubmit={handleSave}>
                     <div className="user-card-header">
-                        <span className="user-card-title">Profile</span>
+                        <h2 className="user-card-title">Profile</h2>
                     </div>
 
                     <div className="user-field">
-                        <label className="user-field-label">Name</label>
+                        <label className="user-field-label" htmlFor="user-name">Name</label>
                         <input
+                            id="user-name"
                             className="user-field-input"
-                            value={userInformation.name}
+                            value={form.name}
                             onChange={(e) => setInformation("name", e.target.value)}
                             placeholder="Your name"
+                            autoComplete="name"
+                            maxLength={100}
+                            required
                         />
+                        {!form.name.trim() && <span className="user-field-hint error-hint">Name can't be empty.</span>}
                     </div>
 
                     <div className="user-field">
-                        <label className="user-field-label">Email</label>
-                        <div className="user-email-row">
-                            <input
-                                className="user-field-input"
-                                value={userInformation.email}
-                                onChange={(e) => {
-                                    setInformation("email", e.target.value);
-                                    setInformation("isVerified", false);
-                                    setVerificationSent(false);
-                                }}
-                                placeholder="you@example.com"
-                            />
-                            <span
-                                className={`verify-badge ${userInformation.isVerified ? "verified" : "unverified"}`}
-                            >
-                                {userInformation.isVerified ? "Verified" : "Unverified"}
-                            </span>
-                        </div>
+                        <label className="user-field-label" htmlFor="user-currency">Currency</label>
+                        <select
+                            id="user-currency"
+                            className="user-field-select"
+                            value={form.currency}
+                            onChange={(e) => setInformation("currency", e.target.value)}
+                        >
+                            <option value="CAD">CAD — Canadian Dollar</option>
+                            <option value="USD">USD — US Dollar</option>
+                            <option value="EUR">EUR — Euro</option>
+                        </select>
+                        <span className="user-field-hint">All prices and totals are shown in this currency.</span>
+                    </div>
 
-                        {!userInformation.isVerified && (
-                            <div className="verify-row">
-                                {verificationSent ? (
-                                    <span className="verify-sent-text">
-                                        Verification email sent — check your inbox.
-                                    </span>
-                                ) : (
-                                    <button
-                                        className="verify-button"
-                                        onClick={handleVerify}
-                                        disabled={sendingVerification}
-                                    >
-                                        {sendingVerification ? "Sending..." : "Verify email"}
-                                    </button>
-                                )}
-                            </div>
+                    {saveError && <p className="alert-error" role="alert">{saveError}</p>}
+
+                    <div className="user-divider"/>
+
+                    <button className="btn btn-success user-save-button" type="submit"
+                            disabled={!profileChanged || saving || !form.name.trim()}>
+                        {saving ? "Saving…" : "Save changes"}
+                    </button>
+                </form>
+
+                <div className="user-card">
+                    <div className="user-card-header">
+                        <h2 className="user-card-title">Email</h2>
+                        {emailChanged ? (
+                            <span className="verify-badge unverified">Not saved</span>
+                        ) : (
+                            <span className={`verify-badge ${user.isVerified ? "verified" : "unverified"}`}>
+                                {user.isVerified ? "Verified" : "Unverified"}
+                            </span>
                         )}
                     </div>
 
                     <div className="user-field">
-                        <label className="user-field-label">Currency</label>
-                        <select
-                            className="user-field-select"
-                            value={userInformation.currency}
-                            onChange={(e) => setInformation("currency", e.target.value)}
-                        >
-                            <option value="" disabled>
-                                Select currency
-                            </option>
-                            <option value="USD">USD — US Dollar</option>
-                            <option value="CAD">CAD — Canadian Dollar</option>
-                            <option value="EUR">EUR — Euro</option>
-                        </select>
+                        <label className="user-field-label" htmlFor="user-email">Email address</label>
+                        <input
+                            id="user-email"
+                            className="user-field-input"
+                            type="email"
+                            value={form.email}
+                            onChange={(e) => {
+                                setInformation("email", e.target.value);
+                                setEmailError(null);
+                            }}
+                            placeholder="you@example.com"
+                            autoComplete="email"
+                        />
                     </div>
 
-                    <div className="user-divider"/>
+                    {emailChanged && (
+                        <div className="verify-row">
+                            <p className="user-field-hint">
+                                We'll send a verification link to the new address. You'll be signed out until you
+                                confirm it.
+                            </p>
+                            <button
+                                className="btn btn-primary"
+                                onClick={handleEmailChange}
+                                disabled={sendingVerification || !form.email.includes("@")}
+                            >
+                                {sendingVerification ? "Sending…" : "Update email"}
+                            </button>
+                        </div>
+                    )}
 
-                    <button className="user-save-button" onClick={handleSave}>
-                        Save changes
-                    </button>
+                    {emailError && <p className="alert-error" role="alert">{emailError}</p>}
                 </div>
 
                 <div className="user-card">
                     <div className="user-card-header">
-                        <span className="user-card-title">Account info</span>
+                        <h2 className="user-card-title">Account info</h2>
                     </div>
 
                     <div className="user-info-grid">
                         <div className="user-info-row">
                             <span className="user-info-label">Member since</span>
-                            <span className="user-info-value">{userInformation.dateJoined}</span>
+                            <span className="user-info-value">{memberSince}</span>
                         </div>
                     </div>
+
+                    <button className="btn user-logout-button" onClick={handleLogout}>Log out</button>
                 </div>
             </div>
         </div>

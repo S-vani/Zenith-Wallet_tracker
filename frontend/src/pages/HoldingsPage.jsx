@@ -1,49 +1,70 @@
 import {useEffect, useState} from "react";
+import {Link} from "react-router-dom";
 import {getHoldings} from "../services/api.js";
 import HoldingsList from "../Holdings/HoldingsList.jsx";
+import usePageTitle from "../utils/usePageTitle.js";
 
 import "../css/Holdings.css"
 
 function HoldingsPage() {
-    const [loading, setLoading] = useState(false);
+    usePageTitle("Holdings");
+
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [holdings, setHoldings] = useState([]);
 
-    const loadHoldings = async () => {
-        try {
-            setLoading(true);
-            setError(null);
-
-            const data = await getHoldings();
-            setHoldings(data)
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
+        const loadHoldings = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                setHoldings(await getHoldings());
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
         loadHoldings();
     }, []);
 
+    let content;
+    if (loading) {
+        content = <div className="state-message"><div className="spinner"/>Loading your holdings…</div>;
+    } else if (error) {
+        content = <div className="state-message"><p className="alert-error" role="alert">{error}</p></div>;
+    } else if (holdings.length === 0) {
+        content = (
+            <div className="state-message">
+                <strong>You don't have any holdings yet</strong>
+                Log a buy on the Transactions page and it will show up here.
+                <Link to="/transactions" className="btn btn-primary">Add a transaction</Link>
+            </div>
+        );
+    } else {
+        content = <HoldingsList holdings={holdings}/>;
+    }
+
     return (
-        <div>
-            <h1 className="holdings-header">Holdings</h1>
+        <div className="app-page">
+            <header>
+                <h1 className="page-headers">Holdings</h1>
+                <p className="page-subtitle">Select a position to see its price history.</p>
+            </header>
+
             <div className="holdings">
-                <div className="table-header">
-                    <span>Positions</span>
+                <div className="table-header" aria-hidden="true">
+                    <span>Position</span>
                     <span>Total value</span>
                     <span>Quantity</span>
                     <span>Return</span>
                     <span>Return %</span>
+                    <span/>
                 </div>
-                {loading && <p className="loading-holdings">Loading...</p>}
-                {error && <p className="error-holdings">{error}</p>}
-                <HoldingsList holdings={holdings}/>
+                {content}
             </div>
         </div>
-
     )
 }
 

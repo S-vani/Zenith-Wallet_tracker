@@ -1,67 +1,103 @@
 import "../css/Search.css"
-import {useState} from "react";
+import {useRef, useState} from "react";
 import {searchCrypto, searchStock} from "../services/api.js";
 import SearchResults from "../Search/SearchResults.jsx"
+import usePageTitle from "../utils/usePageTitle.js";
 
 function SearchPage() {
-    const [searchSymbol, setSearchSymbol] = useState({"symbol": "", "type": ""});
-    const [searchResults, setSearchResults] = useState([]) // hold the search results
+    usePageTitle("Search");
 
+    const [searchSymbol, setSearchSymbol] = useState({"symbol": "", "type": "stock"});
+    const [searchResults, setSearchResults] = useState(null) // hold the search results, null until the first search
+    const [lastQuery, setLastQuery] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const searchId = useRef(0); // only the newest search may update the page
 
-    function searchBarChange(e) {
-        setSearchSymbol({
-            ...searchSymbol,
-            "symbol": e,
-        })
+    function setType(type) {
+        searchId.current += 1;
+        setLoading(false);
+        setSearchSymbol({...searchSymbol, type});
+        setSearchResults(null);
+        setError(null);
     }
 
-    async function searchBarSubmit() {
-        let data;
-        if (searchSymbol.type === "stock") {
-            data = await searchStock(searchSymbol.symbol)
-        } else if (searchSymbol.type === "crypto") {
-            data = await searchCrypto(searchSymbol.symbol)
-        } else {
-            throw new Error("Please select which type of holding you are searching for.")
-        }
+    async function searchBarSubmit(e) {
+        e.preventDefault();
+        const query = searchSymbol.symbol.trim();
+        if (!query) return;
 
-        setSearchResults(data)
+        const id = ++searchId.current;
+        setLoading(true);
+        setError(null);
+        try {
+            const data = searchSymbol.type === "stock" ? await searchStock(query) : await searchCrypto(query);
+            if (id !== searchId.current) return;
+            setSearchResults(data);
+            setLastQuery(query);
+        } catch (err) {
+            if (id === searchId.current) setError(err.message);
+        } finally {
+            if (id === searchId.current) setLoading(false);
+        }
     }
 
     return (
-        <div className="search-page-wrapper">
-            <h1>Search</h1>
+        <div className="app-page search-page-wrapper">
+            <header className="search-header">
+                <h1 className="page-headers">Search</h1>
+                <p className="page-subtitle">Look up live prices for stocks and crypto.</p>
+            </header>
+
             <div className="search-area">
-                <div>
+                <div className="segmented" role="group" aria-label="Asset type">
                     <button
-                        className={searchSymbol.type === "crypto" ? "search-button active" : "search-button"}
-                        onClick={() => setSearchSymbol({
-                            ...searchSymbol,
-                            "type": "crypto"
-                        })}>
-                        Crypto
-                    </button>
-                    <button
-                        className={searchSymbol.type === "stock" ? "search-button active" : "search-button"}
-                        onClick={() => setSearchSymbol({
-                            ...searchSymbol,
-                            "type": "stock"
-                        })}>
+                        className={searchSymbol.type === "stock" ? "active" : ""}
+                        aria-pressed={searchSymbol.type === "stock"}
+                        onClick={() => setType("stock")}>
                         Stock
                     </button>
+                    <button
+                        className={searchSymbol.type === "crypto" ? "active" : ""}
+                        aria-pressed={searchSymbol.type === "crypto"}
+                        onClick={() => setType("crypto")}>
+                        Crypto
+                    </button>
                 </div>
-                <div>
+                <form className="search-form" role="search" onSubmit={searchBarSubmit}>
+                    <svg className="search-form-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                        <circle cx="11" cy="11" r="7"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
                     <input
-                        onChange={(e) => searchBarChange(e.target.value)}
+                        value={searchSymbol.symbol}
+                        onChange={(e) => setSearchSymbol({...searchSymbol, symbol: e.target.value})}
                         className="search-bar"
-                        placeholder="Insert Symbol"
+                        type="search"
+                        aria-label={`Search ${searchSymbol.type}`}
+                        placeholder={searchSymbol.type === "stock" ? "Search a ticker, e.g. AAPL" : "Search a coin, e.g. BTC"}
+                        autoComplete="off"
+                        autoFocus
                     />
-                    <button className="search-submit-button" onClick={() => searchBarSubmit()}>Search</button>
-                </div>
-
+                    <button className="btn btn-primary" type="submit" disabled={loading || !searchSymbol.symbol.trim()}>
+                        {loading ? "Searching…" : "Search"}
+                    </button>
+                </form>
             </div>
 
-            <SearchResults results={searchResults}/>
+            {error && <p className="alert-error search-error" role="alert">{error}</p>}
+
+            {searchResults && (
+                searchResults.length > 0 ? (
+                    <SearchResults results={searchResults}/>
+                ) : (
+                    <div className="state-message">
+                        <strong>No results for “{lastQuery}”</strong>
+                        Check the spelling, or try switching between Stock and Crypto.
+                    </div>
+                )
+            )}
         </div>
     )
 }
