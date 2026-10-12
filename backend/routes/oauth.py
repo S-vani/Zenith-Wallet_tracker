@@ -107,8 +107,10 @@ async def google_callback(
 
     try:
         state_data = decode_jwt(state, os.getenv("SECRET"), [STATE_AUDIENCE])
-    except jwt.PyJWTError:
+    except jwt.ExpiredSignatureError:
         return fail("expired")
+    except jwt.PyJWTError:
+        return fail("invalid_state")
 
     cookie = request.cookies.get(CSRF_COOKIE)
     if not cookie or not secrets.compare_digest(cookie, state_data.get("csrf", "")):
@@ -125,9 +127,17 @@ async def google_callback(
 
     existing = True
     try:
-        await user_manager.get_by_email(account_email)
+        existing_user = await user_manager.get_by_email(account_email)
     except Exception:
         existing = False
+    else:
+        if not existing_user.is_verified:
+            # Someone registered this email but never proved they own it. It could be an attacker who signed up with
+            # the victim's address, so drop that password before Google (who verified the email) takes over the
+            # account. The real owner can sign in with Google from now on.
+            await user_manager.user_db.update(
+                existing_user, {"hashed_password": user_manager.password_helper.hash(secrets.token_urlsafe(32))}
+            )
 
     # finds the linked account, links an existing account with the same (Google-verified) email, or creates one
     user = await user_manager.oauth_callback(

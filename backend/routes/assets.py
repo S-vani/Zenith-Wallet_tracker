@@ -1,7 +1,7 @@
 import asyncio
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Literal
+from typing import Annotated, Optional, Literal
 from dotenv import load_dotenv
 import httpx
 from decimal import Decimal
@@ -22,7 +22,8 @@ from backend.services.asset_services import (current_quantity, create_holding_fi
                                              get_total_realized_profit, \
                                              get_holdings_at_time_list, get_history_of_prices,
                                              get_portfolio_value_history, \
-                                             get_all_conversion_rates, get_conversion_factor)
+                                             get_all_conversion_rates, get_conversion_factor,
+                                             rebuild_symbol_ledger)
 
 load_dotenv()
 router = APIRouter()
@@ -80,10 +81,18 @@ async def delete_transaction_with_id(
     if result is None:
         raise HTTPException(status_code=404, detail="Transaction not found")
 
+    symbol = result.symbol
     await session.delete(result)
+    await session.flush()
+
+    # e.g. deleting the buy behind a sell would leave a negative position
+    if not await rebuild_symbol_ledger(session, current_user.id, symbol):
+        await session.rollback()
+        raise HTTPException(status_code=409, detail="Deleting this would leave you selling more than you owned")
+
     await session.commit()
 
-    return result
+    return {"id": trans_id, "deleted": True}
 
 
 @router.put("/transactions/{trans_id}")
@@ -100,6 +109,7 @@ async def update_transaction_with_id(
     automatically call this route with the information inputted by the user.
     """
     transaction = await return_transaction_with_id(trans_id, session, current_user)
+    old_symbol = transaction.symbol
 
     # Check exactly what was sent in
     if updates.symbol:
@@ -115,6 +125,14 @@ async def update_transaction_with_id(
         transaction.quantity = updates.quantity
     if updates.api_id:
         transaction.api_id = updates.api_id
+
+    await session.flush()
+
+    # replay the affected symbols: no selling more than owned, and sell profits follow the edited prices
+    for symbol in {old_symbol, transaction.symbol}:
+        if not await rebuild_symbol_ledger(session, current_user.id, symbol):
+            await session.rollback()
+            raise HTTPException(status_code=409, detail="Insufficient holdings")
 
     await session.commit()
     await session.refresh(transaction)
@@ -301,8 +319,8 @@ async def portfolio_stats(
 
 @router.get("/prices/history")
 async def get_price_history(
-        symbol: str,
-        type: str,
+        symbol: Annotated[str, Query(min_length=1, max_length=64)],
+        type: Annotated[Literal["stock", "crypto"], Query()],
         range: Literal["1D", "1W", "1M", "1Y", "5Y"],
 
         current_user: User = Depends(current_active_user)
@@ -312,7 +330,10 @@ async def get_price_history(
     I want to see how much BTC has changed in price over the past day, I call get_price_history("BTC", "1D") and it
     returns all the data needed to generate a graph of its price
     """
-    data, s = await get_history_of_prices(symbol, type, range, current_user.currency)
+    try:
+        data, s = await get_history_of_prices(symbol, type, range, current_user.currency)
+    except Exception:  # unknown ticker or the price source is down
+        data, s = [], symbol
 
     if range == "1D" and data:
         if type == "crypto":
@@ -333,7 +354,7 @@ async def get_price_history(
 
 @router.get("/portfolio/history")
 async def get_portfolio_history(
-        range: int,
+        range: int = Query(ge=1, le=3650),  # days; "All" is the days since joining, capped at 10 years
 
         session: AsyncSession = Depends(get_async_session),
         current_user: User = Depends(current_active_user)

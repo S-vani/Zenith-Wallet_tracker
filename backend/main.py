@@ -17,6 +17,7 @@ from backend.authentication.authentication import auth_backend, fastapi_users
 from backend.routes.assets import router as user_router
 from backend.routes.oauth import router as oauth_router
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 import logging
@@ -48,6 +49,20 @@ class CatchUnhandledErrors(BaseHTTPMiddleware):
             return JSONResponse(status_code=500, content={"detail": "Something went wrong on our end. Please try again."})
 
 
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request, exc: RequestValidationError):
+    """
+    Same 422 shape as FastAPI's default, but without echoing the submitted values back: those can't always be turned
+    into JSON (e.g. NaN), which used to turn a simple validation error into a 500.
+    """
+    errors = [
+        {"type": e.get("type"), "loc": e.get("loc"), "msg": e.get("msg"),
+         "ctx": {k: str(v) if not isinstance(v, (int, float, str, bool)) else v for k, v in (e.get("ctx") or {}).items()}}
+        for e in exc.errors()
+    ]
+    return JSONResponse(status_code=422, content={"detail": errors})
+
+
 # added before CORS so it sits inside it, and its 500 responses still get CORS headers
 app.add_middleware(CatchUnhandledErrors)
 
@@ -62,9 +77,7 @@ app.add_middleware(
 
 app.include_router(fastapi_users.get_auth_router(auth_backend, requires_verification=True),prefix="/auth/jwt", tags=["auth"])
 app.include_router(fastapi_users.get_register_router(UserRead, UserCreate), prefix="/auth", tags=["auth"])
-app.include_router(fastapi_users.get_reset_password_router(), prefix="/auth", tags=["auth"])
 app.include_router(fastapi_users.get_verify_router(UserRead), prefix="/auth", tags=["auth"])
-app.include_router(fastapi_users.get_users_router(UserRead, UserUpdate), prefix="/users", tags=["users"])
 app.include_router(oauth_router)
 app.include_router(user_router)
 

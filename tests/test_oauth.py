@@ -171,7 +171,8 @@ def test_google_verifies_an_unverified_password_account(client, google, db):
     finish(client, state)
 
     assert db.get_user(email).is_verified is True
-    assert login(client, email, PASSWORD).status_code == 200
+    # the unconfirmed password could belong to someone who registered the address first, so it no longer works
+    assert login(client, email, PASSWORD).json()["detail"] == "LOGIN_BAD_CREDENTIALS"
 
 
 def test_callback_without_csrf_cookie_is_rejected(client, google):
@@ -187,7 +188,7 @@ def test_callback_with_forged_state_is_rejected(client, google):
     google(email=unique_email())
     start(client)
     location = finish(client, "not-a-real-state")
-    assert query(location)["oauth_error"] == "expired"
+    assert query(location)["oauth_error"] == "invalid_state"
 
 
 def test_callback_when_user_cancels_on_google(client, google):

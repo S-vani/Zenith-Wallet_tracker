@@ -45,6 +45,12 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         # the signup form asks for 8+ characters, enforce it here too so the api can't be used to skip it
         if len(password) < 8:
             raise exceptions.InvalidPasswordException(reason="Password must be at least 8 characters.")
+        if len(password) > 128:
+            raise exceptions.InvalidPasswordException(reason="Password must be 128 characters or fewer.")
+        if not password.strip():
+            raise exceptions.InvalidPasswordException(reason="Password can't be only spaces.")
+        if user is not None and getattr(user, "email", None) and password.lower() == str(user.email).lower():
+            raise exceptions.InvalidPasswordException(reason="Password can't be your email address.")
 
     async def on_after_register(self,
                                 user: User,

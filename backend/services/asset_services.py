@@ -366,8 +366,14 @@ async def get_crypto_prices_at(api_ids: list[str], timestamp: datetime, currency
         price = float(hist_before.iloc[-1]["Close"])  # closest daily close price
         return api_id, price * conversion
 
+    async def safe_fetch(api_id):
+        try:
+            return await fetch_one(api_id)
+        except Exception:  # unknown coin: count it as 0 instead of failing every page
+            return api_id, 0.0
+
     results = await asyncio.gather(
-        *[fetch_one(api_id) for api_id in api_ids])  # create coroutine of tasks in a list then run them concurrently
+        *[safe_fetch(api_id) for api_id in api_ids])  # create coroutine of tasks in a list then run them concurrently
     return dict(results)  # convert list of tuples to dicts
 
 
@@ -420,7 +426,13 @@ async def get_stock_prices_at(symbols: list[str], timestamp: datetime, currency:
         price = float(hist_before.iloc[-1]["Close"]) * to_cad
         return symbol, price * conversion
 
-    results = await asyncio.gather(*[fetch_one(symbol) for symbol in symbols])
+    async def safe_fetch(symbol):
+        try:
+            return await fetch_one(symbol)
+        except Exception:  # unknown / delisted ticker: count it as 0 instead of failing every page
+            return symbol, 0.0
+
+    results = await asyncio.gather(*[safe_fetch(symbol) for symbol in symbols])
     return dict(results)
 
 
@@ -479,6 +491,13 @@ def create_holding_filter(
     """
     query = select(Transaction).where(Transaction.user_id == user_id)
 
+    # transactions are stored in UTC without a timezone, so convert filter dates the same way
+    def to_utc(value: datetime) -> datetime:
+        return value.astimezone(timezone.utc).replace(tzinfo=None) if value.tzinfo else value
+
+    start_date = to_utc(start_date) if start_date else None
+    end_date = to_utc(end_date) if end_date else None
+
     if symbol:
         # escape LIKE wildcards so typing "_" or "%" doesn't match everything
         escaped = symbol.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
@@ -496,6 +515,34 @@ def create_holding_filter(
         query = query.where(Transaction.created_at <= datetime.now(timezone.utc))
 
     return query
+
+
+async def rebuild_symbol_ledger(db: AsyncSession, user_id: UUID, symbol: str) -> bool:
+    """
+    Replay every transaction of one symbol in date order, recompute the profit of each sell from the average cost
+    at that moment, and return False if the history ever sells more than was owned (e.g. after an edit or delete).
+    """
+    result = await db.execute(
+        select(Transaction)
+        .where(Transaction.user_id == user_id, Transaction.symbol == symbol)
+        .order_by(Transaction.created_at.asc())
+    )
+
+    quantity = Decimal(0)
+    avg_cost = Decimal(0)
+    for t in result.scalars().all():
+        qty = Decimal(str(t.quantity))
+        price = Decimal(str(t.price_of_one))
+        if str(t.action) == "BUY":
+            avg_cost = (quantity * avg_cost + qty * price) / (quantity + qty)
+            quantity += qty
+        else:
+            if qty > quantity:
+                return False
+            t.profit = (price - avg_cost) * qty
+            quantity -= qty
+
+    return True
 
 
 async def current_quantity(db: AsyncSession, user_id: UUID, symbol: str) -> Decimal:
@@ -702,12 +749,15 @@ async def get_portfolio_value_history(
 
             if symbol not in cached_histories:
 
-                history, _ = await get_history_of_prices(
-                    symbol,
-                    holding["type"],
-                    t,
-                    currency
-                )  # List of prices mapping {api_id: price}
+                try:
+                    history, _ = await get_history_of_prices(
+                        symbol,
+                        holding["type"],
+                        t,
+                        currency
+                    )  # List of prices mapping {api_id: price}
+                except Exception:  # bad ticker, chart it as 0 instead of failing
+                    history = []
 
                 parsed = []
 
