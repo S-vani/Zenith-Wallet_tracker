@@ -408,24 +408,55 @@
 
 .transaction-symbol-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(13rem, 100%), 1fr));
     gap: 0.75rem;
 }
 
+/*
+ * Cards stack the price under the symbol so a long symbol and a big price
+ * (e.g. BRK.A at ~CA$1,000,000) never fight for the same row. Wide cards
+ * (the full-width "Selected" card) put the price back on the right.
+ */
 .transaction-symbol-item-wrapper {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-areas:
-        "symbol price"
-        "type change"
-        "action action";
-    gap: 0.35rem 0.75rem;
+    container-type: inline-size;
+    min-width: 0;
 
     padding: 1rem;
     border-radius: 1rem;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.06);
     transition: border-color 0.15s ease;
+}
+
+.symbol-card-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "symbol type"
+        "price price"
+        "change change"
+        "action action";
+    align-items: center;
+    gap: 0.35rem 0.75rem;
+}
+
+@container (min-width: 26rem) {
+    .symbol-card-grid {
+        grid-template-columns: minmax(0, 1fr) minmax(0, auto);
+        grid-template-areas:
+            "symbol price"
+            "type change"
+            "action action";
+    }
+
+    .symbol-card-grid .symbol-type {
+        justify-self: start;
+    }
+
+    .symbol-card-grid .symbol-price,
+    .symbol-card-grid .symbol-change {
+        text-align: right;
+    }
 }
 
 .transaction-symbol-item-wrapper:hover {
@@ -447,10 +478,15 @@
 }
 
 .symbol-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     text-transform: uppercase;
 }
 
 .symbol-image {
+    flex-shrink: 0;
     width: 1.4rem;
     height: 1.4rem;
     border-radius: 50%;
@@ -458,24 +494,39 @@
 
 .symbol-price {
     grid-area: price;
+    min-width: 0;
+    font-size: 1.1rem;
     font-weight: 700;
-    text-align: right;
     font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+/* very large prices (e.g. CA$98,765,432.10) get a smaller size so they still fit on one line */
+.symbol-price.long {
+    font-size: 0.95rem;
 }
 
 .symbol-type {
     grid-area: type;
+    justify-self: end;
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--text-subtle);
+    white-space: nowrap;
 }
 
 .symbol-change {
     grid-area: change;
+    min-width: 0;
     font-size: 0.8rem;
-    text-align: right;
     font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+/* keep "(+1.23%)" together when the change line has to wrap */
+.symbol-change-pct {
+    white-space: nowrap;
 }
 
 .select-btn,
