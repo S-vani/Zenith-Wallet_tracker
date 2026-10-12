@@ -33,7 +33,10 @@ function TransactionSymbolItem({data, onSub, selected = false}) {
                 </div>
 
                 <div className={`symbol-change ${changeClass(data.change_pct)}`}>
-                    {change} <span className="symbol-change-pct">({changePct})</span>
+                    {/* sub-cent moves on tiny coins would just read "CA$0.00", so show only the % */}
+                    {Math.abs(data.change) >= 0.005
+                        ? <>{change} <span className="symbol-change-pct">({changePct})</span></>
+                        : <span className="symbol-change-pct">{changePct}</span>}
                 </div>
 
                 {selected ? (

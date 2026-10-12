@@ -652,8 +652,9 @@
     /* modal becomes a bottom sheet on phones */
     .transaction-create-box {
         max-height: 92vh;
+        max-height: 92dvh; /* follows the visible area as mobile browser bars show/hide */
         border-radius: 1.25rem 1.25rem 0 0;
-        padding: 1.25rem;
+        padding: 1.25rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom));
     }
 
     .quantity-price-buy {

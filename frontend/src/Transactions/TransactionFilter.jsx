@@ -38,7 +38,7 @@ function TransactionFilter({filters, onFiltered}) {
                         className="filter-input"
                         name="symbol"
                         type="search"
-                        placeholder="AAPL, BTC, TSLA..."
+                        placeholder="e.g. AAPL"
                         value={symbol}
                         onChange={(e) => setSymbol(e.target.value)}
                         autoComplete="off"
