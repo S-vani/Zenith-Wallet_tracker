@@ -720,3 +720,88 @@
         display: none;
     }
 }
+
+
+/* ---------- Filters heading doubles as a collapse toggle on phones ---------- */
+.filter-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    cursor: default;
+}
+
+.filter-count {
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.35rem;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 1rem;
+    background: #1d3461;
+    color: var(--accent-soft);
+    font-size: 0.7rem;
+    letter-spacing: 0;
+}
+
+.filter-chevron {
+    display: none;
+    transition: transform 0.2s ease;
+}
+
+@media (max-width: 640px) {
+    .filter-toggle {
+        cursor: pointer;
+        min-height: 2.5rem;
+    }
+
+    .filter-chevron {
+        display: inline;
+    }
+
+    .filter-add-section.open .filter-chevron {
+        transform: rotate(180deg);
+    }
+
+    .filter-add-section {
+        padding: 0.5rem 1.25rem;
+    }
+
+    .filter-add-section.open {
+        padding-bottom: 1.25rem;
+    }
+
+    /* collapsed by default on phones so the list is visible straight away */
+    .filter-add-section:not(.open) .filter-container {
+        display: none;
+    }
+
+    .filter-clear {
+        min-height: 2.5rem;
+        padding: 0 0.25rem;
+    }
+
+    .select-btn {
+        min-height: 2.5rem;
+    }
+
+    .transaction-create-close-button {
+        width: 2.75rem;
+        height: 2.75rem;
+    }
+}
+
+
+@media (max-width: 768px) {
+    .action-badge,
+    .filter-label,
+    .symbol-type,
+    .transaction-id {
+        font-size: 0.75rem;
+    }
+}

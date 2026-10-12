@@ -146,8 +146,8 @@
     }
 }
 
-/* small screens: each holding becomes a compact card instead of a 5 column row */
-@media (max-width: 768px) {
+/* phones: each holding becomes a compact card instead of a 5 column row */
+@media (max-width: 640px) {
     .table-header {
         display: none;
     }
@@ -192,5 +192,12 @@
     .chart-wrapper {
         height: 18rem;
         padding: 0.75rem;
+    }
+}
+
+
+@media (max-width: 768px) {
+    .position-type {
+        font-size: 0.75rem;
     }
 }

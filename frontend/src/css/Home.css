@@ -444,3 +444,10 @@ html {
         display: none;
     }
 }
+
+
+@media (max-width: 520px) {
+    .home-auth .auth-btn {
+        min-height: 2.6rem;
+    }
+}

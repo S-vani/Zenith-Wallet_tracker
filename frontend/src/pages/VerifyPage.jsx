@@ -25,6 +25,10 @@ function VerifyPage() {
         verify(token)
             .then(() => setStatus("success"))
             .catch((err) => {
+                if (err.message.includes("already verified")) {
+                    setStatus("success"); // e.g. the link was opened twice
+                    return;
+                }
                 setStatus("error");
                 setMessage(err.message);
             });

@@ -20,18 +20,24 @@ function SearchPage() {
         setSearchSymbol({...searchSymbol, type});
         setSearchResults(null);
         setError(null);
+        // the typed text is kept, so search it again as the new type
+        if (searchSymbol.symbol.trim()) runSearch(searchSymbol.symbol.trim(), type);
     }
 
     async function searchBarSubmit(e) {
         e.preventDefault();
         const query = searchSymbol.symbol.trim();
         if (!query) return;
+        runSearch(query, searchSymbol.type);
+    }
+
+    async function runSearch(query, type) {
 
         const id = ++searchId.current;
         setLoading(true);
         setError(null);
         try {
-            const data = searchSymbol.type === "stock" ? await searchStock(query) : await searchCrypto(query);
+            const data = type === "stock" ? await searchStock(query) : await searchCrypto(query);
             if (id !== searchId.current) return;
             setSearchResults(data);
             setLastQuery(query);

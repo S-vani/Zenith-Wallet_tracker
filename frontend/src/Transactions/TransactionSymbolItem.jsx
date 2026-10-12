@@ -1,5 +1,5 @@
 import {useUser} from "../context/UserContext.jsx";
-import {changeClass, formatMoney, formatPercent, formatSignedMoney} from "../utils/format.js";
+import {changeClass, formatPercent, formatPrice, formatSignedMoney} from "../utils/format.js";
 
 function TransactionSymbolItem({data, onSub, selected = false}) {
     const {currency} = useUser();
@@ -11,7 +11,7 @@ function TransactionSymbolItem({data, onSub, selected = false}) {
         price: data.price
     }, data);
 
-    const price = formatMoney(data.price, currency, {maximumFractionDigits: data.price < 1 ? 6 : 2});
+    const price = formatPrice(data.price, currency);
     const change = formatSignedMoney(data.change, currency);
     const changePct = formatPercent(data.change_pct);
 

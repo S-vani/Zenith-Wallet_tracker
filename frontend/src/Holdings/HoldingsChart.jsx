@@ -2,7 +2,7 @@ import {useEffect, useState} from "react";
 import {getPriceHistory} from "../services/api.js";
 import {AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer} from "recharts";
 import {useUser} from "../context/UserContext.jsx";
-import {formatMoney} from "../utils/format.js";
+import {formatMoney, formatPrice} from "../utils/format.js";
 import {CHART_DOWN, CHART_UP, INITIAL_DIMENSION, TOOLTIP_STYLE, dailyTicks, tooltipDate} from "../utils/chart.js";
 
 const RANGES = ["1D", "1W", "1M", "1Y", "5Y"];
@@ -49,10 +49,19 @@ function HoldingChart({symbol, type, initialRange = "1M", compact = false}) {
     };
 
     // big prices (e.g. BTC) get compact axis labels so they don't eat the chart width
-    const maxPrice = Math.max(0, ...data.map((d) => d.price));
+    const prices = data.map((d) => d.price);
+    const maxPrice = Math.max(0, ...prices);
+    const spread = maxPrice - Math.min(maxPrice, ...prices);
+    // every tick uses the same number of decimals, chosen from how much the price moves (e.g. SHIB needs 8)
+    let tickDecimals;
+    if (maxPrice >= 1) {
+        tickDecimals = spread >= 10 ? 0 : 2; // whole dollars or cents, never "CA$766.0"
+    } else {
+        tickDecimals = spread > 0 ? Math.min(12, Math.max(2, Math.ceil(-Math.log10(spread)) + 1)) : 4;
+    }
     const formatPriceTick = (value) => formatMoney(value, currency, maxPrice >= 10000
         ? {notation: "compact", minimumFractionDigits: 0, maximumFractionDigits: 1}
-        : {maximumFractionDigits: maxPrice < 1 ? 4 : 2});
+        : {minimumFractionDigits: tickDecimals, maximumFractionDigits: tickDecimals});
 
     let body;
     if (loading) {
@@ -92,7 +101,7 @@ function HoldingChart({symbol, type, initialRange = "1M", compact = false}) {
                     <Tooltip
                         contentStyle={TOOLTIP_STYLE}
                         separator=": "
-                        formatter={(value) => [formatMoney(value, currency), "Price"]}
+                        formatter={(value) => [formatPrice(value, currency), "Price"]}
                         labelFormatter={(value) => tooltipDate(value, intraday)}
                     />
                     <Area

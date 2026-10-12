@@ -5,6 +5,7 @@ import "../css/User.css"
 import {putUserInfo, putUserEmail, logout} from "../services/api.js"
 import {useUser} from "../context/UserContext.jsx";
 import usePageTitle from "../utils/usePageTitle.js";
+import {showToast} from "../utils/toast.js";
 
 function UserPage() {
     usePageTitle("Account");
@@ -27,7 +28,6 @@ function UserSettings({user, setUser}) {
     const navigate = useNavigate();
     const [form, setForm] = useState({name: user.name, currency: user.currency, email: user.email});
     const [saving, setSaving] = useState(false);
-    const [savedInfo, setSavedInfo] = useState(false);
     const [saveError, setSaveError] = useState(null);
     const [sendingVerification, setSendingVerification] = useState(false);
     const [emailError, setEmailError] = useState(null);
@@ -49,8 +49,7 @@ function UserSettings({user, setUser}) {
         try {
             const updated = await putUserInfo({name: form.name.trim(), currency: form.currency});
             setUser(updated);
-            setSavedInfo(true)
-            setTimeout(() => setSavedInfo(false), 3000);
+            showToast("Changes saved");
         } catch (err) {
             setSaveError(err.message);
         } finally {
@@ -92,9 +91,6 @@ function UserSettings({user, setUser}) {
 
     return (
         <div className="user-page-wrapper">
-            {savedInfo && (
-                <div className="saving-popup" role="status">Changes saved</div>
-            )}
             <div className="user-page">
                 <div className="user-header">
                     <div className="user-avatar" aria-hidden="true">{initials}</div>

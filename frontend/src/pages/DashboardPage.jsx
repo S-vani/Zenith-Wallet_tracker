@@ -88,7 +88,8 @@ function DashboardPage() {
                 </Link>
             </div>
 
-            <DashboardChart range={activeRange} currency={currency} dateJoined={user?.date_joined}/>
+            <DashboardChart range={activeRange} currency={currency} dateJoined={user?.date_joined}
+                            trendUp={loading || error ? undefined : stats.curr_timeperiod >= 0}/>
         </div>
     );
 }

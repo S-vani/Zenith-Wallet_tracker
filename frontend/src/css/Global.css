@@ -494,3 +494,22 @@ body::before {
         max-width: none;
     }
 }
+
+
+/* ---------- Phones: slightly larger base size and comfortable tap targets ---------- */
+@media (max-width: 768px) {
+    html,
+    body,
+    #root {
+        font-size: 15px;
+    }
+
+    .segmented button {
+        min-height: 2.5rem;
+        padding: 0.4rem 0.9rem;
+    }
+
+    .btn {
+        min-height: 2.75rem;
+    }
+}

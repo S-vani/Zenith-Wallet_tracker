@@ -1,6 +1,6 @@
 import {useState} from "react";
 import {useUser} from "../context/UserContext.jsx";
-import {changeClass, formatMoney, formatQuantity, formatSignedMoney} from "../utils/format.js";
+import {changeClass, formatMoney, formatPrice, formatQuantity, formatSignedMoney} from "../utils/format.js";
 
 function TransactionItem({transaction, index}) {
     const [expanded, setExpanded] = useState(false);
@@ -62,7 +62,7 @@ function TransactionItem({transaction, index}) {
 
                     <div className="transaction-row">
                         <span>Price per {transaction.asset_type === "stock" ? "share" : "coin"}</span>
-                        <span>{formatMoney(transaction.price_of_one, currency, {maximumFractionDigits: transaction.price_of_one < 1 ? 6 : 2})}</span>
+                        <span>{formatPrice(transaction.price_of_one, currency)}</span>
                     </div>
 
                     <div className="divider"/>

@@ -1,7 +1,8 @@
 import {useEffect, useState} from "react";
 import {createTransaction, getHoldings} from "../services/api.js";
 import {useUser} from "../context/UserContext.jsx";
-import {formatMoney, formatQuantity} from "../utils/format.js";
+import {formatMoney, formatQuantity, priceInputValue} from "../utils/format.js";
+import {showToast} from "../utils/toast.js";
 import HoldingsChart from "../Holdings/HoldingsChart.jsx";
 
 import "../css/Holdings.css";
@@ -14,7 +15,7 @@ function TransactionCreate({onClose, onCreated, data}) {
         asset_type: data.type,
         quantity: "",
         // start from the current market price, the user can change it to what they actually paid
-        price_of_one: data.price ? String(Number(data.price.toFixed(data.price < 1 ? 6 : 2))) : "",
+        price_of_one: priceInputValue(data.price),
         action: "BUY",
     });
     const [submitting, setSubmitting] = useState(false);
@@ -55,6 +56,7 @@ function TransactionCreate({onClose, onCreated, data}) {
                 quantity: Number(form.quantity),
                 price_of_one: Number(form.price_of_one)
             });
+            showToast(`${form.action === "BUY" ? "Buy" : "Sell"} of ${data.symbol.toUpperCase()} saved`);
             onCreated();
         } catch (err) {
             setError(err.message === "Insufficient holdings"
@@ -113,7 +115,10 @@ function TransactionCreate({onClose, onCreated, data}) {
                         You own <strong>{formatQuantity(owned)} {data.symbol.toUpperCase()}</strong>
                         {owned > 0 && (
                             <button type="button" className="inline-link sell-all"
-                                    onClick={() => setForm({...form, quantity: String(owned)})}>
+                                    onClick={() => {
+                                        setError(null);
+                                        setForm({...form, quantity: String(owned)});
+                                    }}>
                                 Sell all
                             </button>
                         )}

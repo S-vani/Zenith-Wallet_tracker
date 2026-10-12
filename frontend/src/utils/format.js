@@ -35,6 +35,27 @@ export function formatMoney(value, currency = "CAD", options = {}) {
     return formatters[key].format(n);
 }
 
+// Decimals needed to show a price meaningfully: 2 for normal prices, more for sub-dollar coins
+function priceDecimals(value) {
+    const n = Math.abs(Number(value));
+    if (!n || n >= 1) return 2;
+    // keep about 4 significant digits, e.g. 0.1234, 0.0006481, 0.0000000005438
+    return Math.min(20, Math.max(2, Math.ceil(-Math.log10(n)) + 3));
+}
+
+// A single asset price: "$1,234.56", "$0.000648", "$0.0000000005438" (never "$0.00" for a real price)
+export function formatPrice(value, currency = "CAD") {
+    const decimals = priceDecimals(value);
+    return formatMoney(value, currency, {minimumFractionDigits: 2, maximumFractionDigits: decimals});
+}
+
+// Plain number string for prefilling a price input, without float noise or exponents
+export function priceInputValue(value) {
+    const n = Number(value);
+    if (!(n > 0)) return "";
+    return n.toFixed(priceDecimals(n)).replace(/(\.\d*?[1-9])0+$/, "$1").replace(/\.0+$/, "");
+}
+
 // Money with an explicit sign, used for gains and losses
 export function formatSignedMoney(value, currency = "CAD") {
     let n = Number(value) || 0;

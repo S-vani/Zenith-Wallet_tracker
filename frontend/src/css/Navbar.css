@@ -129,3 +129,11 @@
         height: 3px;
     }
 }
+
+
+@media (max-width: 768px) {
+    .nav-link {
+        width: 2.9rem;
+        height: 2.9rem;
+    }
+}

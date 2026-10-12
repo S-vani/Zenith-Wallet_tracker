@@ -20,6 +20,7 @@ function TransactionsPage() {
     const [step, setStep] = useState("closed");
     const [symbolData, setSymbolData] = useState(null);
     const [reloadKey, setReloadKey] = useState(0);
+    const [filtersOpen, setFiltersOpen] = useState(false); // only matters on phones, where filters start collapsed
 
     useEffect(() => {
         let ignore = false; // drop responses for filters the user has already changed
@@ -62,6 +63,18 @@ function TransactionsPage() {
     }, [step]);
 
     const hasFilters = Object.values(filters).some(Boolean);
+    const activeFilterCount = Object.values(filters).filter(Boolean).length;
+    const modalOpen = step !== "closed";
+
+    // stop the page behind the modal from scrolling
+    useEffect(() => {
+        if (!modalOpen) return;
+        const previous = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        return () => {
+            document.body.style.overflow = previous;
+        };
+    }, [modalOpen]);
 
     let content;
     if (loading && transactions.length === 0) {
@@ -87,6 +100,8 @@ function TransactionsPage() {
 
     return (
         <div className="app-page">
+            {/* inert: keyboard and screen readers can't reach the page behind the modal */}
+            <div className="transactions-page-content" inert={modalOpen}>
             <header>
                 <h1 className="page-headers">Transactions</h1>
                 <p className="page-subtitle">Every buy and sell you've logged.</p>
@@ -102,9 +117,15 @@ function TransactionsPage() {
                         <span aria-hidden="true">+</span> Add transaction
                     </button>
 
-                    <div className="filter-add-section">
+                    <div className={`filter-add-section${filtersOpen ? " open" : ""}`}>
                         <div className="filter-heading">
-                            <h2 className="filter-title">Filters</h2>
+                            <h2 className="filter-title">
+                                <button className="filter-toggle" onClick={() => setFiltersOpen(!filtersOpen)}
+                                        aria-expanded={filtersOpen}>
+                                    Filters{activeFilterCount > 0 && <span className="filter-count">{activeFilterCount}</span>}
+                                    <span className="filter-chevron" aria-hidden="true">▾</span>
+                                </button>
+                            </h2>
                             {hasFilters && (
                                 <button className="filter-clear" onClick={() => changeFilters(EMPTY_FILTERS)}>
                                     Clear all
@@ -114,6 +135,7 @@ function TransactionsPage() {
                         <TransactionFilter filters={filters} onFiltered={changeFilters}/>
                     </div>
                 </aside>
+            </div>
             </div>
 
             {step !== "closed" && (

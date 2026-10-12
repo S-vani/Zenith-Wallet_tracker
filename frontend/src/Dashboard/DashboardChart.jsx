@@ -11,7 +11,7 @@ const RANGE_DAYS = {
     year: 365,
 };
 
-function DashboardChart({range, currency, dateJoined}) {
+function DashboardChart({range, currency, dateJoined, trendUp}) {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -58,7 +58,8 @@ function DashboardChart({range, currency, dateJoined}) {
     };
 
     const hasValues = data.some((d) => d.value > 0);
-    const isUp = data.length > 1 && data[data.length - 1].value >= data[0].value;
+    // value charts start at 0 before the first buy, so use the period's return (from the card) for the colour
+    const isUp = trendUp ?? (data.length > 1 && data[data.length - 1].value >= data[0].value);
     const color = isUp ? CHART_UP : CHART_DOWN;
 
     let body;
