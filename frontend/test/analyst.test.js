@@ -216,7 +216,7 @@ describe("scenarios", () => {
         expect(percentFrom(10, 0)).toBeNull();
         expect(percentFrom(10, null)).toBeNull();
         expect(formatShortPercent(-4.83)).toBe("−4.8%");
-        expect(formatShortPercent(12.4)).toBe("+12%");
+        expect(formatShortPercent(12.4)).toBe("+12.4%");
         expect(formatShortPercent(0.01)).toBe("0%");
         expect(formatShortPercent(null)).toBe("");
     });

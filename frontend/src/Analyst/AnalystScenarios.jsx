@@ -1,10 +1,14 @@
 import {formatPrice} from "../utils/format.js";
 import {formatShortPercent, orderScenarios, percentFrom, scenarioRanges} from "./analystUtils.js";
 import AnalystDisclosure from "./AnalystDisclosure.jsx";
+import useMediaQuery from "./useMediaQuery.js";
+import {useState} from "react";
 
 // Bull / base / bear cards with the 7- and 30-day price ranges in the report's currency
 function AnalystScenarios({report, headingId}) {
     const scenarios = orderScenarios(report.scenarios);
+    const isPhone = useMediaQuery("(max-width: 640px)");
+    const [openConditions, setOpenConditions] = useState({}); // phones: which cards show their conditions
     if (scenarios.length === 0) return null;
 
     const {currency, price} = report.asset;
@@ -56,9 +60,19 @@ function AnalystScenarios({report, headingId}) {
                                 </dl>
                             )}
 
-                            {conditions.length > 0 && (
+                            {conditions.length > 0 && isPhone && (
+                                <button type="button" className="analyst-conditions-toggle"
+                                        aria-expanded={Boolean(openConditions[scenario.case])}
+                                        onClick={() => setOpenConditions((open) => ({
+                                            ...open, [scenario.case]: !open[scenario.case],
+                                        }))}>
+                                    What would need to happen
+                                    <span className="analyst-disclosure-chevron" aria-hidden="true">▾</span>
+                                </button>
+                            )}
+                            {conditions.length > 0 && (!isPhone || openConditions[scenario.case]) && (
                                 <div className="analyst-conditions">
-                                    <h5 className="analyst-conditions-title">What would need to happen</h5>
+                                    {!isPhone && <h5 className="analyst-conditions-title">What would need to happen</h5>}
                                     <ul>
                                         {conditions.map((condition, i) => <li key={i}>{condition}</li>)}
                                     </ul>

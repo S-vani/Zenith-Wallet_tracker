@@ -32,11 +32,15 @@ function AnalystOverview({report}) {
                         <div className="analyst-gauge">
                             <div className="analyst-gauge-track" role="img"
                                  aria-label={`Signal score ${formatScore(report.score)} on a scale from −1 (bearish) to +1 (bullish)`}>
+                                <span className="analyst-gauge-value" aria-hidden="true"
+                                      style={{left: `${Math.min(92, Math.max(8, position))}%`}}>
+                                    {formatScore(report.score)}
+                                </span>
                                 <span className="analyst-gauge-marker" style={{left: `${position}%`}}/>
                             </div>
                             <div className="analyst-gauge-scale" aria-hidden="true">
                                 <span>Bearish</span>
-                                <span className="analyst-gauge-value">{formatScore(report.score)}</span>
+                                <span>Neutral</span>
                                 <span>Bullish</span>
                             </div>
                         </div>

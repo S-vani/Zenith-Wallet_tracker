@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useState} from "react";
 import {getAnalystReport} from "../services/api.js";
+import {showToast} from "../utils/toast.js";
 import {analystRequestKey, createLatestRequestTracker, fetchLatest} from "./analystUtils.js";
 
 // Loads the analyst report for one asset and handles manual refreshes.
@@ -40,8 +41,17 @@ export default function useAnalystReport({symbol, type, coinId}) {
         setRefreshError(null);
         const res = await load(true);
         // "superseded": the asset changed or the panel closed, so the response is dropped
-        if (res.status === "ok") setResult({key, report: res.data, error: null});
-        else if (res.status === "error") setRefreshError({key, message: res.error.message, status: res.error.status});
+        if (res.status === "ok") {
+            setResult({key, report: res.data, error: null});
+        } else if (res.status === "error" && res.error.status === 429) {
+            // refreshed too recently (maybe in another tab): say so briefly and show the newest saved report,
+            // whose refresh_available_at drives the button's countdown
+            showToast(res.error.message, {type: "error"});
+            const latest = await load(false);
+            if (latest.status === "ok") setResult({key, report: latest.data, error: null});
+        } else if (res.status === "error") {
+            setRefreshError({key, message: res.error.message, status: res.error.status});
+        }
         setRefreshing((current) => (current === key ? null : current));
     }, [load, key]);
 

@@ -37,7 +37,8 @@ export function formatRelativeTime(value, now = Date.now()) {
 
     const diff = Math.max(0, now - date.getTime()); // a slightly fast server clock shouldn't say "in 1 min"
     if (diff < 45 * 1000) return "just now";
-    if (diff < HOUR) return `${Math.max(1, Math.round(diff / MINUTE))} min ago`;
+    // rounded down so "Updated 3 min ago" + "Refresh in 2 min" adds up to the 5 minute cooldown
+    if (diff < HOUR) return `${Math.max(1, Math.floor(diff / MINUTE))} min ago`;
     if (diff < DAY) return `${Math.floor(diff / HOUR)} hr ago`;
     if (diff < 2 * DAY) return "yesterday";
     return `${Math.floor(diff / DAY)} days ago`;
@@ -201,8 +202,8 @@ export function formatShortPercent(value) {
     if (value === null || value === undefined || !Number.isFinite(value)) return "";
     const abs = Math.abs(value);
     if (abs < 0.05) return "0%";
-    const digits = abs < 10 ? 1 : 0;
-    return `${value > 0 ? "+" : "−"}${abs.toFixed(digits)}%`;
+    // one decimal everywhere so "+6.2%" and "+13.0%" sit consistently side by side
+    return `${value > 0 ? "+" : "−"}${abs.toFixed(1)}%`;
 }
 
 const METRIC_GROUPS = [

@@ -24,13 +24,14 @@ function AnalystPanel({symbol, type, coinId, label}) {
     const refreshAt = parseDate(report?.refresh_available_at)?.getTime() ?? null;
     const now = useNow(15000, refreshAt);
 
-    const assetName = report?.asset?.name || label || symbol;
+    const ticker = String(label || symbol).toUpperCase();
+    const assetName = report?.asset?.name || ticker;
 
     let body;
     if (loading) {
         body = (
             <>
-                <p className="sr-only" role="status">Loading the market analysis for {label || symbol}…</p>
+                <p className="sr-only" role="status">Loading the market analysis for {ticker}…</p>
                 <AnalystSkeleton/>
             </>
         );

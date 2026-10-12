@@ -86,7 +86,7 @@ function SearchPage() {
                         autoComplete="off"
                         autoFocus
                     />
-                    <button className="btn btn-primary" type="submit" disabled={loading || !searchSymbol.symbol.trim()}>
+                    <button className="btn btn-primary" type="submit" disabled={!searchSymbol.symbol.trim()}>
                         {loading ? "Searching…" : "Search"}
                     </button>
                 </form>

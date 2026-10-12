@@ -89,7 +89,7 @@
     align-items: center;
     padding: 0.15rem 0.55rem;
     border-radius: 999px;
-    font-size: 0.72rem;
+    font-size: 0.8rem;
     font-weight: 700;
     letter-spacing: 0.03em;
     white-space: nowrap;
@@ -217,7 +217,7 @@
 .analyst-section-title,
 .analyst-subheading,
 .analyst-kind {
-    font-size: 0.72rem;
+    font-size: 0.8rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -298,7 +298,7 @@
 
 .analyst-gauge {
     width: 100%;
-    margin-top: 0.15rem;
+    margin-top: 1.4rem; /* room for the score label above the marker */
 }
 
 .analyst-gauge-track {
@@ -324,14 +324,20 @@
     display: flex;
     justify-content: space-between;
     margin-top: 0.35rem;
-    font-size: 0.7rem;
+    font-size: 0.8rem;
     color: var(--text-subtle);
     font-variant-numeric: tabular-nums;
 }
 
 .analyst-gauge-value {
+    position: absolute;
+    bottom: calc(100% + 0.45rem);
+    transform: translateX(-50%);
+    font-size: 0.8rem;
     font-weight: 700;
-    color: var(--text-muted);
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 
 .analyst-overview-text {
@@ -398,7 +404,7 @@
 }
 
 .analyst-section-note {
-    font-size: 0.78rem;
+    font-size: 0.8rem;
     color: var(--text-subtle);
     font-variant-numeric: tabular-nums;
 }
@@ -526,7 +532,7 @@
 }
 
 .analyst-range dt {
-    font-size: 0.7rem;
+    font-size: 0.8rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -558,7 +564,7 @@
 }
 
 .analyst-range-pct {
-    font-size: 0.72rem;
+    font-size: 0.8rem;
     color: var(--text-subtle);
 }
 
@@ -569,7 +575,7 @@
 }
 
 .analyst-conditions-title {
-    font-size: 0.72rem;
+    font-size: 0.8rem;
     font-weight: 700;
     color: var(--text-subtle);
 }
@@ -630,7 +636,7 @@
 }
 
 .analyst-watch-date {
-    font-size: 0.78rem;
+    font-size: 0.8rem;
     font-weight: 700;
     color: var(--accent-soft);
     font-variant-numeric: tabular-nums;
@@ -735,7 +741,7 @@
 }
 
 .analyst-disclosure-hint {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: var(--text-subtle);
 }
@@ -873,12 +879,12 @@
 }
 
 .analyst-source-date {
-    font-size: 0.78rem;
+    font-size: 0.8rem;
     color: var(--text-subtle);
 }
 
 .analyst-disclaimer {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     color: var(--text-subtle);
 }
 
@@ -984,8 +990,9 @@
         grid-template-columns: minmax(0, 1fr);
     }
 
+    /* a compact button beside the header facts instead of a full-width bar */
     .analyst-refresh {
-        width: 100%;
+        align-self: flex-start;
     }
 
     /* one fact per line instead of a wrapped line that starts with a dot */
@@ -1008,5 +1015,45 @@
 
     .analyst-metric-groups {
         grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+
+/* scenario conditions are collapsed behind this toggle on phones */
+.analyst-conditions-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 2.75rem;
+    padding: 0;
+    background: none;
+    color: var(--accent-soft);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.analyst-conditions-toggle[aria-expanded="true"] .analyst-disclosure-chevron {
+    transform: rotate(180deg);
+}
+
+/* tablets and phones: every control is at least 44px tall to tap comfortably */
+@media (max-width: 1024px) {
+    .analyst-refresh,
+    .analyst-disclosure-toggle,
+    .analyst-disclosure-small .analyst-disclosure-toggle,
+    .analyst-source-link,
+    .analyst-error .btn {
+        min-height: 44px;
+    }
+}
+
+/* very small phones: give the content more of the width */
+@media (max-width: 380px) {
+    .analyst {
+        padding: 0.85rem 0.5rem;
+    }
+
+    .analyst-card {
+        padding: 0.75rem;
     }
 }
