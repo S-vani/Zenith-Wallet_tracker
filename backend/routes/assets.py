@@ -1,5 +1,6 @@
 import asyncio
 import os
+import time
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional, Literal
 from dotenv import load_dotenv
@@ -24,7 +25,7 @@ from backend.services.asset_services import (current_quantity, create_holding_fi
                                              get_holdings_at_time_list, get_history_of_prices,
                                              get_portfolio_value_history, \
                                              get_all_conversion_rates, get_conversion_factor,
-                                             rebuild_symbol_ledger)
+                                             rebuild_symbol_ledger, get_latest_stock_quotes)
 
 load_dotenv()
 router = APIRouter()
@@ -376,74 +377,86 @@ async def get_portfolio_history(
     return data
 
 
+# TwelveData's free plan allows 8 credits a minute, so matches for a query are kept for a while instead of being
+# looked up again (e.g. when the user switches to crypto and back). {query: (time, [symbols])}
+_stock_search_cache: dict[str, tuple[float, list[str]]] = {}
+STOCK_SEARCH_TTL = 600
+
+
+async def find_us_stock_symbols(query: str) -> list[str]:
+    """
+    Up to 6 unique US-listed stock / ETF symbols matching the query, from TwelveData's symbol search (1 credit).
+    Raises a 503 when TwelveData returns an error (usually the per-minute credit limit) so the user sees that instead
+    of "no results".
+    """
+    cached = _stock_search_cache.get(query)
+    if cached and time.monotonic() - cached[0] < STOCK_SEARCH_TTL:
+        return cached[1]
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        response = await client.get(
+            "https://api.twelvedata.com/symbol_search",
+            params={"symbol": query, "show_plan": True, "apikey": os.getenv("API_KEY")}
+        )
+    body = response.json()
+
+    # errors come back as {"code": 429, "status": "error", "message": ...} with no "data" key
+    if not isinstance(body, dict) or body.get("status") == "error" or "data" not in body:
+        code = body.get("code") if isinstance(body, dict) else None
+        if code == 429 or response.status_code == 429:
+            raise HTTPException(status_code=503,
+                                detail="Stock search is busy right now. Please try again in a minute.")
+        raise HTTPException(status_code=503, detail="Stock search is temporarily unavailable")
+
+    symbols = []
+    for result in body["data"]:
+        is_us = result.get("country") == "United States"
+        is_valid_type = result.get("instrument_type") in ["Common Stock", "ETF"]
+        if is_us and is_valid_type and result["symbol"] not in symbols:  # skip duplicate listings
+            symbols.append(result["symbol"])
+        if len(symbols) == 6:
+            break
+
+    _stock_search_cache[query] = (time.monotonic(), symbols)
+    return symbols
+
+
 @router.get("/assets/search/stock")
 async def search_assets_stocks(asset: str, current_user: User = Depends(current_active_user)):
     """
-    Use twelvedata api to fetch a list of dictionaries with all the information about all the search results based on
-    what asset is. For example is asset is "AAP" then this would return a max of 6 items in a list with each being a
-    stock, like AAPL, AAPD, etc.
+    Search US stocks and ETFs. For example if asset is "AAP" this returns up to 6 items like AAPL, AAPD, etc. with
+    their price and daily change in the user's currency. Matches come from TwelveData, prices from Yahoo (free).
     """
     asset = asset.strip().upper()
     if not asset:
         return []
 
-    twelve = os.getenv("API_KEY")
+    symbols = await find_us_stock_symbols(asset)
+    if not symbols:
+        return []
 
     rates = await get_all_conversion_rates()
     conversion = get_conversion_factor(rates, current_user.currency)
-    conversion_to_cad = rates["usd_to_cad"]
+    usd_to_user = float(rates["usd_to_cad"]) * conversion  # only US listings are kept, so prices are in USD
 
-    async with httpx.AsyncClient(timeout=10) as client:
-        search_response = await client.get(
-            "https://api.twelvedata.com/symbol_search",
-            params={"symbol": asset, "show_plan": True, "apikey": twelve}
-        )
-
-        # Data is returned as a dict and the key "data" is basically all the important stuff
-        all_results = search_response.json().get("data", [])
-
-        filtered = []
-        seen = set()
-        for result in all_results:  # unpack results
-            symbol = result["symbol"]
-            is_us = result.get("country") == "United States"
-            is_valid_type = result.get("instrument_type") in ["Common Stock", "ETF"]
-            is_new = symbol not in seen  # ensure there aren't any duplicates
-
-            if is_us and is_valid_type and is_new:
-                seen.add(symbol)
-                filtered.append(result)
-
-            if len(filtered) == 6:
-                break
-
-        if not filtered:
-            return []
-
-        symbols = ",".join(result["symbol"] for result in filtered)  # get symbols in a form AAPL,GOOG,UAL
-
-        response = await client.get(
-            "https://api.twelvedata.com/quote",
-            params={"symbol": symbols, "apikey": twelve}
-        )
-
-    res = response.json()
-
-    # A single symbol comes back as one quote, multiple symbols come back as {symbol: quote}
-    quotes = [res] if "symbol" in res else list(res.values())
+    quotes = await get_latest_stock_quotes(symbols)
+    if not quotes:
+        raise HTTPException(status_code=503, detail="Stock prices are temporarily unavailable")
 
     final = []
-    for quote in quotes:
-        if not isinstance(quote, dict) or quote.get("close") is None:  # skip symbols the api errored on
+    for symbol in symbols:  # keep TwelveData's relevance order
+        quote = quotes.get(symbol)
+        if quote is None:  # Yahoo has no prices for it (e.g. a newly listed or delisted ticker)
             continue
+        change = quote["close"] - quote["previous_close"]
         final.append({
-            "api_id": quote["symbol"],
-            "symbol": quote["symbol"],
+            "api_id": symbol,
+            "symbol": symbol,
             "type": "stock",
             "image": "",
-            "price": float(quote["close"]) * float(conversion_to_cad) * conversion,
-            "change": float(quote["change"]) * float(conversion_to_cad) * conversion,
-            "change_pct": float(quote["percent_change"])
+            "price": quote["close"] * usd_to_user,
+            "change": change * usd_to_user,
+            "change_pct": change / quote["previous_close"] * 100 if quote["previous_close"] else 0.0,
         })
 
     return final

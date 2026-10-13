@@ -139,6 +139,7 @@ class FakeMarket:
             "BTC-USD": 40000.0,
         }
         self.currencies = {"SHOP.TO": "CAD"}
+        self.previous_closes = {}  # ticker -> the close before the latest one (defaults to an unchanged price)
         self.requested = []
 
     def Ticker(self, symbol):  # noqa: N802 - mirrors yfinance's api
@@ -165,6 +166,8 @@ class FakeTicker:
             # a few days of hourly candles ending now
             now = pd.Timestamp.now(tz="UTC").floor("h")
             index = pd.date_range(end=now, periods=24 * 8, freq="h", tz="UTC")
+            previous = self.market.previous_closes.get(self.symbol, price)
+            return pd.DataFrame({"Close": [previous] * (len(index) - 1) + [price]}, index=index)
         else:
             index = pd.DatetimeIndex([pd.Timestamp(end) - pd.Timedelta(minutes=1)])
             if index.tz is None:
@@ -242,6 +245,7 @@ def stub_external_services(monkeypatch):
     routes_http = FakeHttpx()
     services_http = FakeHttpx()
     monkeypatch.setattr(routes_module, "httpx", routes_http)
+    monkeypatch.setattr(routes_module, "_stock_search_cache", {})
     monkeypatch.setattr(services, "httpx", services_http)
 
     FakeSMTP.instances = []

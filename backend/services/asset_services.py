@@ -468,6 +468,31 @@ async def get_stock_prices_at(symbols: list[str], timestamp: datetime, currency:
     return dict(results)
 
 
+async def get_latest_stock_quotes(symbols: list[str]) -> dict[str, dict[str, float]]:
+    """
+    Latest price and the previous daily close for each symbol from Yahoo, in the listing currency, as
+    {symbol: {"close": ..., "previous_close": ...}}. Used by the stock search instead of TwelveData's quote endpoint,
+    which costs one of the 8 free credits per minute for every symbol. Symbols Yahoo has no data for are left out.
+    """
+    async def fetch_one(symbol):
+        hist = await asyncio.to_thread(yf.Ticker(symbol).history, period="5d", interval="1d")
+        closes = hist["Close"].dropna() if not hist.empty else []
+        if len(closes) == 0:
+            return symbol, None
+        close = float(closes.iloc[-1])  # today's live price while the market is open
+        previous = float(closes.iloc[-2]) if len(closes) > 1 else close
+        return symbol, {"close": close, "previous_close": previous}
+
+    async def safe_fetch(symbol):
+        try:
+            return await fetch_one(symbol)
+        except Exception:  # one bad ticker shouldn't empty the whole search
+            return symbol, None
+
+    results = await asyncio.gather(*[safe_fetch(symbol) for symbol in symbols])
+    return {symbol: quote for symbol, quote in results if quote is not None}
+
+
 async def calculate_profit_for_one_transaction(db: AsyncSession, user_id: UUID, data: CreateTransaction, currency: str):
     """
     Calculate the amount a user profited from a certain sell transaction

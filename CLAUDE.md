@@ -42,6 +42,9 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
 - Stock prices come in the listing currency (Yahoo `info.currency`, e.g. USD, CAD, EUR, `GBp` = pence) and are
   converted to CAD with `get_native_to_cad_factor` (USD cross rates, cached 1 h), then to the user's currency.
   Rows with a missing (NaN) close are skipped.
+- Stock search uses TwelveData only for `symbol_search` (1 credit; free plan = 8 credits/min) with matches cached
+  10 min per query; prices come from Yahoo (`get_latest_stock_quotes`). Don't reintroduce TwelveData `/quote`
+  (1 credit per symbol): it used up the limit and errors showed as "no results". Provider errors → 503 with a message.
 - `/prices/history` falls back to CoinGecko for coins Yahoo doesn't list as `SYMBOL-USD` (e.g. PEPE).
 
 ## Market analyst (`GET /analyst?symbol=&type=stock|crypto[&coin_id=][&refresh=true]`)
