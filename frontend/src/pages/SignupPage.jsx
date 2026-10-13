@@ -21,7 +21,7 @@ function SignupPage() {
             <div className="signup-page-right-side">
                 <div className="signup-page-brand">
                     <Link to="/" className="home-brand">
-                        <span className="brand-mark">◆</span>
+                        <img className="brand-mark" src="/zenith-logo.svg" alt="" width="32" height="32"/>
                         <span className="brand-name">Zenith&nbsp;<span
                             className="brand-accent">Wallet Tracker</span></span>
                     </Link>

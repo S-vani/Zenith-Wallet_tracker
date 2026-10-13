@@ -21,7 +21,7 @@ function LoginPage() {
             <div className="login-page-left-side">
                 <div className="login-page-brand">
                     <Link to="/" className="home-brand">
-                        <span className="brand-mark">◆</span>
+                        <img className="brand-mark" src="/zenith-logo.svg" alt="" width="32" height="32"/>
                         <span className="brand-name">Zenith&nbsp;<span
                             className="brand-accent">Wallet Tracker</span></span>
                     </Link>

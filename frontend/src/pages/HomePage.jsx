@@ -19,7 +19,7 @@ function HomePage() {
         <div className="home-page">
             <header className="home-topbar">
                 <Link to="/" className="home-brand">
-                    <span className="brand-mark">◆</span>
+                    <img className="brand-mark" src="/zenith-logo.svg" alt="" width="32" height="32"/>
                     <span className="brand-name">Zenith&nbsp;<span className="brand-accent">Wallet Tracker</span></span>
                 </Link>
                 <nav className="home-auth" aria-label="Account">
@@ -153,7 +153,10 @@ function HomePage() {
             </section>
 
             <footer className="home-footer">
-                <span>© 2026 Zenith Wallet Tracker</span>
+                <span className="footer-brand">
+                    <img className="footer-mark" src="/zenith-logo.svg" alt="" width="16" height="16"/>
+                    © 2026 Zenith Wallet Tracker
+                </span>
                 <span className="footer-dot">·</span>
                 <span>Built for investors, by investors.</span>
             </footer>
