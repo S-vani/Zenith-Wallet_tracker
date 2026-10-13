@@ -1,14 +1,18 @@
 import {Link} from "react-router-dom";
 import {getToken, getUserCount} from "../services/api.js";
 import usePageTitle from "../utils/usePageTitle.js";
+import DemoVideoModal from "../Home/DemoVideoModal.jsx";
 
 import "../css/Home.css"
-import {useEffect, useState} from "react";
+import {useCallback, useEffect, useRef, useState} from "react";
 
 function HomePage() {
     usePageTitle(null);
     const [userCount, setUserCount] = useState(null);
     const loggedIn = Boolean(getToken());
+    const [demoOpen, setDemoOpen] = useState(false);
+    const demoButtonRef = useRef(null);
+    const closeDemo = useCallback(() => setDemoOpen(false), []);
 
     useEffect(() => {
         getUserCount().then(setUserCount).catch(() => null);
@@ -16,7 +20,9 @@ function HomePage() {
 
 
     return (
-        <div className="home-page">
+        <>
+        {/* inert: keyboard and screen readers can't reach the page behind the demo video */}
+        <div className="home-page" inert={demoOpen}>
             <header className="home-topbar">
                 <Link to="/" className="home-brand">
                     <img className="brand-mark" src="/zenith-logo.svg" alt="" width="32" height="32"/>
@@ -48,7 +54,14 @@ function HomePage() {
                         <Link to={loggedIn ? "/dashboard" : "/signup"} className="auth-btn signup-btn large">
                             {loggedIn ? "Go to your dashboard" : "Create free account"}
                         </Link>
-                        <a href="#features" className="hero-link-btn">See how it works →</a>
+                        <button type="button" ref={demoButtonRef} className="hero-link-btn"
+                                aria-haspopup="dialog" onClick={() => setDemoOpen(true)}>
+                            <svg className="hero-play-icon" viewBox="0 0 20 20" aria-hidden="true">
+                                <circle cx="10" cy="10" r="8.75" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+                                <path d="M8.25 6.6v6.8l5.4-3.4z" fill="currentColor"/>
+                            </svg>
+                            See how it works
+                        </button>
                     </div>
 
                     <div className="hero-stats">
@@ -161,6 +174,9 @@ function HomePage() {
                 <span>Built for investors, by investors.</span>
             </footer>
         </div>
+
+        {demoOpen && <DemoVideoModal onClose={closeDemo} loggedIn={loggedIn} returnFocusRef={demoButtonRef}/>}
+        </>
     )
 }
 

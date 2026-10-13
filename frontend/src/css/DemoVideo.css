@@ -1,0 +1,233 @@
+/* ---------- Landing page demo video modal ---------- */
+
+.demo-overlay {
+    /* height taken by everything around the video (paddings, title, caption, footer), so the 16:9 frame can be
+       sized from the viewport height and never pushes the card off screen */
+    --demo-chrome: 15rem;
+    --demo-gutter: 1.5rem;
+
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--demo-gutter);
+
+    background: rgba(2, 4, 10, 0.75);
+    backdrop-filter: blur(0.4rem);
+    -webkit-backdrop-filter: blur(0.4rem);
+    animation: demoOverlayIn 0.2s ease;
+}
+
+.demo-box {
+    width: min(60rem, 100%);
+    max-height: calc(100vh - 2 * var(--demo-gutter));
+    max-height: calc(100dvh - 2 * var(--demo-gutter)); /* follows the visible area as mobile browser bars show/hide */
+    overflow-y: auto;
+
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 1.5rem;
+    padding: 1.5rem;
+    box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.6);
+
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+
+    animation: demoBoxIn 0.25s ease;
+}
+
+.demo-overlay.is-closing {
+    animation: demoOut 0.18s ease forwards;
+}
+
+.demo-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.demo-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.demo-heading h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--text);
+}
+
+.demo-caption {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.demo-close-button {
+    flex-shrink: 0;
+    width: 2.25rem;
+    height: 2.25rem;
+    display: grid;
+    place-items: center;
+    border-radius: 0.6rem;
+    background: transparent;
+    transition: background 0.15s ease;
+}
+
+.demo-close-button:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.demo-close-button img {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* 16:9 frame: full card width, unless the viewport is too short, then narrower so the height still fits */
+.demo-frame {
+    width: min(100%, calc((100vh - var(--demo-chrome)) * 16 / 9));
+    width: min(100%, calc((100dvh - var(--demo-chrome)) * 16 / 9));
+    aspect-ratio: 16 / 9;
+    margin: 0 auto;
+    flex-shrink: 0;
+
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: #000;
+    border: 1px solid var(--border);
+}
+
+.demo-video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+}
+
+.demo-error {
+    /* can grow past 16:9 if the text needs the room on a tiny screen */
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 1.5rem;
+    text-align: center;
+
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.demo-error strong {
+    color: var(--text);
+    font-size: 1rem;
+}
+
+.demo-error .btn {
+    margin-top: 0.4rem;
+}
+
+.demo-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.demo-footer-note {
+    font-size: 0.85rem;
+    color: var(--text-subtle);
+}
+
+@keyframes demoOverlayIn {
+    from {
+        opacity: 0;
+    }
+}
+
+@keyframes demoBoxIn {
+    from {
+        opacity: 0;
+        transform: translateY(0.75rem) scale(0.98);
+    }
+}
+
+@keyframes demoOut {
+    to {
+        opacity: 0;
+    }
+}
+
+@media (max-width: 768px) {
+    .demo-overlay {
+        --demo-gutter: 0.75rem;
+        --demo-chrome: 13rem;
+    }
+
+    .demo-box {
+        padding: 1rem;
+        border-radius: 1.25rem;
+        gap: 0.85rem;
+    }
+
+    .demo-heading h2 {
+        font-size: 1.15rem;
+    }
+
+    .demo-footer .auth-btn {
+        flex: 1;
+        min-height: 2.6rem;
+    }
+}
+
+/* phones on their side: little height, so drop the caption and tighten everything around the video */
+@media (max-height: 500px) and (orientation: landscape) {
+    .demo-overlay {
+        --demo-gutter: 0.5rem;
+        --demo-chrome: 8rem;
+    }
+
+    .demo-box {
+        padding: 0.6rem 0.9rem;
+        gap: 0.5rem;
+    }
+
+    .demo-caption,
+    .demo-footer-note {
+        display: none;
+    }
+
+    .demo-close-button {
+        width: 2rem;
+        height: 2rem;
+    }
+
+    .demo-footer {
+        justify-content: flex-end;
+    }
+
+    .demo-footer .auth-btn {
+        flex: 0 0 auto;
+        min-height: 2.25rem;
+        padding: 0.4rem 1rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .demo-overlay,
+    .demo-box,
+    .demo-overlay.is-closing {
+        animation: none;
+    }
+}

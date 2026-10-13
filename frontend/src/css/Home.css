@@ -155,6 +155,21 @@
     color: #93c5fd;
 }
 
+/* "See how it works" is a button (opens the demo video) but keeps the text-link look */
+button.hero-link-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0;
+}
+
+.hero-play-icon {
+    width: 1.15rem;
+    height: 1.15rem;
+    flex-shrink: 0;
+}
+
 .hero-stats {
     display: flex;
     align-items: center;
@@ -483,7 +498,8 @@ html {
 
 
 @media (max-width: 520px) {
-    .home-auth .auth-btn {
+    .home-auth .auth-btn,
+    button.hero-link-btn {
         min-height: 2.6rem;
     }
 }
