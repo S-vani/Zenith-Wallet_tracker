@@ -1,7 +1,7 @@
 {
   "appId": "ca.zenithwalletracker.app",
   "appName": "Zenith",
-  "webDir": "dist",
+  "webDir": "dist-ios",
   "backgroundColor": "#060a12",
   "ios": {
     "contentInset": "never",

@@ -18,6 +18,9 @@ export async function initNative() {
     if (!isNative) return {lockEnabled: false};
 
     document.documentElement.classList.add("native");
+    // apps don't pinch-zoom their own UI (the website keeps zoom for accessibility)
+    document.querySelector('meta[name="viewport"]')
+        ?.setAttribute("content", "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover");
     await restoreToken(); // must finish before the first render, which checks for a token
     const lockEnabled = await isLockEnabled();
 

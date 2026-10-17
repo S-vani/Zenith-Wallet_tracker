@@ -2,11 +2,22 @@
 # web build -> copy into the Capacitor iOS project -> sign -> .ipa -> upload to TestFlight.
 # Only Codemagic reads this file; it has no effect on the website or the server.
 #
-# One-time setup in codemagic.io:
-#   1. Teams -> Integrations -> Developer Portal: add an App Store Connect API key and name it "Zenith ASC key".
-#   2. In the app's settings -> Environment variables: APP_STORE_APPLE_ID = the numeric Apple ID of the app
-#      (App Store Connect -> your app -> App Information -> Apple ID).
-#   3. Start a build of "iOS -> TestFlight" (or push a tag like ios-v1.0.0).
+# One-time setup (all in a web browser):
+#   Apple
+#     1. Apple Developer account -> Certificates, IDs & Profiles -> Identifiers: register the App ID
+#        ca.zenithwalletracker.app.
+#     2. App Store Connect -> My Apps -> +: create the app with that bundle ID. Note its Apple ID number
+#        (App Information -> Apple ID).
+#     3. App Store Connect -> Users and Access -> Integrations -> App Store Connect API: create a key with the
+#        App Manager role and download the .p8 (it can only be downloaded once).
+#   Codemagic (codemagic.io, sign in with GitHub, add this repository)
+#     4. Team settings -> Integrations -> Developer Portal: add the key from step 3 and name it "Zenith ASC key".
+#     5. Team settings -> Code signing identities:
+#        - iOS certificates: "Generate certificate" (Apple Distribution) using that key, and keep it in Codemagic.
+#        - iOS provisioning profiles: "Fetch profiles" and pick the App Store profile for ca.zenithwalletracker.app
+#          (create it in the Developer Portal first if none is listed).
+#     6. App settings -> Environment variables: APP_STORE_APPLE_ID = the number from step 2.
+#   Then start "iOS -> TestFlight" by hand, or push a tag like ios-v1.0.0.
 
 workflows:
   ios-testflight:
@@ -25,6 +36,7 @@ workflows:
         XCODE_PROJECT: frontend/ios/App/App.xcodeproj
         XCODE_SCHEME: App
       node: 22
+      # "latest" = the newest stable Xcode Codemagic offers, which Apple requires for new uploads anyway
       xcode: latest
     triggering:
       events:
@@ -32,14 +44,19 @@ workflows:
       tag_patterns:
         - pattern: "ios-v*"
     scripts:
+      - name: Refuse a non-HTTPS API address
+        script: |
+          case "$VITE_BACKEND_URL" in
+            https://*) echo "API: $VITE_BACKEND_URL" ;;
+            *) echo "VITE_BACKEND_URL must start with https:// for the App Store build" && exit 1 ;;
+          esac
       - name: Install frontend packages
         script: cd frontend && npm ci
       - name: Run the frontend tests
         script: cd frontend && npx vitest run
-      - name: Build the web app
-        script: cd frontend && npm run build
-      - name: Copy the build and plugins into the iOS project
-        script: cd frontend && npx cap sync ios
+      - name: Build the app's web files and copy them into the iOS project
+        # dist-ios is separate from the website's dist and leaves out website-only files (the demo video)
+        script: cd frontend && npm run build:ios
       - name: Set up code signing
         script: xcode-project use-profiles --project "$XCODE_PROJECT"
       - name: Give this build a new build number

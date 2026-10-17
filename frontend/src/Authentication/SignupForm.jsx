@@ -4,6 +4,7 @@ import {requestVerification} from "../services/api.js";
 import PasswordInput from "./PasswordInput.jsx";
 import GoogleButton from "./GoogleButton.jsx";
 import {showToast} from "../utils/toast.js";
+import {isNative} from "../native/platform.js";
 
 function SignupForm({onSubmit}) {
     const [form, setForm] = useState({
@@ -54,6 +55,7 @@ function SignupForm({onSubmit}) {
                         <p>
                             We sent a verification link to <strong>{registeredEmail}</strong>. Click it to activate your
                             account, then log in.
+                            {isNative && " The link opens in Safari; come back to Zenith afterwards."}
                         </p>
                     </div>
                     <Link to="/login" className="auth-btn signup-btn large signup-submit-btn">Go to log in</Link>

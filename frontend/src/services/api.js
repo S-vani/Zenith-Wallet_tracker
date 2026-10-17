@@ -1,4 +1,5 @@
 import {saveToken as keepInKeychain} from "../native/secureToken.js";
+import {forgetAll, recall, remember} from "../native/offlineCache.js";
 
 const BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -19,6 +20,7 @@ export function getToken() {
 export function logout() {
     localStorage.removeItem("token");
     keepInKeychain(null); // the iOS app also keeps the token in the Keychain; no-op on the website
+    forgetAll(); // and the app's offline copy of the portfolio screens
 }
 
 function getAuthHeaders() {
@@ -83,6 +85,9 @@ async function request(path, {auth = true, fallbackError = "Something went wrong
     } catch (err) {
         // a cancelled request (AbortController) isn't a connection problem, let the caller ignore it
         if (err?.name === "AbortError") throw err;
+        // the iOS app shows what it last loaded when offline (always undefined on the website)
+        const saved = isGet(options) ? recall(path) : undefined;
+        if (saved !== undefined) return saved;
         throw new Error("Can't reach the server. Check your connection and try again.", {cause: err});
     }
 
@@ -98,7 +103,13 @@ async function request(path, {auth = true, fallbackError = "Something went wrong
         throw error;
     }
 
-    return res.json();
+    const data = await res.json();
+    if (isGet(options)) remember(path, data); // app only: keep a copy for offline use
+    return data;
+}
+
+function isGet(options) {
+    return !options.method || options.method.toUpperCase() === "GET";
 }
 
 // Date inputs give "YYYY-MM-DD", which JS reads as UTC midnight. Use the local start/end of the day instead

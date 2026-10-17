@@ -4,23 +4,37 @@ import {haptic} from "./haptics.js";
 const TRIGGER = 70; // px of (damped) pull needed to refresh
 const MAX = 110;
 
+// touches that start on these are someone using a chart, form or scrolling list, not pulling the page
+const IGNORE = ".recharts-wrapper, input, textarea, select, [role=dialog], .search-results-list svg";
+
 // Pull down at the top of a page to reload it, like a native list. Pages listen through useRefreshKey().
 function PullToRefresh() {
     const [pull, setPull] = useState(0);
     const [refreshing, setRefreshing] = useState(false);
     const start = useRef(null);
+    const startX = useRef(0);
     const armed = useRef(false);
 
     useEffect(() => {
         const onStart = (e) => {
             // only from the very top, and not while a modal has locked the page
             if (window.scrollY > 0 || document.body.style.overflow === "hidden" || refreshing) return;
+            if (e.target.closest?.(IGNORE)) return;
             start.current = e.touches[0].clientY;
+            startX.current = e.touches[0].clientX;
             armed.current = false;
         };
         const onMove = (e) => {
             if (start.current === null) return;
-            const distance = (e.touches[0].clientY - start.current) * 0.5; // resistance, like iOS
+            const dy = e.touches[0].clientY - start.current;
+            // a mostly sideways swipe (e.g. across a chart or tabs) cancels the pull
+            if (Math.abs(e.touches[0].clientX - startX.current) > Math.abs(dy)) {
+                start.current = null;
+                armed.current = false;
+                setPull(0);
+                return;
+            }
+            const distance = dy * 0.5; // resistance, like iOS
             if (distance <= 0) {
                 setPull(0);
                 return;

@@ -64,3 +64,69 @@ describe("loadPlugin", () => {
         expect(importer).toHaveBeenCalledTimes(1);
     });
 });
+
+describe("Face ID lock rules", () => {
+    const base = {enabled: true, signedIn: true, prompting: false};
+
+    it("covers the app when it's left, remembering whether it was unlocked", async () => {
+        const {onLeave} = await import("../src/native/lockRules.js");
+        expect(onLeave({...base, locked: false})).toEqual({cover: true, unlockedWhenLeft: true});
+        expect(onLeave({...base, locked: true})).toEqual({cover: true, unlockedWhenLeft: false});
+        expect(onLeave({...base, prompting: true, locked: false})).toEqual({cover: false}); // the Face ID sheet
+        expect(onLeave({...base, enabled: false, locked: false})).toEqual({cover: false});
+    });
+
+    it("only skips Face ID for a quick return to an app that was unlocked", async () => {
+        const {onReturn, GRACE_MS} = await import("../src/native/lockRules.js");
+        expect(onReturn({...base, locked: true, unlockedWhenLeft: true, away: 5000})).toBe("unlock");
+        expect(onReturn({...base, locked: true, unlockedWhenLeft: true, away: GRACE_MS + 1})).toBe("ask");
+        expect(onReturn({...base, locked: true, unlockedWhenLeft: true, away: undefined})).toBe("ask");
+    });
+
+    it("never unlocks an app that was already locked (cancel Face ID, then flick Control Center)", async () => {
+        const {onReturn} = await import("../src/native/lockRules.js");
+        expect(onReturn({...base, locked: true, unlockedWhenLeft: false, away: 200})).toBe("ask");
+    });
+
+    it("ignores returns while Face ID is prompting, when off, or when signed out", async () => {
+        const {onReturn} = await import("../src/native/lockRules.js");
+        const quick = {locked: true, unlockedWhenLeft: true, away: 200};
+        expect(onReturn({...base, ...quick, prompting: true})).toBe("ignore");
+        expect(onReturn({...base, ...quick, enabled: false})).toBe("ignore");
+        expect(onReturn({...base, ...quick, signedIn: false})).toBe("ignore");
+        expect(onReturn({...base, ...quick, locked: false})).toBe("ignore");
+    });
+});
+
+describe("offline cache", () => {
+    it("is off on the website", async () => {
+        const {remember, recall} = await import("../src/native/offlineCache.js");
+        remember("/holdings", [{symbol: "AAPL"}]);
+        expect(recall("/holdings")).toBeUndefined();
+        expect(store.size).toBe(0);
+    });
+
+    it("in the app keeps portfolio screens, skips the rest and is cleared on sign out", async () => {
+        vi.doMock("../src/native/platform.js", () => ({isNative: true, loadPlugin: () => () => Promise.reject()}));
+        // like the real localStorage, Object.keys() lists the stored keys
+        vi.stubGlobal("localStorage", new Proxy(localStorage, {
+            ownKeys: () => [...store.keys()],
+            getOwnPropertyDescriptor: () => ({enumerable: true, configurable: true}),
+        }));
+
+        const {remember, recall, forgetAll} = await import("../src/native/offlineCache.js");
+        remember("/holdings", [{symbol: "AAPL"}]);
+        remember("/transactions?symbol=AAPL", [{id: 1}]);
+        remember("/assets/search/stock?asset=A", [{symbol: "A"}]); // not a portfolio screen
+        store.set("token", "abc");
+
+        expect(recall("/holdings")).toEqual([{symbol: "AAPL"}]);
+        expect(recall("/transactions?symbol=AAPL")).toEqual([{id: 1}]);
+        expect(recall("/assets/search/stock?asset=A")).toBeUndefined();
+
+        forgetAll();
+        expect(recall("/holdings")).toBeUndefined();
+        expect(store.get("token")).toBe("abc"); // only the cached screens are removed
+        vi.doUnmock("../src/native/platform.js");
+    });
+});

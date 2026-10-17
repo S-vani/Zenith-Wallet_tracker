@@ -3,12 +3,12 @@ import {useNavigate} from "react-router-dom";
 import {getToken, logout} from "../services/api.js";
 import {biometricInfo, isPrompting, verifyIdentity} from "./biometric.js";
 import {haptic} from "./haptics.js";
-
-// a quick app switch (answering a text) doesn't ask again
-const GRACE_MS = 30 * 1000;
+import {onLeave, onReturn} from "./lockRules.js";
 
 // Face ID lock for the app. When it's on, the portfolio is covered whenever the app goes to the background
 // (so it also stays hidden in the app switcher) and Face ID / passcode opens it again.
+// The only ways to unlock: a successful Face ID / passcode check, or coming back within GRACE_MS to an app that
+// was *already unlocked* when it was left. Being locked when leaving (e.g. after cancelling Face ID) never counts.
 function AppLock({initiallyEnabled}) {
     const navigate = useNavigate();
     const [enabled, setEnabled] = useState(initiallyEnabled);
@@ -16,6 +16,13 @@ function AppLock({initiallyEnabled}) {
     const [label, setLabel] = useState("Face ID");
     const [failed, setFailed] = useState(false);
     const prompting = useRef(false);
+    const lockedRef = useRef(locked); // the listeners below need the current value, not the one they closed over
+    const unlockedWhenLeft = useRef(false);
+
+    const lock = useCallback((value) => {
+        lockedRef.current = value;
+        setLocked(value);
+    }, []);
 
     useEffect(() => {
         biometricInfo().then((info) => setLabel(info.label));
@@ -29,13 +36,13 @@ function AppLock({initiallyEnabled}) {
             await verifyIdentity("Unlock Zenith to see your portfolio");
             haptic("success");
             setFailed(false);
-            setLocked(false);
+            lock(false);
         } catch {
             setFailed(true);
         } finally {
             prompting.current = false;
         }
-    }, []);
+    }, [lock]);
 
     // ask straight away when the app opens locked
     // (on the next tick, once the lock screen is on screen behind the Face ID sheet)
@@ -49,13 +56,19 @@ function AppLock({initiallyEnabled}) {
 
     useEffect(() => {
         const onSetting = (e) => setEnabled(Boolean(e.detail));
+        const state = () => ({
+            enabled, signedIn: Boolean(getToken()), prompting: isPrompting(), locked: lockedRef.current,
+        });
         const onBackground = () => {
-            if (enabled && getToken() && !isPrompting()) setLocked(true);
+            const result = onLeave(state());
+            if (!result.cover) return;
+            unlockedWhenLeft.current = result.unlockedWhenLeft;
+            lock(true);
         };
         const onResume = (e) => {
-            if (!enabled || !getToken() || isPrompting()) return;
-            if ((e.detail?.away ?? 0) < GRACE_MS) setLocked(false);
-            else unlock();
+            const action = onReturn({...state(), unlockedWhenLeft: unlockedWhenLeft.current, away: e.detail?.away});
+            if (action === "unlock") lock(false);
+            else if (action === "ask") unlock();
         };
         window.addEventListener("app:lock-setting", onSetting);
         window.addEventListener("app:background", onBackground);
@@ -65,13 +78,13 @@ function AppLock({initiallyEnabled}) {
             window.removeEventListener("app:background", onBackground);
             window.removeEventListener("app:resume", onResume);
         };
-    }, [enabled, unlock]);
+    }, [enabled, unlock, lock]);
 
     if (!locked) return null;
 
     const signOut = () => {
         logout();
-        setLocked(false);
+        lock(false);
         navigate("/login", {replace: true});
     };
 

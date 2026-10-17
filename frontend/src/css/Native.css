@@ -31,6 +31,44 @@ html.native select {
     user-select: text;
 }
 
+/* ---------- tab bar: labelled tabs like a native app, and no one-tap log out (it's on the Account page) ---------- */
+html.native .nav-logout {
+    display: none;
+}
+
+html.native .navbar-links {
+    justify-content: space-evenly;
+}
+
+html.native .nav-link {
+    flex-direction: column;
+    gap: 0.15rem;
+    width: auto;
+    min-width: 3.6rem;
+    height: 3.1rem;
+}
+
+/* the desktop hover tooltip becomes the label under the icon */
+html.native .nav-tooltip {
+    display: block;
+    position: static;
+    transform: none;
+    opacity: 1;
+    padding: 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+    font-size: 0.66rem;
+    font-weight: 700;
+    color: inherit;
+    white-space: nowrap;
+}
+
+html.native .nav-link:hover .nav-tooltip,
+html.native .nav-link:focus-visible .nav-tooltip {
+    transform: none;
+}
+
 /* ---------- Face ID lock screen ---------- */
 .app-lock {
     position: fixed;
@@ -72,7 +110,8 @@ html.native select {
 }
 
 .app-lock-signout {
-    padding: 0.6rem 1rem;
+    min-height: 2.75rem; /* 44pt tap target */
+    padding: 0.6rem 1.25rem;
     border: none;
     background: none;
     font: inherit;

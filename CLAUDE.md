@@ -27,11 +27,18 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
 - iOS app — Capacitor 8 wraps the same frontend (`frontend/capacitor.config.json`, Xcode project in `frontend/ios/`,
   Swift Package Manager, app id `ca.zenithwalletracker.app`). App-only code lives in `src/native/` and every part of
   it checks `isNative` first, so the website is unaffected (`test/native.test.js` guards this): Keychain copy of the
-  token, Face ID lock, haptics, share sheet, pull to refresh (`useRefreshKey`), offline banner, splash/status bar.
-  In the app `/` skips the marketing page and Google sign-in is hidden (web views can't use it; would also need
-  Sign in with Apple). Backend CORS always allows `capacitor://localhost`. Builds run in the cloud via
-  `codemagic.yaml` (no Mac needed); after frontend changes run `npm run build && npx cap sync ios`. Icons/splash come
-  from `frontend/assets/` (`npx @capacitor/assets@latest generate --ios`, not installed: it pulls vulnerable deps).
+  token (cleared on a fresh install), Face ID lock (decisions in `lockRules.js`: only a quick return to an app that
+  was *unlocked* skips Face ID), haptics, share sheet, pull to refresh (`useRefreshKey`), offline cache of the
+  portfolio screens (`offlineCache.js`, used by `api.js`), offline banner, labelled tab bar without log out
+  (`html.native` CSS in `Native.css`), splash/status bar, no pinch zoom. In the app `/` skips the marketing page and
+  Google sign-in is hidden (web views can't use it; would also need Sign in with Apple). Backend CORS always allows
+  `capacitor://localhost`.
+  - Build the app with `npm run build:ios` (Vite into `dist-ios/`, drops website-only files like the demo video,
+    then `cap sync ios`); the website's `dist/` is separate. Cloud builds: `codemagic.yaml` (no Mac needed).
+  - `ios/App/App/PrivacyInfo.xcprivacy` is Apple's privacy manifest (UserDefaults reason CA92.1, collected data);
+    keep it, the App Privacy answers and `/privacy` in step. Icons/splash come from `frontend/assets/`
+    (`npx @capacitor/assets@3.0.5 generate --ios ...`, not installed: it pulls vulnerable deps).
+- Fonts: Lato is bundled (`@fontsource/lato`, imported in `main.jsx`); no Google Fonts requests.
 - `tests/` — pytest (offline: network blocked, prices/FX/yfinance/HTTP stubbed, temp SQLite DB).
   `frontend/test/` — Vitest for pure utils.
 - `scripts/dev.mjs`, `scripts/test-backend.mjs` — used by the root `package.json`.
