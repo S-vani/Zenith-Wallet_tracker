@@ -24,6 +24,14 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
   - `context/UserContext.jsx` (current user + currency), `utils/format.js` (money/price/percent formatting — use
     `formatPrice` for asset prices so tiny coins never show $0.00), `utils/chart.js`, `utils/toast.js` (`showToast`).
   - CSS in `src/css/` with design tokens in `Global.css` (navy theme). Phones get a bottom tab bar (≤768px).
+- iOS app — Capacitor 8 wraps the same frontend (`frontend/capacitor.config.json`, Xcode project in `frontend/ios/`,
+  Swift Package Manager, app id `ca.zenithwalletracker.app`). App-only code lives in `src/native/` and every part of
+  it checks `isNative` first, so the website is unaffected (`test/native.test.js` guards this): Keychain copy of the
+  token, Face ID lock, haptics, share sheet, pull to refresh (`useRefreshKey`), offline banner, splash/status bar.
+  In the app `/` skips the marketing page and Google sign-in is hidden (web views can't use it; would also need
+  Sign in with Apple). Backend CORS always allows `capacitor://localhost`. Builds run in the cloud via
+  `codemagic.yaml` (no Mac needed); after frontend changes run `npm run build && npx cap sync ios`. Icons/splash come
+  from `frontend/assets/` (`npx @capacitor/assets@latest generate --ios`, not installed: it pulls vulnerable deps).
 - `tests/` — pytest (offline: network blocked, prices/FX/yfinance/HTTP stubbed, temp SQLite DB).
   `frontend/test/` — Vitest for pure utils.
 - `scripts/dev.mjs`, `scripts/test-backend.mjs` — used by the root `package.json`.

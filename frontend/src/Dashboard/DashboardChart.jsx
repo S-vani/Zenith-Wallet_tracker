@@ -1,5 +1,6 @@
 import {useEffect, useState} from "react";
 import {getPortfolioHistory} from "../services/api.js";
+import useRefreshKey from "../native/useRefreshKey.js";
 import {AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer} from "recharts";
 import {formatMoney} from "../utils/format.js";
 import {CHART_DOWN, CHART_UP, INITIAL_DIMENSION, TOOLTIP_STYLE, dailyTicks, tooltipDate} from "../utils/chart.js";
@@ -24,6 +25,8 @@ function DashboardChart({range, currency, dateJoined, trendUp}) {
         days = Number.isFinite(joined) ? Math.max(1, Math.ceil((now - joined) / (1000 * 60 * 60 * 24))) : 365;
     }
 
+    const refreshKey = useRefreshKey();
+
     useEffect(() => {
         let ignore = false;
 
@@ -44,7 +47,7 @@ function DashboardChart({range, currency, dateJoined, trendUp}) {
         return () => {
             ignore = true;
         };
-    }, [days]);
+    }, [days, refreshKey]);
 
     const formatTick = (v) => {
         const date = new Date(v);

@@ -202,3 +202,12 @@ def test_cors_rejects_other_origins(client):
 
 def test_unknown_route_is_404(client):
     assert client.get("/definitely-not-a-route").status_code == 404
+
+
+def test_cors_allows_the_ios_app(client):
+    # the Capacitor app loads its pages from capacitor://localhost
+    res = client.options("/users", headers={
+        "Origin": "capacitor://localhost", "Access-Control-Request-Method": "GET",
+        "Access-Control-Request-Headers": "authorization",
+    })
+    assert res.headers["access-control-allow-origin"] == "capacitor://localhost"

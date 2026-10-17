@@ -1,5 +1,6 @@
 import {useEffect, useState} from "react";
 import {getTransactions} from "../services/api";
+import useRefreshKey from "../native/useRefreshKey.js";
 import TransactionList from "../Transactions/TransactionList";
 import TransactionCreate from "../Transactions/TransactionCreate.jsx"
 import TransactionFilter from "../Transactions/TransactionFilter.jsx"
@@ -20,6 +21,7 @@ function TransactionsPage() {
     const [step, setStep] = useState("closed");
     const [symbolData, setSymbolData] = useState(null);
     const [reloadKey, setReloadKey] = useState(0);
+    const refreshKey = useRefreshKey(); // app only: pull to refresh / coming back to the app
     const [filtersOpen, setFiltersOpen] = useState(false); // only matters on phones, where filters start collapsed
 
     useEffect(() => {
@@ -37,7 +39,7 @@ function TransactionsPage() {
         return () => {
             ignore = true;
         };
-    }, [filters, reloadKey]);
+    }, [filters, reloadKey, refreshKey]);
 
     const changeFilters = (newFilters) => {
         setLoading(true);

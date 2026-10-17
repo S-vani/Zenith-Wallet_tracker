@@ -1,0 +1,56 @@
+# Cloud build for the iOS app (no Mac needed). Codemagic runs this on its macOS machines:
+# web build -> copy into the Capacitor iOS project -> sign -> .ipa -> upload to TestFlight.
+# Only Codemagic reads this file; it has no effect on the website or the server.
+#
+# One-time setup in codemagic.io:
+#   1. Teams -> Integrations -> Developer Portal: add an App Store Connect API key and name it "Zenith ASC key".
+#   2. In the app's settings -> Environment variables: APP_STORE_APPLE_ID = the numeric Apple ID of the app
+#      (App Store Connect -> your app -> App Information -> Apple ID).
+#   3. Start a build of "iOS -> TestFlight" (or push a tag like ios-v1.0.0).
+
+workflows:
+  ios-testflight:
+    name: iOS -> TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: Zenith ASC key
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: ca.zenithwalletracker.app
+      vars:
+        # baked into the app at build time; the same public API the website uses
+        VITE_BACKEND_URL: https://api.zenithwalletracker.ca
+        XCODE_PROJECT: frontend/ios/App/App.xcodeproj
+        XCODE_SCHEME: App
+      node: 22
+      xcode: latest
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: "ios-v*"
+    scripts:
+      - name: Install frontend packages
+        script: cd frontend && npm ci
+      - name: Run the frontend tests
+        script: cd frontend && npx vitest run
+      - name: Build the web app
+        script: cd frontend && npm run build
+      - name: Copy the build and plugins into the iOS project
+        script: cd frontend && npx cap sync ios
+      - name: Set up code signing
+        script: xcode-project use-profiles --project "$XCODE_PROJECT"
+      - name: Give this build a new build number
+        script: |
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" || echo 0)
+          cd frontend/ios/App && agvtool new-version -all $((LATEST + 1))
+      - name: Build the signed .ipa
+        script: xcode-project build-ipa --project "$XCODE_PROJECT" --scheme "$XCODE_SCHEME"
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

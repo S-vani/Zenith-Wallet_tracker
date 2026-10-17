@@ -3,6 +3,8 @@ import { useUser } from "../context/UserContext.jsx";
 import { formatPercent, formatPrice } from "../utils/format.js";
 import HoldingsChart from "../Holdings/HoldingsChart.jsx";
 import AnalystPanel from "../Analyst/AnalystPanel.jsx";
+import {isNative} from "../native/platform.js";
+import {shareText} from "../native/share.js";
 
 import "../css/Holdings.css";
 
@@ -46,6 +48,23 @@ function SearchResults({ results }) {
                                 {/* research report for this asset; loads on its own so the chart isn't held up */}
                                 <AnalystPanel key={`${result.type}-${result.api_id}`} symbol={result.api_id}
                                               type={result.type} coinId={result.coin_id} label={result.symbol}/>
+                                {isNative && (
+                                    <button type="button" className="btn search-share-btn"
+                                            onClick={() => shareText({
+                                                title: `${result.symbol.toUpperCase()} on Zenith`,
+                                                text: `${result.symbol.toUpperCase()} is ${formatPrice(result.price, currency)} `
+                                                    + `(${formatPercent(result.change_pct)} today).`,
+                                                url: "https://zenithwalletracker.ca",
+                                            })}>
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                                             strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                            <path d="M12 3v12"/>
+                                            <polyline points="8 7 12 3 16 7"/>
+                                            <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>
+                                        </svg>
+                                        Share {result.symbol.toUpperCase()}
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>

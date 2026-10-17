@@ -1,5 +1,6 @@
 import {useEffect, useState} from "react";
 import {getAuthProviders, googleSignInUrl} from "../services/api.js";
+import {isNative} from "../native/platform.js";
 
 // Only renders when Google sign in is configured on the backend
 function GoogleButton({label = "Continue with Google", next}) {
@@ -7,6 +8,9 @@ function GoogleButton({label = "Continue with Google", next}) {
     const [redirecting, setRedirecting] = useState(false);
 
     useEffect(() => {
+        // Not offered in the iOS app: Google blocks sign-in inside app web views, and offering it there would
+        // also require Sign in with Apple. App users sign in with email; the website keeps the Google button.
+        if (isNative) return;
         getAuthProviders().then((providers) => setEnabled(Boolean(providers.google))).catch(() => null);
     }, []);
 

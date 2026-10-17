@@ -35,6 +35,10 @@ app = FastAPI(lifespan=lifespan)
 
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
+# The iOS app (Capacitor) serves its pages from this origin, so it needs CORS too. It's added here rather than in
+# FRONTEND_URL because the first FRONTEND_URL entry is also used for links in emails and the Google redirect.
+NATIVE_APP_ORIGINS = ["capacitor://localhost"]
+
 
 class CatchUnhandledErrors(BaseHTTPMiddleware):
     """
@@ -70,7 +74,8 @@ app.add_middleware(CatchUnhandledErrors)
 app.add_middleware(
     CORSMiddleware,
     # FRONTEND_URL can list several origins separated by commas (e.g. with and without www)
-    allow_origins=[origin.strip().rstrip("/") for origin in frontend_url.split(",") if origin.strip()],
+    allow_origins=[origin.strip().rstrip("/") for origin in frontend_url.split(",") if origin.strip()]
+                  + NATIVE_APP_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

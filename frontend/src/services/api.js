@@ -1,3 +1,5 @@
+import {saveToken as keepInKeychain} from "../native/secureToken.js";
+
 const BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 // Friendly messages for the error codes fastapi-users sends back
@@ -16,6 +18,7 @@ export function getToken() {
 
 export function logout() {
     localStorage.removeItem("token");
+    keepInKeychain(null); // the iOS app also keeps the token in the Keychain; no-op on the website
 }
 
 function getAuthHeaders() {
@@ -197,7 +200,7 @@ export async function loginAuthentication(form) {
 
     const data = await res.json()
 
-    localStorage.setItem("token", data.access_token)
+    saveToken(data.access_token)
 
     return data
 }
@@ -214,6 +217,7 @@ export function googleSignInUrl(next = "/dashboard") {
 
 export function saveToken(token) {
     localStorage.setItem("token", token);
+    keepInKeychain(token);
 }
 
 export async function signupAuthentication(form) {

@@ -5,6 +5,7 @@ import DashboardStats from "../Dashboard/DashboardStats.jsx";
 import DashboardChart from "../Dashboard/DashboardChart.jsx";
 import {useUser} from "../context/UserContext.jsx";
 import usePageTitle from "../utils/usePageTitle.js";
+import useRefreshKey from "../native/useRefreshKey.js";
 
 import "../css/Dashboard.css";
 
@@ -31,6 +32,7 @@ function DashboardPage() {
     const [error, setError] = useState(null);
     const [activeRange, setActiveRange] = useState("day");
     const [stats, setStats] = useState({value: 0.0, curr_timeperiod: 0.0});
+    const refreshKey = useRefreshKey(); // app only: pull to refresh / coming back to the app
 
     useEffect(() => {
         let ignore = false; // ignore responses for a range the user already clicked away from
@@ -52,7 +54,7 @@ function DashboardPage() {
         return () => {
             ignore = true;
         };
-    }, [activeRange]);
+    }, [activeRange, refreshKey]);
 
     const firstName = user?.name?.split(" ")[0];
 

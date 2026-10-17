@@ -3,6 +3,7 @@ import {Link} from "react-router-dom";
 import {getHoldings} from "../services/api.js";
 import HoldingsList from "../Holdings/HoldingsList.jsx";
 import usePageTitle from "../utils/usePageTitle.js";
+import useRefreshKey from "../native/useRefreshKey.js";
 
 import "../css/Holdings.css"
 
@@ -12,6 +13,7 @@ function HoldingsPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [holdings, setHoldings] = useState([]);
+    const refreshKey = useRefreshKey(); // app only: pull to refresh / coming back to the app
 
     useEffect(() => {
         const loadHoldings = async () => {
@@ -27,7 +29,7 @@ function HoldingsPage() {
         };
 
         loadHoldings();
-    }, []);
+    }, [refreshKey]);
 
     let content;
     if (loading) {

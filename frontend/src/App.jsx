@@ -10,6 +10,10 @@ import OAuthCallbackPage from "./pages/OAuthCallbackPage.jsx";
 import Toaster from "./components/Toaster.jsx";
 import {UserProvider} from "./context/UserContext.jsx";
 import {getToken} from "./services/api.js";
+import {isNative} from "./native/platform.js";
+import AppLock from "./native/AppLock.jsx";
+import OfflineBanner from "./native/OfflineBanner.jsx";
+import PullToRefresh from "./native/PullToRefresh.jsx";
 
 // signed in pages (and the charting library they use) load on demand to keep the landing page fast
 const DashboardPage = lazy(() => import("./pages/DashboardPage.jsx"));
@@ -37,6 +41,7 @@ function ProtectedLayout() {
 
     return (
         <UserProvider>
+            {isNative && <PullToRefresh/>}
             <NavBar/>
             <main className="main-content">
                 <Suspense fallback={<div className="state-message"><div className="spinner"/></div>}>
@@ -47,12 +52,17 @@ function ProtectedLayout() {
     );
 }
 
-function App() {
+function App({lockEnabled = false}) {
     return (
         <>
         <Toaster/>
+        {isNative && <OfflineBanner/>}
+        {isNative && <AppLock initiallyEnabled={lockEnabled}/>}
         <Routes>
-            <Route path="/" element={<HomePage/>}/>
+            {/* the app opens straight to your portfolio (or sign in); the marketing page is for the website */}
+            <Route path="/" element={isNative
+                ? <Navigate to={getToken() ? "/dashboard" : "/login"} replace/>
+                : <HomePage/>}/>
             <Route path="/login" element={<LoginPage/>}/>
             <Route path="/signup" element={<SignupPage/>}/>
             <Route path="/verify" element={<VerifyPage/>}/>

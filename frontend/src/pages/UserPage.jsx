@@ -1,8 +1,10 @@
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import {Link, useNavigate} from "react-router-dom";
 import "../css/User.css"
 
 import {putUserInfo, putUserEmail, deleteAccount, logout} from "../services/api.js"
+import {isNative} from "../native/platform.js";
+import {biometricInfo, isLockEnabled, setLockEnabled, verifyIdentity} from "../native/biometric.js";
 import {useUser} from "../context/UserContext.jsx";
 import usePageTitle from "../utils/usePageTitle.js";
 import {showToast} from "../utils/toast.js";
@@ -234,6 +236,8 @@ function UserSettings({user, setUser}) {
                     <button className="btn user-logout-button" onClick={handleLogout}>Log out</button>
                 </div>
 
+                {isNative && <SecurityCard/>}
+
                 <div className="user-card user-danger-card">
                     <div className="user-card-header">
                         <h2 className="user-card-title">Delete account</h2>
@@ -281,6 +285,56 @@ function UserSettings({user, setUser}) {
             </div>
         </div>
     )
+}
+
+// App only: turn the Face ID lock on or off. Turning it on asks for Face ID once, so it can't be switched on
+// by someone whose face won't open it.
+function SecurityCard() {
+    const [info, setInfo] = useState({available: false, label: "Face ID"});
+    const [enabled, setEnabled] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        biometricInfo().then(setInfo);
+        isLockEnabled().then(setEnabled);
+    }, []);
+
+    const toggle = async () => {
+        setBusy(true);
+        setError(null);
+        try {
+            if (!enabled) await verifyIdentity(`Turn on ${info.label} for Zenith`);
+            await setLockEnabled(!enabled);
+            setEnabled(!enabled);
+            showToast(enabled ? `${info.label} lock turned off` : `${info.label} lock turned on`);
+        } catch {
+            setError(`${info.label} wasn't confirmed, so nothing changed.`);
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <div className="user-card">
+            <div className="user-card-header">
+                <h2 className="user-card-title">Security</h2>
+            </div>
+            <div className="user-toggle-row">
+                <div>
+                    <span className="user-field-label">Require {info.label}</span>
+                    <p className="user-field-hint">
+                        {info.available
+                            ? `Lock Zenith whenever you leave the app. Open it again with ${info.label} or your passcode.`
+                            : `Set up ${info.label} or a passcode in your iPhone's Settings to use this.`}
+                    </p>
+                </div>
+                <button type="button" role="switch" aria-checked={enabled} aria-label={`Require ${info.label}`}
+                        className="user-toggle" onClick={toggle} disabled={busy || !info.available}/>
+            </div>
+            {error && <p className="alert-error" role="alert">{error}</p>}
+        </div>
+    );
 }
 
 export default UserPage;

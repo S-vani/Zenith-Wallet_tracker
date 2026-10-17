@@ -1,0 +1,24 @@
+{
+  "appId": "ca.zenithwalletracker.app",
+  "appName": "Zenith",
+  "webDir": "dist",
+  "backgroundColor": "#060a12",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#060a12",
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 3000,
+      "launchAutoHide": false,
+      "backgroundColor": "#060a12",
+      "showSpinner": false,
+      "launchFadeOutDuration": 250
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "overlaysWebView": true
+    }
+  }
+}
