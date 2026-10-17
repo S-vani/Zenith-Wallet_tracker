@@ -15,8 +15,9 @@ from backend.analyst.data import AssetData
 from backend.analyst.schema import (AnalystReport, AssetInfo, Insight, Metric, Period, PriceRange, Risk,
                                     Scenario, Source, WatchItem)
 
-DISCLAIMER = ("Generated automatically from market data for information only. It is not financial advice, and past "
-              "price movements don't guarantee future results.")
+DISCLAIMER = ("Generated automatically by software from third-party market data, for information only. It is not "
+              "financial or investment advice or a recommendation to buy or sell, and past price movements don't "
+              "guarantee future results.")
 MIN_POINTS = 30  # below this there isn't enough history to say anything meaningful
 MIN_POINTS_FOR_RANGES = 60
 MIN_RETURNS_FOR_CORRELATION = 60

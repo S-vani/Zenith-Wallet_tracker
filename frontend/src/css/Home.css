@@ -401,6 +401,17 @@ button.hero-link-btn {
     color: rgba(255, 255, 255, 0.15);
 }
 
+.footer-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.footer-link:hover,
+.footer-link:focus-visible {
+    color: var(--accent-soft);
+    text-decoration: underline;
+}
+
 html {
     scroll-behavior: smooth;
 }

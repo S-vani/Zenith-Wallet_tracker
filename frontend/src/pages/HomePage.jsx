@@ -172,6 +172,8 @@ function HomePage() {
                 </span>
                 <span className="footer-dot">·</span>
                 <span>Built for investors, by investors.</span>
+                <span className="footer-dot">·</span>
+                <Link to="/privacy" className="footer-link">Privacy &amp; disclaimer</Link>
             </footer>
         </div>
 

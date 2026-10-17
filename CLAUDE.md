@@ -9,7 +9,8 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
   so run from the project root (`backend/main.py` also fixes `sys.path` when run directly).
   - `main.py` — app, CORS (`FRONTEND_URL`, comma-separated), JSON 500 handler, 422 handler that never echoes inputs.
   - `routes/assets.py` — transactions CRUD + filters, holdings, dashboard, price/portfolio history, stock/crypto
-    search, user info/email. `routes/oauth.py` — Google sign-in. `routes/analyst.py` — `GET /analyst`.
+    search, user info/email, `DELETE /user` (account deletion: transactions + OAuth links + user, required by the
+    app stores). `routes/oauth.py` — Google sign-in. `routes/analyst.py` — `GET /analyst`.
   - `services/asset_services.py` — pricing (yfinance), FX conversion (open.er-api, 60 s cache), holdings math,
     `rebuild_symbol_ledger` (replays a symbol's buys/sells; used by PUT/DELETE to keep history valid).
   - `analyst/` — market analyst: `data.py` (collects data), `indicators.py` (pure maths), `engine.py` (rules →
@@ -18,6 +19,8 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
 - `frontend/` — React 19 + Vite + recharts. `src/services/api.js` is the only place that calls the backend
   (`request()` adds the token, maps errors to readable messages, logs out on 401/403).
   - `pages/` (one per route), `Dashboard/`, `Holdings/`, `Transactions/`, `Search/`, `Analyst/`, `Authentication/`.
+    `pages/PrivacyPage.jsx` (`/privacy`, public) is the privacy policy + "not financial advice" disclaimer the app
+    stores require — update it whenever the app starts collecting or sending data somewhere new.
   - `context/UserContext.jsx` (current user + currency), `utils/format.js` (money/price/percent formatting — use
     `formatPrice` for asset prices so tiny coins never show $0.00), `utils/chart.js`, `utils/toast.js` (`showToast`).
   - CSS in `src/css/` with design tokens in `Global.css` (navy theme). Phones get a bottom tab bar (≤768px).

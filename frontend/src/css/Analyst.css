@@ -886,6 +886,17 @@
 .analyst-disclaimer {
     font-size: 0.8rem;
     color: var(--text-subtle);
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+}
+
+.analyst-disclaimer strong {
+    color: #fcd34d;
+}
+
+.analyst-disclaimer a {
+    color: var(--accent-soft);
+    white-space: nowrap;
 }
 
 /* ---------- insufficient data ---------- */

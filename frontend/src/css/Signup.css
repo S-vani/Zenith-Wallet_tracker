@@ -83,6 +83,18 @@
     margin-top: 0.5rem;
 }
 
+.signup-legal {
+    margin: 0;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    text-align: center;
+    color: var(--text-subtle);
+}
+
+.signup-legal a {
+    color: var(--accent-soft);
+}
+
 .signup-form-footer {
     display: flex;
     align-items: center;

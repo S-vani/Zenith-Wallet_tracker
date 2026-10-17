@@ -151,6 +151,10 @@ function SignupForm({onSubmit}) {
                     <button type="submit" className="auth-btn signup-btn large signup-submit-btn" disabled={submitting}>
                         {submitting ? "Creating account…" : "Create account"}
                     </button>
+                    <p className="signup-legal">
+                        By creating an account you agree to our <Link to="/privacy">privacy policy</Link>. Zenith is
+                        not financial advice.
+                    </p>
                 </form>
 
                 <div className="signup-form-footer">

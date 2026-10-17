@@ -1,8 +1,8 @@
 import {useState} from "react";
-import {useNavigate} from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 import "../css/User.css"
 
-import {putUserInfo, putUserEmail, logout} from "../services/api.js"
+import {putUserInfo, putUserEmail, deleteAccount, logout} from "../services/api.js"
 import {useUser} from "../context/UserContext.jsx";
 import usePageTitle from "../utils/usePageTitle.js";
 import {showToast} from "../utils/toast.js";
@@ -77,6 +77,33 @@ function UserSettings({user, setUser}) {
     const handleLogout = () => {
         logout();
         navigate("/login", {replace: true});
+    };
+
+    // Deleting needs a second, deliberate step: open the confirmation, then type DELETE
+    const [confirmingDelete, setConfirmingDelete] = useState(false);
+    const [deleteText, setDeleteText] = useState("");
+    const [deleting, setDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState(null);
+
+    const cancelDelete = () => {
+        setConfirmingDelete(false);
+        setDeleteText("");
+        setDeleteError(null);
+    };
+
+    const handleDelete = async (e) => {
+        e.preventDefault();
+        setDeleting(true);
+        setDeleteError(null);
+        try {
+            await deleteAccount();
+            logout();
+            navigate("/", {replace: true});
+            showToast("Your account and all of its data have been deleted.");
+        } catch (err) {
+            setDeleteError(err.message);
+            setDeleting(false);
+        }
     };
 
     const initials = user.name
@@ -205,6 +232,51 @@ function UserSettings({user, setUser}) {
                     </div>
 
                     <button className="btn user-logout-button" onClick={handleLogout}>Log out</button>
+                </div>
+
+                <div className="user-card user-danger-card">
+                    <div className="user-card-header">
+                        <h2 className="user-card-title">Delete account</h2>
+                    </div>
+
+                    <p className="user-field-hint">
+                        Permanently deletes your account, every transaction you've logged and any linked Google
+                        sign-in. This can't be undone. See our <Link to="/privacy">privacy policy</Link> for details.
+                    </p>
+
+                    {!confirmingDelete ? (
+                        <button className="btn user-delete-button" onClick={() => setConfirmingDelete(true)}>
+                            Delete account…
+                        </button>
+                    ) : (
+                        <form className="user-delete-confirm" onSubmit={handleDelete}>
+                            <label className="user-field-label" htmlFor="delete-confirm">
+                                Type <strong>DELETE</strong> to confirm
+                            </label>
+                            <input
+                                id="delete-confirm"
+                                className="user-field-input"
+                                value={deleteText}
+                                onChange={(e) => setDeleteText(e.target.value)}
+                                autoComplete="off"
+                                autoCapitalize="characters"
+                                spellCheck={false}
+                                autoFocus
+                            />
+
+                            {deleteError && <p className="alert-error" role="alert">{deleteError}</p>}
+
+                            <div className="user-delete-actions">
+                                <button type="button" className="btn" onClick={cancelDelete} disabled={deleting}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn user-delete-submit"
+                                        disabled={deleteText.trim() !== "DELETE" || deleting}>
+                                    {deleting ? "Deleting…" : "Delete my account"}
+                                </button>
+                            </div>
+                        </form>
+                    )}
                 </div>
             </div>
         </div>

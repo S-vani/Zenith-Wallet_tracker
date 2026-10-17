@@ -17,6 +17,7 @@ const HoldingsPage = lazy(() => import("./pages/HoldingsPage.jsx"));
 const TransactionPage = lazy(() => import("./pages/TransactionPage.jsx"));
 const SearchPage = lazy(() => import("./pages/SearchPage.jsx"));
 const UserPage = lazy(() => import("./pages/UserPage.jsx"));
+const PrivacyPage = lazy(() => import("./pages/PrivacyPage.jsx"));
 
 
 // Wraps every page that needs an account: sends logged out users to /login and adds the nav bar
@@ -56,6 +57,11 @@ function App() {
             <Route path="/signup" element={<SignupPage/>}/>
             <Route path="/verify" element={<VerifyPage/>}/>
             <Route path="/auth/callback" element={<OAuthCallbackPage/>}/>
+            <Route path="/privacy" element={
+                <Suspense fallback={<div className="state-message"><div className="spinner"/></div>}>
+                    <PrivacyPage/>
+                </Suspense>
+            }/>
 
             <Route element={<ProtectedLayout/>}>
                 <Route path="/dashboard" element={<DashboardPage/>}/>

@@ -201,3 +201,21 @@ describe("getAnalystReport", () => {
             .rejects.toThrow("Couldn't load the market analysis.");
     });
 });
+
+describe("deleteAccount", () => {
+    it("sends an authenticated DELETE to /user", async () => {
+        store.set("token", "abc");
+        fetchMock.mockResolvedValue(respond(200, {message: "Account deleted"}));
+
+        await expect(api.deleteAccount()).resolves.toEqual({message: "Account deleted"});
+        const [url, options] = fetchMock.mock.calls[0];
+        expect(url).toBe(`${BASE}/user`);
+        expect(options.method).toBe("DELETE");
+        expect(options.headers.Authorization).toBe("Bearer abc");
+    });
+
+    it("shows a readable error when the server fails", async () => {
+        fetchMock.mockResolvedValue(respond(500, new Error("not json")));
+        await expect(api.deleteAccount()).rejects.toThrow("Couldn't delete your account. Please try again.");
+    });
+});

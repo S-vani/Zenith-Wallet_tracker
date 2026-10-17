@@ -1,4 +1,5 @@
 import {useId} from "react";
+import {Link} from "react-router-dom";
 import useAnalystReport from "./useAnalystReport.js";
 import useNow from "./useNow.js";
 import {
@@ -120,7 +121,12 @@ function AnalystPanel({symbol, type, coinId, label}) {
 
             {body}
 
-            {report?.disclaimer && <p className="analyst-disclaimer">{report.disclaimer}</p>}
+            {report?.disclaimer && (
+                <p className="analyst-disclaimer">
+                    <strong>Not financial advice.</strong> {report.disclaimer}{" "}
+                    <Link to="/privacy#disclaimer">Full disclaimer</Link>
+                </p>
+            )}
         </section>
     );
 }

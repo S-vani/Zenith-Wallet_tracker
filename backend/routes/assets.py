@@ -9,13 +9,13 @@ from decimal import Decimal
 
 from fastapi import HTTPException, Depends, APIRouter, Query
 from fastapi_users import exceptions
-from sqlalchemy import select, func
+from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.analyst.data import coingecko_chart
 from backend.authentication.authentication import current_active_user, get_user_manager
 from backend.db.database import get_async_session
-from backend.db_models.assets import Transaction, User, UserManager
+from backend.db_models.assets import Transaction, User, UserManager, OAuthAccount
 from backend.schemas.assets import CreateTransaction, UpdateTransaction, UpdateUserInfo, UpdateUserEmail
 from backend.services.asset_services import (current_quantity, create_holding_filter, \
                                              turn_list_to_dict, calculate_profit_for_one_transaction,
@@ -608,3 +608,23 @@ async def change_user_email(
     await user_manager.request_verify(current_user)
 
     return {"message": "Verification email sent"}
+
+
+@router.delete("/user")
+async def delete_account(
+        current_user: User = Depends(current_active_user),
+        session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Permanently delete the signed-in user's account: their transactions, any linked Google login and the user
+    itself, all in one database transaction. There is no undo (the app stores require in-app account deletion).
+    Analyst reports are shared per asset, not per user, so they stay.
+    """
+    user_id = current_user.id
+    # bulk deletes, so the ORM doesn't try to null out the foreign keys of the user's children first
+    await session.execute(delete(Transaction).where(Transaction.user_id == user_id))
+    await session.execute(delete(OAuthAccount).where(OAuthAccount.user_id == user_id))
+    await session.execute(delete(User).where(User.id == user_id))
+    await session.commit()
+
+    return {"message": "Account deleted"}

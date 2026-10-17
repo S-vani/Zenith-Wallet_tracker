@@ -283,3 +283,11 @@ export async function putUserEmail(new_email) {
         fallbackError: "Couldn't send the verification email.",
     });
 }
+
+// Permanently deletes the account with all its transactions; the caller signs the user out afterwards
+export async function deleteAccount() {
+    return request("/user", {
+        method: "DELETE",
+        fallbackError: "Couldn't delete your account. Please try again.",
+    });
+}
