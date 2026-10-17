@@ -1,0 +1,185 @@
+# CI: runs the backend (pytest) and frontend (eslint, Vitest, Vite build) checks on every push and on PRs to main.
+# Each job saves its logs and JUnit reports as an artifact (also when something fails) and writes a short summary
+# on the run page. No deployment here yet.
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+# Read-only token: the jobs only check out code and upload artifacts.
+permissions:
+  contents: read
+
+# A new push to the same branch (or PR) cancels the run that's still going for the older commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      # setup-uv stopped publishing major tags (@v10) after v8, so it's pinned to an exact release.
+      - name: Set up uv and Python 3.11
+        uses: astral-sh/setup-uv@v10.3.0
+        with:
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      # --frozen: install exactly what's in uv.lock (fails instead of updating it).
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      # Tests are offline (network blocked, fake keys in tests/conftest.py), so no secrets are needed.
+      # pipefail keeps pytest's exit code even though its output goes through tee.
+      - name: Run pytest
+        id: pytest
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p reports
+          uv run --no-sync pytest --junitxml=reports/backend-junit.xml 2>&1 | tee reports/backend-tests.log
+
+      - name: Write job summary
+        if: always()
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.pytest.outcome }}
+        run: |
+          {
+            echo "## Backend tests"
+            case "$OUTCOME" in
+              success) echo "**Passed**" ;;
+              failure) echo "**Failed** - see the log below or download the backend-reports artifact." ;;
+              *) echo "**Did not run** - an earlier step failed." ;;
+            esac
+            if [ -f reports/backend-tests.log ]; then
+              echo
+              echo "Last lines of the log:"
+              echo '```'
+              tail -n 15 reports/backend-tests.log
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-reports
+          path: reports/
+          retention-days: 14
+          if-no-files-found: warn
+
+  frontend:
+    name: Frontend lint, tests and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+        shell: bash
+    env:
+      # Vite/Vitest print colour codes on CI, which clutter the saved logs and the summary.
+      NO_COLOR: "1"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        id: install
+        run: npm ci
+
+      # Lint, tests and build each run as long as the install worked, so one failure doesn't hide the others.
+      - name: Lint (eslint)
+        id: lint
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          set -o pipefail
+          mkdir -p ../reports
+          npx eslint . 2>&1 | tee ../reports/frontend-lint.log
+
+      - name: Unit tests (Vitest)
+        id: vitest
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          set -o pipefail
+          mkdir -p ../reports
+          npx vitest run --reporter=default --reporter=junit --outputFile.junit=../reports/frontend-junit.xml 2>&1 \
+            | tee ../reports/frontend-tests.log
+
+      # Confirms the production build works (frontend/.env isn't in the repo, so VITE_BACKEND_URL is unset here).
+      - name: Production build (vite build)
+        id: build
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          set -o pipefail
+          mkdir -p ../reports
+          npx vite build 2>&1 | tee ../reports/frontend-build.log
+
+      - name: Write job summary
+        if: always()
+        env:
+          LINT: ${{ steps.lint.outcome }}
+          TESTS: ${{ steps.vitest.outcome }}
+          BUILD: ${{ steps.build.outcome }}
+        run: |
+          result() {
+            case "$1" in
+              success) echo "Passed" ;;
+              failure) echo "**Failed**" ;;
+              *) echo "Did not run" ;;
+            esac
+          }
+          {
+            echo "## Frontend"
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            echo "| Lint (eslint) | $(result "$LINT") |"
+            echo "| Unit tests (Vitest) | $(result "$TESTS") |"
+            echo "| Production build | $(result "$BUILD") |"
+            if [ -f ../reports/frontend-tests.log ]; then
+              echo
+              echo "Last lines of the test log:"
+              echo '```'
+              tail -n 15 ../reports/frontend-tests.log
+              echo '```'
+            fi
+            if [ "$LINT" = "failure" ] && [ -f ../reports/frontend-lint.log ]; then
+              echo
+              echo "Last lines of the lint log:"
+              echo '```'
+              tail -n 15 ../reports/frontend-lint.log
+              echo '```'
+            fi
+            if [ "$BUILD" = "failure" ] && [ -f ../reports/frontend-build.log ]; then
+              echo
+              echo "Last lines of the build log:"
+              echo '```'
+              tail -n 15 ../reports/frontend-build.log
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-reports
+          path: reports/
+          retention-days: 14
+          if-no-files-found: warn

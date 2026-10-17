@@ -7,3 +7,6 @@ __pycache__/
 node_modules/
 .pytest_cache/
 .claude/
+
+# CI test logs and JUnit reports (also produced when running the CI commands locally)
+reports/

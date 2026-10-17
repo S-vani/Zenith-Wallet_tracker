@@ -4,6 +4,8 @@
 
 # Zenith Wallet Tracker
 
+[![CI](https://github.com/S-vani/Zenith-Wallet_tracker/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/S-vani/Zenith-Wallet_tracker/actions/workflows/ci.yml)
+
 **Track your stocks and crypto in one place: log trades, follow your portfolio's value over time, and get a
 rules-based market outlook for any symbol.**
 
