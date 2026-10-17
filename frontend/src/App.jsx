@@ -3,6 +3,8 @@ import {Routes, Route, Navigate, Outlet, useLocation, useNavigate} from "react-r
 import NavBar from "./NavBar.jsx";
 import LoginPage from "./pages/LoginPage.jsx"
 import VerifyPage from "./pages/VerifyPage.jsx";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
+import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
 import SignupPage from "./pages/SignupPage.jsx";
 import HomePage from "./pages/HomePage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
@@ -66,6 +68,8 @@ function App({lockEnabled = false}) {
             <Route path="/login" element={<LoginPage/>}/>
             <Route path="/signup" element={<SignupPage/>}/>
             <Route path="/verify" element={<VerifyPage/>}/>
+            <Route path="/forgot-password" element={<ForgotPasswordPage/>}/>
+            <Route path="/reset-password" element={<ResetPasswordPage/>}/>
             <Route path="/auth/callback" element={<OAuthCallbackPage/>}/>
             <Route path="/privacy" element={
                 <Suspense fallback={<div className="state-message"><div className="spinner"/></div>}>

@@ -112,7 +112,10 @@ function LoginForm({onSubmit}) {
                     </div>
 
                     <div className="login-field">
-                        <label htmlFor="password">Password</label>
+                        <div className="login-label-row">
+                            <label htmlFor="password">Password</label>
+                            <Link to="/forgot-password" className="forgot-link">Forgot password?</Link>
+                        </div>
                         <PasswordInput
                             id="password"
                             name="password"

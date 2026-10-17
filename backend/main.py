@@ -84,6 +84,9 @@ app.add_middleware(
 app.include_router(fastapi_users.get_auth_router(auth_backend, requires_verification=True),prefix="/auth/jwt", tags=["auth"])
 app.include_router(fastapi_users.get_register_router(UserRead, UserCreate), prefix="/auth", tags=["auth"])
 app.include_router(fastapi_users.get_verify_router(UserRead), prefix="/auth", tags=["auth"])
+# POST /auth/forgot-password (always 202, so it never reveals whether an email has an account) and
+# POST /auth/reset-password with the emailed one-hour token
+app.include_router(fastapi_users.get_reset_password_router(), prefix="/auth", tags=["auth"])
 app.include_router(oauth_router)
 app.include_router(analyst_router)
 app.include_router(user_router)

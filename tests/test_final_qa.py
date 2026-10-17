@@ -139,8 +139,10 @@ def test_users_me_route_is_not_exposed(client, user):
     assert client.patch("/users/me", headers=user.headers, json={"email": unique_email()}).status_code in (404, 405)
 
 
-def test_forgot_password_route_is_not_exposed(client):
-    assert client.post("/auth/forgot-password", json={"email": unique_email()}).status_code == 404
+def test_forgot_password_never_reveals_whether_an_account_exists(client, user):
+    # the reset flow is exposed on purpose (see test_password_reset.py), but answers the same for any email
+    assert client.post("/auth/forgot-password", json={"email": unique_email()}).status_code == 202
+    assert client.post("/auth/forgot-password", json={"email": user.email}).status_code == 202
 
 
 @pytest.mark.parametrize("password", [" " * 8, "x" * 129])

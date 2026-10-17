@@ -334,3 +334,29 @@
     font-size: 0.82rem;
     color: var(--text-subtle);
 }
+
+/* "Password" label with the "Forgot password?" link on the same line */
+.login-label-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.forgot-link {
+    font-size: 0.78rem;
+    color: var(--accent-soft);
+}
+
+.reset-mismatch {
+    font-size: 0.8rem;
+    color: #fca5a5;
+}
+
+.reset-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+    text-align: left;
+}

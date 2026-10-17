@@ -11,6 +11,7 @@ const ERROR_MESSAGES = {
     REGISTER_INVALID_PASSWORD: "That password isn't allowed. Try a longer one.",
     VERIFY_USER_BAD_TOKEN: "This verification link is invalid or has expired.",
     VERIFY_USER_ALREADY_VERIFIED: "Your email is already verified. You can log in.",
+    RESET_PASSWORD_BAD_TOKEN: "This reset link is invalid or has expired. Request a new one.",
 };
 
 export function getToken() {
@@ -251,6 +252,25 @@ export async function requestVerification(email) {
         method: "POST",
         body: JSON.stringify({email: email.trim()}),
         fallbackError: "Couldn't send the verification email.",
+    });
+}
+
+// Always succeeds (202) whether or not the email has an account, so the form can't reveal who signed up
+export async function forgotPassword(email) {
+    return request("/auth/forgot-password", {
+        auth: false,
+        method: "POST",
+        body: JSON.stringify({email: email.trim()}),
+        fallbackError: "Couldn't send the reset email. Please try again.",
+    });
+}
+
+export async function resetPassword(token, password) {
+    return request("/auth/reset-password", {
+        auth: false,
+        method: "POST",
+        body: JSON.stringify({token, password}),
+        fallbackError: "Couldn't reset your password. Please try again.",
     });
 }
 

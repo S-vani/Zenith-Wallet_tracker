@@ -60,38 +60,43 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         await self.request_verify(user, request)
 
     async def on_after_request_verify(self, user, token, request=None):
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173").split(",")[0].strip().rstrip("/")
-        verify_url = f"{frontend_url}/verify?token={token}"
+        await send_link_email(user, "verify", token, subject="Verify your Zenith email",
+                              intro="Click the link below to verify your Zenith account:")
 
-        sender = os.getenv("GMAIL_USER")
-        app_pass = os.getenv("GMAIL_PASS")
+    async def on_after_forgot_password(self, user, token, request=None):
+        await send_link_email(user, "reset-password", token, subject="Reset your Zenith password",
+                              intro="Click the link below to choose a new Zenith password. It works for one hour. "
+                                    "If you didn't ask for this, you can ignore this email.")
 
-        user_email = str(user.email)
 
-        if not sender or not app_pass:
-            # no email account configured (local development): log the link instead of sending an email
-            logging.getLogger("uvicorn.error").warning("Verification link for %s: %s", user_email, verify_url)
-            return
+async def send_link_email(user, page: str, token: str, subject: str, intro: str) -> None:
+    """Email the user a link to a frontend page (/verify, /reset-password) that carries a one-time token."""
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173").split(",")[0].strip().rstrip("/")
+    link = f"{frontend_url}/{page}?token={token}"
 
-        email_body = f"""
-        Click on the link below to verify your account:
-        
-        {verify_url}
-        """
-        message = MIMEText(email_body)
+    sender = os.getenv("GMAIL_USER")
+    app_pass = os.getenv("GMAIL_PASS")
+    user_email = str(user.email)
 
-        message["Subject"] = "Email Verification"
-        message["From"] = sender
-        message["To"] = user_email
+    if not sender or not app_pass:
+        # no email account configured (local development): log the link instead of sending an email
+        label = "Verification" if page == "verify" else "Password reset"
+        logging.getLogger("uvicorn.error").warning("%s link for %s: %s", label, user_email, link)
+        return
 
-        def send():
-            # smtplib is blocking, so it runs in a worker thread to keep the event loop free
-            with smtplib.SMTP("smtp.gmail.com", 587) as server:
-                server.starttls()
-                server.login(str(sender), str(app_pass))
-                server.sendmail(str(sender), user_email, message.as_string())
+    message = MIMEText(f"{intro}\n\n{link}\n")
+    message["Subject"] = subject
+    message["From"] = sender
+    message["To"] = user_email
 
-        await asyncio.to_thread(send)
+    def send():
+        # smtplib is blocking, so it runs in a worker thread to keep the event loop free
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(str(sender), str(app_pass))
+            server.sendmail(str(sender), user_email, message.as_string())
+
+    await asyncio.to_thread(send)
 
 
 class Transaction(Base):

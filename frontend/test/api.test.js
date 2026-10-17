@@ -219,3 +219,27 @@ describe("deleteAccount", () => {
         await expect(api.deleteAccount()).rejects.toThrow("Couldn't delete your account. Please try again.");
     });
 });
+
+describe("password reset", () => {
+    it("asks for a reset email without needing a login", async () => {
+        fetchMock.mockResolvedValue(respond(202, null));
+        await api.forgotPassword("  a@b.co ");
+        const [url, options] = fetchMock.mock.calls[0];
+        expect(url).toBe(`${BASE}/auth/forgot-password`);
+        expect(JSON.parse(options.body)).toEqual({email: "a@b.co"});
+        expect(options.headers.Authorization).toBeUndefined();
+    });
+
+    it("explains an expired or used reset link", async () => {
+        fetchMock.mockResolvedValue(respond(400, {detail: "RESET_PASSWORD_BAD_TOKEN"}));
+        await expect(api.resetPassword("tok", "Long-enough-1"))
+            .rejects.toThrow("This reset link is invalid or has expired. Request a new one.");
+    });
+
+    it("shows the password rule the server rejected", async () => {
+        fetchMock.mockResolvedValue(respond(400, {
+            detail: {code: "RESET_PASSWORD_INVALID_PASSWORD", reason: "Password must be at least 8 characters."},
+        }));
+        await expect(api.resetPassword("tok", "short")).rejects.toThrow("Password must be at least 8 characters.");
+    });
+});
