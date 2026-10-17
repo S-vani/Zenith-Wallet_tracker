@@ -15,7 +15,9 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
     `rebuild_symbol_ledger` (replays a symbol's buys/sells; used by PUT/DELETE to keep history valid).
   - `analyst/` — market analyst: `data.py` (collects data), `indicators.py` (pure maths), `engine.py` (rules →
     report), `gemini.py` (optional rewording), `service.py` (DB cache, rate limits), `schema.py` (response model).
-  - `db_models/assets.py` — `User`, `Transaction`, `OAuthAccount`, `UserManager` (password rules, verification email).
+  - `db_models/assets.py` — `User`, `Transaction`, `OAuthAccount`, `UserManager` (password rules) and
+    `send_link_email` (verification + password-reset emails; logs the link when GMAIL_* is empty). Reset flow:
+    `/auth/forgot-password` (always 202) → email → `/reset-password?token=` page → `/auth/reset-password`.
 - `frontend/` — React 19 + Vite + recharts. `src/services/api.js` is the only place that calls the backend
   (`request()` adds the token, maps errors to readable messages, logs out on 401/403).
   - `pages/` (one per route), `Dashboard/`, `Holdings/`, `Transactions/`, `Search/`, `Analyst/`, `Authentication/`.
@@ -90,7 +92,7 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
 
 ## Deploying (server: `~/walletapp` as user `deploy`)
 `git pull` → `uv sync` (or `.venv/bin/pip install -r requirements.txt`) → `cd frontend && npm ci && npm run build`
-(copy `dist` if nginx serves `/var/www/html`) → **restart the backend service** (a pull alone doesn't reload Python;
+(copy `dist` if nginx serves `/var/www/html`) → **restart the backend: `sudo systemctl restart walletapp-backend`** (a pull alone doesn't reload Python;
 this was missed before, leaving the old API running). Check: `curl https://api.zenithwalletracker.ca/auth/providers`.
 
 ## Working notes

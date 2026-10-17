@@ -300,14 +300,15 @@ function SecurityCard() {
 
     useEffect(() => {
         biometricInfo().then(setInfo);
-        isLockEnabled().then(setEnabled);
+        isLockEnabled().then((on) => setEnabled(on === true));
     }, []);
 
     const toggle = async () => {
         setBusy(true);
         setError(null);
         try {
-            if (!enabled) await verifyIdentity(`Turn on ${info.label} for Zenith`);
+            // both ways: someone holding an unlocked phone shouldn't be able to switch the lock off
+            await verifyIdentity(enabled ? `Turn off the ${info.label} lock` : `Turn on ${info.label} for Zenith`);
             await setLockEnabled(!enabled);
             setEnabled(!enabled);
             showToast(enabled ? `${info.label} lock turned off` : `${info.label} lock turned on`);

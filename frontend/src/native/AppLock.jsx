@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useRef, useState} from "react";
 import {useNavigate} from "react-router-dom";
 import {getToken, logout} from "../services/api.js";
-import {biometricInfo, isPrompting, verifyIdentity} from "./biometric.js";
+import {biometricInfo, isLockEnabled, isPromptOpen, isSettling, verifyIdentity} from "./biometric.js";
 import {haptic} from "./haptics.js";
 import {onLeave, onReturn} from "./lockRules.js";
 
@@ -9,10 +9,12 @@ import {onLeave, onReturn} from "./lockRules.js";
 // (so it also stays hidden in the app switcher) and Face ID / passcode opens it again.
 // The only ways to unlock: a successful Face ID / passcode check, or coming back within GRACE_MS to an app that
 // was *already unlocked* when it was left. Being locked when leaving (e.g. after cancelling Face ID) never counts.
+// initiallyEnabled is null when the setting couldn't be read in time: the app then starts locked (fail closed)
+// and only opens without Face ID if the setting turns out to be off.
 function AppLock({initiallyEnabled}) {
     const navigate = useNavigate();
-    const [enabled, setEnabled] = useState(initiallyEnabled);
-    const [locked, setLocked] = useState(initiallyEnabled && Boolean(getToken()));
+    const [enabled, setEnabled] = useState(initiallyEnabled !== false);
+    const [locked, setLocked] = useState(initiallyEnabled !== false && Boolean(getToken()));
     const [label, setLabel] = useState("Face ID");
     const [failed, setFailed] = useState(false);
     const prompting = useRef(false);
@@ -44,12 +46,24 @@ function AppLock({initiallyEnabled}) {
         }
     }, [lock]);
 
-    // ask straight away when the app opens locked
-    // (on the next tick, once the lock screen is on screen behind the Face ID sheet)
+    // ask straight away when the app opens locked (once the lock screen is on screen behind the Face ID sheet).
+    // If the setting wasn't known at startup, read it again first: off means the lock was never wanted.
     useEffect(() => {
         if (!locked) return;
-        const id = setTimeout(unlock, 0);
-        return () => clearTimeout(id);
+        let cancelled = false;
+        const setting = initiallyEnabled === null ? isLockEnabled() : Promise.resolve(true);
+        setting.then((on) => {
+            if (cancelled) return;
+            if (on === false) {
+                setEnabled(false);
+                lock(false);
+            } else {
+                unlock();
+            }
+        });
+        return () => {
+            cancelled = true;
+        };
         // only on mount: later locks are handled by the resume listener below
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -57,7 +71,8 @@ function AppLock({initiallyEnabled}) {
     useEffect(() => {
         const onSetting = (e) => setEnabled(Boolean(e.detail));
         const state = () => ({
-            enabled, signedIn: Boolean(getToken()), prompting: isPrompting(), locked: lockedRef.current,
+            enabled, signedIn: Boolean(getToken()), promptOpen: isPromptOpen(), settling: isSettling(),
+            locked: lockedRef.current,
         });
         const onBackground = () => {
             const result = onLeave(state());

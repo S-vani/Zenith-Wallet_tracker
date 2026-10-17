@@ -134,10 +134,11 @@ function PrivacyPage() {
                         <h3>Technical information</h3>
                         <p>
                             Like most websites, our web server keeps standard request logs (such as IP address,
-                            browser type, the page requested and the time) to keep the service running and secure. To
-                            keep you signed in, a login token is stored on your device: in your browser's local storage
-                            on the website, and in the iOS Keychain in the iPhone app. We do not use advertising or
-                            tracking cookies.
+                            browser type, the page requested and the time) to keep the service running and secure. The
+                            page address can include what you searched for (for example a ticker symbol). To keep you
+                            signed in, a login token is stored on your device: in your browser's local storage on the
+                            website, and in the iPhone app's own storage with a copy in the iOS Keychain. We do not use
+                            advertising or tracking cookies.
                         </p>
                         <h3>On your iPhone</h3>
                         <p>
@@ -169,6 +170,11 @@ function PrivacyPage() {
                                 symbols of assets you hold so we can price them. These requests come from our servers,
                                 so the providers never receive your name, email, IP address or quantities, and can't
                                 link a symbol to you.
+                            </li>
+                            <li>
+                                <strong>CoinGecko coin logos</strong>: the small logos next to cryptocurrencies in
+                                search results load directly from CoinGecko's image servers, so CoinGecko can see your
+                                IP address and which coin logos were shown. No account details are sent.
                             </li>
                             <li>
                                 <strong>Google Gemini</strong> (only if AI rewording is enabled): the text and numbers
@@ -221,8 +227,9 @@ function PrivacyPage() {
                             <a href="#contact">Contact</a>).
                         </p>
                         <p>
-                            Web server logs are kept for up to 14 days and then deleted. Server backups, if any, are
-                            kept for no more than 30 days, so deleted data also disappears from them within that time.
+                            Web server logs, including any search terms in them, are kept for up to 14 days and then
+                            deleted automatically. Server backups, if any, are kept for no more than 30 days, so deleted
+                            data also disappears from them within that time.
                         </p>
                     </section>
 

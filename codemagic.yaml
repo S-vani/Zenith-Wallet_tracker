@@ -61,6 +61,11 @@ workflows:
         script: xcode-project use-profiles --project "$XCODE_PROJECT"
       - name: Give this build a new build number
         script: |
+          # without the app's Apple ID every build would be number 1 and App Store Connect rejects duplicates
+          if [ -z "$APP_STORE_APPLE_ID" ]; then
+            echo "Set APP_STORE_APPLE_ID in Codemagic (setup step 6 at the top of this file)" && exit 1
+          fi
+          # "|| echo 0" only covers the very first upload, when there's no TestFlight build yet
           LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" || echo 0)
           cd frontend/ios/App && agvtool new-version -all $((LATEST + 1))
       - name: Build the signed .ipa

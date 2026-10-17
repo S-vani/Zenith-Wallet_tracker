@@ -18,18 +18,24 @@ export async function biometricInfo() {
 }
 
 // The Face ID sheet makes iOS report the app as inactive/active, which looks exactly like leaving and coming back.
-// The lock screen ignores those events while a prompt is up (and briefly after), otherwise cancelling Face ID
-// would count as a "quick return" and unlock the app.
-let promptOpenUntil = 0;
+// - While the sheet is open, "leaving" events are the sheet itself, so the lock ignores them (isPromptOpen).
+// - The "coming back" event can arrive just after the sheet closes, so returns are ignored for a moment longer
+//   (isSettling). Leaving is never ignored then: an app left right after unlocking must still be covered.
+let promptOpen = false;
+let settleUntil = 0;
 
-export function isPrompting() {
-    return Date.now() < promptOpenUntil;
+export function isPromptOpen() {
+    return promptOpen;
+}
+
+export function isSettling() {
+    return promptOpen || Date.now() < settleUntil;
 }
 
 // Resolves when the person is verified; rejects if they cancel or fail. The passcode is offered as a fallback.
 export async function verifyIdentity(reason = "Unlock Zenith") {
     const {NativeBiometric} = await biometricPlugin();
-    promptOpenUntil = Infinity;
+    promptOpen = true;
     try {
         await NativeBiometric.verifyIdentity({
             reason,
@@ -38,17 +44,19 @@ export async function verifyIdentity(reason = "Unlock Zenith") {
             fallbackTitle: "Use passcode",
         });
     } finally {
-        promptOpenUntil = Date.now() + 1500;
+        promptOpen = false;
+        settleUntil = Date.now() + 1500;
     }
 }
 
+// true / false, or null when the setting couldn't be read (callers then treat the lock as on: fail closed)
 export async function isLockEnabled() {
     if (!isNative) return false;
     try {
         const {Preferences} = await preferences();
         return (await Preferences.get({key: LOCK_KEY})).value === "on";
     } catch {
-        return false;
+        return null;
     }
 }
 

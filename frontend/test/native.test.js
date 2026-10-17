@@ -66,13 +66,15 @@ describe("loadPlugin", () => {
 });
 
 describe("Face ID lock rules", () => {
-    const base = {enabled: true, signedIn: true, prompting: false};
+    const base = {enabled: true, signedIn: true, promptOpen: false, settling: false};
 
     it("covers the app when it's left, remembering whether it was unlocked", async () => {
         const {onLeave} = await import("../src/native/lockRules.js");
         expect(onLeave({...base, locked: false})).toEqual({cover: true, unlockedWhenLeft: true});
         expect(onLeave({...base, locked: true})).toEqual({cover: true, unlockedWhenLeft: false});
-        expect(onLeave({...base, prompting: true, locked: false})).toEqual({cover: false}); // the Face ID sheet
+        expect(onLeave({...base, promptOpen: true, locked: false})).toEqual({cover: false}); // the Face ID sheet
+        // leaving right after unlocking (the sheet is still settling) must still cover the app
+        expect(onLeave({...base, settling: true, locked: false})).toEqual({cover: true, unlockedWhenLeft: true});
         expect(onLeave({...base, enabled: false, locked: false})).toEqual({cover: false});
     });
 
@@ -88,10 +90,10 @@ describe("Face ID lock rules", () => {
         expect(onReturn({...base, locked: true, unlockedWhenLeft: false, away: 200})).toBe("ask");
     });
 
-    it("ignores returns while Face ID is prompting, when off, or when signed out", async () => {
+    it("ignores returns while the Face ID sheet is closing, when off, or when signed out", async () => {
         const {onReturn} = await import("../src/native/lockRules.js");
         const quick = {locked: true, unlockedWhenLeft: true, away: 200};
-        expect(onReturn({...base, ...quick, prompting: true})).toBe("ignore");
+        expect(onReturn({...base, ...quick, settling: true})).toBe("ignore");
         expect(onReturn({...base, ...quick, enabled: false})).toBe("ignore");
         expect(onReturn({...base, ...quick, signedIn: false})).toBe("ignore");
         expect(onReturn({...base, ...quick, locked: false})).toBe("ignore");

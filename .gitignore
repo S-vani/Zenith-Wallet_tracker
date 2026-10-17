@@ -10,3 +10,7 @@ node_modules/
 
 # CI test logs and JUnit reports (also produced when running the CI commands locally)
 reports/
+
+# IDE settings and its scratch database (per machine)
+.idea/
+identifier.sqlite

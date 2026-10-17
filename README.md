@@ -269,7 +269,7 @@ The production server runs the code from a Git checkout:
 git pull
 uv sync                                   # or: .venv/bin/pip install -r requirements.txt
 cd frontend && npm ci && npm run build    # copy dist/ to the nginx web root if it serves /var/www/html
-sudo systemctl restart <backend-service>  # required: a pull alone does not reload the Python process
+sudo systemctl restart walletapp-backend   # required: a pull alone does not reload the Python process
 ```
 
 Check that the API is up with `curl https://api.zenithwalletracker.ca/auth/providers`.
