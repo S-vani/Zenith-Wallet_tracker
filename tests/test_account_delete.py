@@ -61,3 +61,11 @@ def test_deleting_one_account_leaves_other_users_alone(client, make_user, buy, r
 
 def test_delete_account_requires_login(client):
     assert client.delete("/user").status_code == 401
+
+
+def test_delete_account_forgets_the_analyst_rate_limit(client, user):
+    from backend.analyst import service
+
+    service._user_generations[str(uuid.UUID(user.id))].append(1.0)
+    client.delete("/user", headers=user.headers)
+    assert str(uuid.UUID(user.id)) not in service._user_generations

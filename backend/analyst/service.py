@@ -88,6 +88,11 @@ def _take_generation_slot(user_id: str) -> bool:
     return True
 
 
+def forget_user(user_id: str) -> None:
+    """Drop a deleted account's rate-limit history (it's only kept in memory)."""
+    _user_generations.pop(user_id, None)
+
+
 def _refund_generation_slot(user_id: str) -> None:
     window = _user_generations[user_id]
     if window:

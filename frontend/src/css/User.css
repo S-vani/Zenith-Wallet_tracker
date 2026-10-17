@@ -421,3 +421,9 @@
 .user-field-hint.error-hint {
     color: #fca5a5;
 }
+
+.user-privacy-link {
+    align-self: flex-start;
+    font-size: 0.85rem;
+    color: var(--accent-soft);
+}

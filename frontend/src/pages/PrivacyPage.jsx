@@ -120,9 +120,10 @@ function PrivacyPage() {
                         </p>
                         <h3>Google sign-in</h3>
                         <p>
-                            If you choose "Continue with Google", Google shares your name, email address and Google
-                            account ID with us, and we store the access token Google returns so your Google login stays
-                            linked to your Zenith account. We do not get your Google password.
+                            If you choose "Continue with Google" on the website, Google shares your name, email address
+                            and Google account ID with us so your Google login stays linked to your Zenith account. We
+                            use Google's sign-in token only during that sign-in and don't store it, and we never get
+                            your Google password.
                         </p>
                         <h3>Portfolio information</h3>
                         <p>
@@ -134,8 +135,16 @@ function PrivacyPage() {
                         <p>
                             Like most websites, our web server keeps standard request logs (such as IP address,
                             browser type, the page requested and the time) to keep the service running and secure. To
-                            keep you signed in, the app stores a login token on your device (in your browser's local
-                            storage or the app's storage). We do not use advertising or tracking cookies.
+                            keep you signed in, a login token is stored on your device: in your browser's local storage
+                            on the website, and in the iOS Keychain in the iPhone app. We do not use advertising or
+                            tracking cookies.
+                        </p>
+                        <h3>On your iPhone</h3>
+                        <p>
+                            If you turn on the Face ID lock, Face ID is handled entirely by iOS: we never receive or
+                            store your face data, only whether the check succeeded. So the app can show your portfolio
+                            without a connection, it keeps a copy of your most recently loaded screens on your phone;
+                            signing out or deleting your account removes it.
                         </p>
                     </section>
 
@@ -156,8 +165,10 @@ function PrivacyPage() {
                         <ul>
                             <li>
                                 <strong>Market data</strong> (Yahoo Finance, TwelveData, CoinGecko and the open.er-api
-                                exchange rate service): the symbols and currencies being looked up. They never receive
-                                your name, email or portfolio.
+                                exchange rate service): the symbols and currencies being looked up, including the
+                                symbols of assets you hold so we can price them. These requests come from our servers,
+                                so the providers never receive your name, email, IP address or quantities, and can't
+                                link a symbol to you.
                             </li>
                             <li>
                                 <strong>Google Gemini</strong> (only if AI rewording is enabled): the text and numbers
@@ -173,17 +184,15 @@ function PrivacyPage() {
                                 so your email address passes through it.
                             </li>
                             <li>
-                                <strong>Google Fonts</strong>: your browser downloads the site's font from Google, which
-                                can see your IP address.
-                            </li>
-                            <li>
                                 <strong>Vultr</strong>: our servers and database run on Vultr, a cloud hosting
                                 provider.
                             </li>
                         </ul>
                         <p>
-                            These providers may process data outside your province or country. We may also disclose
-                            information if the law requires it.
+                            We only share what each service needs to do its job for us, and we use providers that
+                            protect that information to the same or a greater degree than this policy. These providers
+                            may process data outside your province or country. We may also disclose information if the
+                            law requires it.
                         </p>
                     </section>
 
@@ -211,7 +220,10 @@ function PrivacyPage() {
                             are not affected. You can also ask us to delete your data by emailing us (see{" "}
                             <a href="#contact">Contact</a>).
                         </p>
-                        <p>Web server logs are kept only as long as needed to run and secure the service.</p>
+                        <p>
+                            Web server logs are kept for up to 14 days and then deleted. Server backups, if any, are
+                            kept for no more than 30 days, so deleted data also disappears from them within that time.
+                        </p>
                     </section>
 
                     <section id="security" className="legal-section">

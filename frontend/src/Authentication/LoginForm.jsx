@@ -133,6 +133,7 @@ function LoginForm({onSubmit}) {
                     <span>Don't have an account?</span>
                     <Link to="/signup" className="hero-link-btn">Sign up</Link>
                 </div>
+                <Link to="/privacy" className="auth-legal-link">Privacy policy &amp; disclaimer</Link>
             </div>
         </div>
     )

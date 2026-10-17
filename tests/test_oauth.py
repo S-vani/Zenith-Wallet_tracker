@@ -221,3 +221,25 @@ def test_email_verification_is_not_requested_for_google_users(client, google, mo
     _, state = start(client)
     finish(client, state)
     assert calls == []
+
+
+def test_google_tokens_are_not_stored(client, google, run):
+    # Google's access/refresh tokens are only needed during sign-in, so the linked row keeps no copy
+    from sqlalchemy import select
+
+    from backend.db.database import async_session_maker
+    from backend.db_models.assets import OAuthAccount
+
+    email = unique_email()
+    google(email=email)
+    _, state = start(client)
+    finish(client, state)
+
+    async def linked_row():
+        async with async_session_maker() as session:
+            result = await session.execute(select(OAuthAccount).where(OAuthAccount.account_email == email))
+            return result.scalars().one()
+
+    row = run(linked_row)
+    assert row.access_token == ""
+    assert row.refresh_token is None and row.expires_at is None

@@ -13,6 +13,7 @@ from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.analyst.data import coingecko_chart
+from backend.analyst.service import forget_user
 from backend.authentication.authentication import current_active_user, get_user_manager
 from backend.db.database import get_async_session
 from backend.db_models.assets import Transaction, User, UserManager, OAuthAccount
@@ -626,5 +627,6 @@ async def delete_account(
     await session.execute(delete(OAuthAccount).where(OAuthAccount.user_id == user_id))
     await session.execute(delete(User).where(User.id == user_id))
     await session.commit()
+    forget_user(str(user_id))
 
     return {"message": "Account deleted"}

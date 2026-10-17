@@ -140,9 +140,10 @@ async def google_callback(
             )
 
     # finds the linked account, links an existing account with the same (Google-verified) email, or creates one
+    # Google's tokens are only needed for this sign-in (the profile lookup below), so they aren't stored:
+    # the linked row keeps just the Google account id and email
     user = await user_manager.oauth_callback(
-        "google", token["access_token"], account_id, account_email,
-        token.get("expires_at"), token.get("refresh_token"), request,
+        "google", "", account_id, account_email, None, None, request,
         associate_by_email=True, is_verified_by_default=True,
     )
     if not user.is_active:

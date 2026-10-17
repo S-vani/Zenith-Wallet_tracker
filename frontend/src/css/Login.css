@@ -317,3 +317,20 @@
         padding: 1.5rem;
     }
 }
+
+.auth-legal-link {
+    align-self: center;
+    font-size: 0.78rem;
+    color: var(--text-subtle);
+}
+
+.auth-legal-link:hover,
+.auth-legal-link:focus-visible {
+    color: var(--accent-soft);
+}
+
+.verify-app-note {
+    margin-top: 0.5rem;
+    font-size: 0.82rem;
+    color: var(--text-subtle);
+}

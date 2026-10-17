@@ -4,6 +4,7 @@ from pathlib import Path
 
 from fastapi import Depends
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 from backend.db_models.assets import Base, User, OAuthAccount
@@ -31,6 +32,9 @@ async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 async def create_db_and_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Google tokens used to be saved with linked accounts but were never used again; blank any left over
+        await conn.execute(update(OAuthAccount).where(OAuthAccount.access_token != "")
+                           .values(access_token="", refresh_token=None, expires_at=None))
 
 
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:

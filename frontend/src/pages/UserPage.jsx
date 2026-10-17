@@ -99,6 +99,7 @@ function UserSettings({user, setUser}) {
         setDeleteError(null);
         try {
             await deleteAccount();
+            if (isNative) await setLockEnabled(false).catch(() => null); // app: no Face ID lock left behind
             logout();
             navigate("/", {replace: true});
             showToast("Your account and all of its data have been deleted.");
@@ -232,6 +233,8 @@ function UserSettings({user, setUser}) {
                             <span className="user-info-value">{memberSince}</span>
                         </div>
                     </div>
+
+                    <Link to="/privacy" className="user-privacy-link">Privacy policy &amp; disclaimer</Link>
 
                     <button className="btn user-logout-button" onClick={handleLogout}>Log out</button>
                 </div>
