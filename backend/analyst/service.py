@@ -3,12 +3,13 @@ Orchestrates a report: cache lookup -> rate limits -> data collection -> rules e
 
 Reports are cached in the database (so they survive restarts) per asset and currency. Users can force a refresh,
 but only once the cached report is a few minutes old, and each user can only trigger a limited number of fresh
-reports per hour (cache hits are free).
+reports per hour, as can all users together (cache hits are free).
 """
 import asyncio
 import json
 import time
 from collections import defaultdict, deque
+from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -25,7 +26,15 @@ from backend.db_models.assets import Base
 CACHE_TTL = {"stock": timedelta(hours=1), "crypto": timedelta(minutes=30)}  # crypto trades around the clock
 REFRESH_COOLDOWN = timedelta(minutes=5)
 GENERATIONS_PER_HOUR = 30  # fresh (uncached) reports a single user can trigger per hour
+# fresh reports across all users per hour: each one costs several Yahoo / CoinGecko calls (CoinGecko's demo key
+# allows about 30 a minute) and maybe a Gemini call, so many accounts together can't exhaust the providers
+GLOBAL_GENERATIONS_PER_HOUR = 120
 COLLECT_TIMEOUT_SECONDS = 30
+WINDOW_SECONDS = 3600
+
+USER_LIMIT_MESSAGE = "You've reached the hourly limit for new analyses. Please try again later."
+GLOBAL_LIMIT_MESSAGE = ("The market analyst is very busy right now. Please try again in a few minutes, "
+                        "or open an asset that was analysed recently.")
 
 
 class AnalystCache(Base):
@@ -36,8 +45,12 @@ class AnalystCache(Base):
     created_at = Column(DateTime, nullable=False)
 
 
-_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)  # one generation per asset at a time
+# One generation per asset at a time. An entry only lives while someone holds or waits for it (see _asset_lock),
+# so one lock per asset ever analysed doesn't pile up in memory.
+_locks: dict[str, asyncio.Lock] = {}
+_lock_users: dict[str, int] = {}
 _user_generations: dict[str, deque] = defaultdict(deque)
+_global_generations: deque = deque()  # times of every fresh report in the last hour, all users together
 
 
 def cache_key(asset_type: str, symbol: str, currency: str, coin_id: Optional[str]) -> str:
@@ -76,16 +89,50 @@ def _with_cache_info(report: AnalystReport, created: datetime, cached: bool) -> 
     return report
 
 
-def _take_generation_slot(user_id: str) -> bool:
-    """Sliding one-hour window of fresh reports per user."""
-    window = _user_generations[user_id]
-    cutoff = time.time() - 3600
+@asynccontextmanager
+async def _asset_lock(key: str):
+    """Hold the asset's lock; the last request to let go of it removes it again."""
+    lock = _locks.setdefault(key, asyncio.Lock())
+    _lock_users[key] = _lock_users.get(key, 0) + 1
+    try:
+        async with lock:
+            yield
+    finally:
+        _lock_users[key] -= 1
+        if _lock_users[key] <= 0:
+            del _lock_users[key]
+            if _locks.get(key) is lock:
+                del _locks[key]
+
+
+def _drop_older_than(window: deque, cutoff: float) -> None:
     while window and window[0] < cutoff:
         window.popleft()
+
+
+def _take_generation_slot(user_id: str) -> Optional[HTTPException]:
+    """
+    Sliding one-hour windows of fresh reports: per user and for everyone together. Returns None when a slot was
+    taken, otherwise the 429 to answer with.
+    """
+    now = time.time()
+    cutoff = now - WINDOW_SECONDS
+    if user_id not in _user_generations and len(_user_generations) >= 10_000:
+        # forget users with nothing left in their window, so this stays small
+        for idle in [uid for uid, times in _user_generations.items() if not times or times[-1] < cutoff]:
+            del _user_generations[idle]
+    window = _user_generations[user_id]
+    _drop_older_than(window, cutoff)
+    _drop_older_than(_global_generations, cutoff)
+
     if len(window) >= GENERATIONS_PER_HOUR:
-        return False
-    window.append(time.time())
-    return True
+        return HTTPException(status_code=429, detail=USER_LIMIT_MESSAGE)
+    if len(_global_generations) >= GLOBAL_GENERATIONS_PER_HOUR:
+        retry = max(1, int(_global_generations[0] + WINDOW_SECONDS - now) + 1)  # when the oldest one expires
+        return HTTPException(status_code=429, detail=GLOBAL_LIMIT_MESSAGE, headers={"Retry-After": str(retry)})
+    window.append(now)
+    _global_generations.append(now)
+    return None
 
 
 def forget_user(user_id: str) -> None:
@@ -94,9 +141,11 @@ def forget_user(user_id: str) -> None:
 
 
 def _refund_generation_slot(user_id: str) -> None:
-    window = _user_generations[user_id]
+    window = _user_generations.get(user_id)
     if window:
         window.pop()
+    if _global_generations:
+        _global_generations.pop()
 
 
 async def get_report(session: AsyncSession, user_id: str, symbol: str, asset_type: str, currency: str,
@@ -116,18 +165,18 @@ async def get_report(session: AsyncSession, user_id: str, symbol: str, asset_typ
         if not refresh and age < CACHE_TTL[asset_type]:
             return _with_cache_info(report, created, cached=True)
 
-    async with _locks[key]:
+    async with _asset_lock(key):
         # another request may have generated it while we waited for the lock
         if not refresh:
             existing = await _load(session, key)
             if existing and now - existing[1] < CACHE_TTL[asset_type]:
                 return _with_cache_info(existing[0], existing[1], cached=True)
 
-        if not _take_generation_slot(user_id):
-            if existing:
+        refused = _take_generation_slot(user_id)
+        if refused is not None:
+            if existing:  # over a limit: an older report (flagged as cached) beats an error
                 return _with_cache_info(existing[0], existing[1], cached=True)
-            raise HTTPException(status_code=429, detail="You've reached the hourly limit for new analyses. "
-                                                        "Please try again later.")
+            raise refused
 
         try:
             collected = await asyncio.wait_for(

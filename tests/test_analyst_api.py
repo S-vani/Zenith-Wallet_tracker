@@ -66,11 +66,15 @@ def clean_analyst_state(client, monkeypatch):
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     client.portal.call(_wipe_cache)
     service._user_generations.clear()
+    service._global_generations.clear()
     service._locks.clear()
+    service._lock_users.clear()
     yield
     client.portal.call(_wipe_cache)
     service._user_generations.clear()
+    service._global_generations.clear()
     service._locks.clear()
+    service._lock_users.clear()
 
 
 @pytest.fixture
@@ -417,6 +421,74 @@ def test_hourly_limit_window_slides(client, users, collect, monkeypatch):
     window = service._user_generations[str(users.cad.id)]
     window[0] -= 3601  # the first generation is now more than an hour old
     assert get(client, users.cad, "BBB").status_code == 200
+
+
+# --------------------------------------------------------------------------- global hourly limit
+def test_global_limit_is_about_120_an_hour():
+    assert service.GLOBAL_GENERATIONS_PER_HOUR == 120
+
+
+def test_global_hourly_limit_across_users(client, users, collect, monkeypatch):
+    monkeypatch.setattr(service, "GLOBAL_GENERATIONS_PER_HOUR", 2)
+    assert get(client, users.cad, "AAA").status_code == 200
+    assert get(client, users.usd, "BBB").status_code == 200
+
+    res = get(client, users.other, "CCC")  # a user who hasn't asked for anything yet
+    assert res.status_code == 429
+    assert res.json()["detail"] == service.GLOBAL_LIMIT_MESSAGE
+    assert 0 < int(res.headers["Retry-After"]) <= 3601
+    assert len(collect.calls) == 2
+    assert not service._user_generations[str(users.other.id)]  # the refused request didn't use their own slot
+
+    # cached reports are still served to everyone
+    assert get(client, users.other, "AAA").json()["cached"] is True
+
+    service._global_generations[0] -= 3601  # the oldest is now more than an hour old
+    assert get(client, users.other, "CCC").status_code == 200
+
+
+def test_global_limit_serves_an_expired_report_instead_of_failing(client, users, collect, monkeypatch, age_cache):
+    monkeypatch.setattr(service, "GLOBAL_GENERATIONS_PER_HOUR", 1)
+    get(client, users.cad, "NVDA")
+    age_cache("stock:NVDA:CAD", timedelta(hours=2))
+    res = get(client, users.other, "NVDA")
+    assert res.status_code == 200 and res.json()["cached"] is True
+    assert len(collect.calls) == 1
+
+
+def test_failed_generations_give_the_global_slot_back(client, users, collect, monkeypatch):
+    monkeypatch.setattr(service, "GLOBAL_GENERATIONS_PER_HOUR", 1)
+    collect.error = market_data.DataUnavailable("No data")
+    assert get(client, users.cad, "AAA").status_code == 503
+    assert not service._global_generations
+    collect.error = None
+    assert get(client, users.cad, "AAA").status_code == 200
+
+
+# --------------------------------------------------------------------------- per-asset locks don't pile up
+def test_asset_locks_are_removed_once_unused(client, users, collect):
+    for symbol in ("AAA", "BBB", "CCC"):
+        assert get(client, users.cad, symbol).status_code == 200
+    assert service._locks == {} and service._lock_users == {}
+
+
+def test_asset_lock_is_shared_while_requests_wait(run):
+    async def scenario():
+        order = []
+
+        async def worker(name):
+            async with service._asset_lock("stock:X:CAD"):
+                order.append(f"{name} in")
+                assert len(service._locks) == 1
+                await asyncio.sleep(0.01)
+                order.append(f"{name} out")
+
+        await asyncio.gather(worker("a"), worker("b"))
+        return order, dict(service._locks), dict(service._lock_users)
+
+    order, locks, users_left = run(scenario)
+    assert order == ["a in", "a out", "b in", "b out"]  # one at a time
+    assert locks == {} and users_left == {}
 
 
 # --------------------------------------------------------------------------- secrets and gemini
