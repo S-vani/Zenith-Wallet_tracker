@@ -209,6 +209,16 @@ button:disabled {
     animation: shimmer 1.4s ease-in-out infinite;
 }
 
+/* a chart whose next range is loading: the old one stays in place, dimmed, instead of a blank skeleton */
+.chart-body {
+    transition: opacity 0.2s ease;
+}
+
+.chart-body.is-updating {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
 @keyframes shimmer {
     from {
         background-position: 200% 0;
@@ -372,12 +382,16 @@ body::before {
     }
 }
 
-/* a disabled primary/success button shouldn't look clickable */
+/* a disabled button shouldn't look clickable. Every variant fades to the same quiet navy (a grayscale filter over
+   the green / blue buttons used to turn them olive) */
 .btn:disabled,
 .btn-success:disabled,
 .btn-primary:disabled {
-    filter: grayscale(0.7);
-    opacity: 0.45;
+    background: #121a2b;
+    border-color: rgba(255, 255, 255, 0.07);
+    color: #6b7790;
+    filter: none;
+    opacity: 1;
     box-shadow: none;
     transform: none;
 }
@@ -400,6 +414,50 @@ body::before {
     font-weight: 600;
     text-decoration: underline;
     text-underline-offset: 2px;
+}
+
+/* ---------- Confirm dialog (components/ConfirmDialog.jsx) ---------- */
+.confirm-dialog {
+    margin: auto;
+    padding: 0;
+    width: min(22rem, calc(100% - 2rem));
+    border-radius: 1rem;
+    border: 1px solid var(--border-strong);
+    background: linear-gradient(145deg, #1e2433, #161b28);
+    color: var(--text);
+    box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.5);
+}
+
+.confirm-dialog::backdrop {
+    background: rgba(3, 6, 12, 0.65);
+    backdrop-filter: blur(2px);
+}
+
+.confirm-dialog-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 1.4rem 1.4rem 1.2rem;
+}
+
+.confirm-dialog-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+}
+
+.confirm-dialog-message {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.confirm-dialog-actions {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 0.6rem;
+}
+
+.confirm-dialog-actions .btn {
+    flex: 1;
 }
 
 /* ---------- Toast popups ---------- */
@@ -505,11 +563,18 @@ body::before {
     }
 
     .segmented button {
-        min-height: 2.5rem;
         padding: 0.4rem 0.9rem;
     }
 
     .btn {
         min-height: 2.75rem;
+    }
+}
+
+/* range / type toggles: at least 44px tall wherever they're tapped (rem-based 2.5rem was only 37.5px on phones) */
+@media (max-width: 768px), (pointer: coarse) {
+    .segmented button {
+        min-height: 44px;
+        min-width: 44px;
     }
 }

@@ -52,7 +52,7 @@ function LoginForm({onSubmit}) {
 
         try {
             await onSubmit(form);
-            showToast("Logged in successfully. Welcome back!");
+            showToast("Logged in"); // neutral: this is also a brand-new account's very first sign in
             navigate(location.state?.from ?? "/dashboard", {replace: true});
         } catch (err) {
             setError(err.message);

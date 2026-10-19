@@ -8,7 +8,9 @@ const RANGE_LABELS = {
     all: "All-time return",
 };
 
-function DashboardStats({stats, loading, currency, range}) {
+// `loading`: the selected range's return is still loading. `valueLoading`: nothing has loaded yet; the portfolio
+// value doesn't depend on the range, so it stays on screen while another range loads.
+function DashboardStats({stats, loading, valueLoading = loading, currency, range}) {
     const change = stats.curr_timeperiod;
     // the backend's base: value at the start of the period + money put in (all time: cost of every buy).
     // value − change was wrong once anything had been sold (e.g. +1300% for a +13% gain)
@@ -19,7 +21,7 @@ function DashboardStats({stats, loading, currency, range}) {
         <div className="dashboard-stats">
             <div className="stat-card">
                 <div className="stat-label">Portfolio value</div>
-                {loading ? (
+                {valueLoading ? (
                     <span className="skeleton stat-skeleton"/>
                 ) : (
                     <div className="stat-value">{formatMoney(stats.value, currency)}</div>

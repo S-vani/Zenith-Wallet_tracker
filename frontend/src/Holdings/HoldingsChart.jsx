@@ -2,71 +2,55 @@ import {useEffect, useState} from "react";
 import {getPriceHistory} from "../services/api.js";
 import {AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer} from "recharts";
 import {useUser} from "../context/UserContext.jsx";
+import useRefreshKey from "../native/useRefreshKey.js";
 import {formatMoney, formatPrice} from "../utils/format.js";
-import {CHART_DOWN, CHART_UP, INITIAL_DIMENSION, TOOLTIP_STYLE, dailyTicks, tooltipDate} from "../utils/chart.js";
+import {
+    CHART_DOWN, CHART_UP, INITIAL_DIMENSION, TOOLTIP_STYLE, axisMoneyOptions, axisTicks, formatAxisTick, tickUnit,
+    tooltipDate,
+} from "../utils/chart.js";
 
 const RANGES = ["1D", "1W", "1M", "1Y", "5Y"];
 
 function HoldingChart({symbol, type, initialRange = "1M", compact = false}) {
     const {currency} = useUser();
     const [range, setRange] = useState(initialRange);
-    const [data, setData] = useState([]);
-    const [loading, setLoading] = useState(true);
+    // the chart on screen and the range it belongs to; while another range loads it stays visible, dimmed
+    const [shown, setShown] = useState(null);
     const [error, setError] = useState(null);
+    const refreshKey = useRefreshKey(); // app only: pull to refresh reloads in place
 
     useEffect(() => {
         let ignore = false;
 
-        const load = async () => {
-            try {
-                setLoading(true);
+        getPriceHistory(symbol, type, range)
+            .then((res) => {
+                if (ignore) return;
+                setShown({range, data: res.data.map(p => ({time: p.time, price: p.price}))});
                 setError(null);
-                const res = await getPriceHistory(symbol, type, range);
-                if (!ignore) setData(res.data.map(p => ({time: p.time, price: p.price})));
-            } catch (err) {
+            })
+            .catch((err) => {
                 if (!ignore) setError(err.message);
-            } finally {
-                if (!ignore) setLoading(false);
-            }
-        };
+            });
 
-        load();
         return () => {
             ignore = true;
         };
-    }, [symbol, range, type]);
+    }, [symbol, range, type, refreshKey]);
 
+    const data = shown?.data ?? [];
+    const pending = !error && shown?.range !== range; // a new range is loading
     const isUp = data.length > 1 && data[data.length - 1].price >= data[0].price;
     const color = isUp ? CHART_UP : CHART_DOWN;
     const gradientId = `holdingFill-${type}-${symbol}`;
-    const intraday = range === "1D" || range === "1W";
-
-    const formatTick = (v) => {
-        const date = new Date(v);
-        if (range === "1D") return date.toLocaleTimeString(undefined, {hour: "numeric", minute: "2-digit"});
-        if (range === "5Y") return date.toLocaleDateString(undefined, {month: "short", year: "numeric"});
-        return date.toLocaleDateString(undefined, {month: "short", day: "numeric"});
-    };
-
-    // big prices (e.g. BTC) get compact axis labels so they don't eat the chart width
-    const prices = data.map((d) => d.price);
-    const maxPrice = Math.max(0, ...prices);
-    const spread = maxPrice - Math.min(maxPrice, ...prices);
-    // every tick uses the same number of decimals, chosen from how much the price moves (e.g. SHIB needs 8)
-    let tickDecimals;
-    if (maxPrice >= 1) {
-        tickDecimals = spread >= 10 ? 0 : 2; // whole dollars or cents, never "CA$766.0"
-    } else {
-        tickDecimals = spread > 0 ? Math.min(12, Math.max(2, Math.ceil(-Math.log10(spread)) + 1)) : 4;
-    }
-    const formatPriceTick = (value) => formatMoney(value, currency, maxPrice >= 10000
-        ? {notation: "compact", minimumFractionDigits: 0, maximumFractionDigits: 1}
-        : {minimumFractionDigits: tickDecimals, maximumFractionDigits: tickDecimals});
+    const intraday = shown?.range === "1D" || shown?.range === "1W";
+    const unit = tickUnit(data);
+    const priceOptions = axisMoneyOptions(data.map((d) => d.price));
+    const label = String(symbol).toUpperCase();
 
     let body;
-    if (loading) {
+    if (!shown && !error) {
         body = <div className="state-message"><div className="spinner"/></div>;
-    } else if (error) {
+    } else if (error && (!shown || shown.range !== range)) {
         body = <div className="state-message"><p className="alert-error">{error}</p></div>;
     } else if (data.length === 0) {
         body = <div className="state-message">No price data available for this range.</div>;
@@ -82,21 +66,21 @@ function HoldingChart({symbol, type, initialRange = "1M", compact = false}) {
                     </defs>
                     <XAxis
                         dataKey="time"
-                        ticks={range === "1W" ? dailyTicks(data) : undefined}
+                        ticks={axisTicks(data, unit)}
                         axisLine={false}
                         tickLine={false}
                         tick={{fill: "#8b93a1", fontSize: 11}}
-                        tickFormatter={formatTick}
-                        minTickGap={48}
+                        tickFormatter={(v) => formatAxisTick(v, unit)}
+                        minTickGap={24}
                         tickMargin={10}
                     />
                     <YAxis
                         domain={["auto", "auto"]}
-                        tickFormatter={formatPriceTick}
+                        tickFormatter={(v) => formatMoney(v, currency, priceOptions)}
                         axisLine={false}
                         tickLine={false}
                         tick={{fill: "#8b93a1", fontSize: 11}}
-                        width={72}
+                        width={76}
                     />
                     <Tooltip
                         contentStyle={TOOLTIP_STYLE}
@@ -120,6 +104,9 @@ function HoldingChart({symbol, type, initialRange = "1M", compact = false}) {
     return (
         <div className={`chart-wrapper${compact ? " compact" : ""}`}>
             <div className="chart-header">
+                <h3 className="chart-title">
+                    {label} price <span className="chart-title-note">(per {type === "crypto" ? "coin" : "share"})</span>
+                </h3>
                 <div className="segmented" role="group" aria-label="Chart range">
                     {RANGES.map(r => (
                         <button
@@ -134,7 +121,7 @@ function HoldingChart({symbol, type, initialRange = "1M", compact = false}) {
                 </div>
             </div>
 
-            <div className="chart-body">{body}</div>
+            <div className={`chart-body${pending && shown ? " is-updating" : ""}`} aria-busy={pending}>{body}</div>
         </div>
     );
 }

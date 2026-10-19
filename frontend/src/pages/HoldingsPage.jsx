@@ -10,32 +10,35 @@ import "../css/Holdings.css"
 function HoldingsPage() {
     usePageTitle("Holdings");
 
-    const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [holdings, setHoldings] = useState([]);
+    const [holdings, setHoldings] = useState(null); // null until the first load finishes
     const refreshKey = useRefreshKey(); // app only: pull to refresh / coming back to the app
 
     useEffect(() => {
-        const loadHoldings = async () => {
-            try {
-                setLoading(true);
-                setError(null);
-                setHoldings(await getHoldings());
-            } catch (err) {
-                setError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        };
+        let ignore = false;
 
-        loadHoldings();
+        // a refresh swaps the numbers in place: the list stays mounted, so an open chart and the scroll position
+        // are kept
+        getHoldings()
+            .then((data) => {
+                if (ignore) return;
+                setHoldings(data);
+                setError(null);
+            })
+            .catch((err) => {
+                if (!ignore) setError(err.message);
+            });
+
+        return () => {
+            ignore = true;
+        };
     }, [refreshKey]);
 
     let content;
-    if (loading) {
-        content = <div className="state-message"><div className="spinner"/>Loading your holdings…</div>;
-    } else if (error) {
-        content = <div className="state-message"><p className="alert-error" role="alert">{error}</p></div>;
+    if (holdings === null) {
+        content = error
+            ? <div className="state-message"><p className="alert-error" role="alert">{error}</p></div>
+            : <div className="state-message"><div className="spinner"/>Loading your holdings…</div>;
     } else if (holdings.length === 0) {
         content = (
             <div className="state-message">
@@ -45,7 +48,12 @@ function HoldingsPage() {
             </div>
         );
     } else {
-        content = <HoldingsList holdings={holdings}/>;
+        content = (
+            <>
+                {error && <p className="alert-error holdings-refresh-error" role="alert">{error}</p>}
+                <HoldingsList holdings={holdings}/>
+            </>
+        );
     }
 
     return (

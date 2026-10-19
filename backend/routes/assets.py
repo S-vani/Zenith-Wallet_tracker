@@ -1,5 +1,6 @@
 import os
 import time
+from collections import deque
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional, Literal
 from dotenv import load_dotenv
@@ -405,21 +406,78 @@ async def get_portfolio_history(
     return data
 
 
-# TwelveData's free plan allows 8 credits a minute, so matches for a query are kept for a while instead of being
-# looked up again (e.g. when the user switches to crypto and back). {query: (time, [symbols])}
-_stock_search_cache: dict[str, tuple[float, list[str]]] = {}
-STOCK_SEARCH_TTL = 600
+# Search is the one place where a user makes the server call rate-limited providers on demand (TwelveData's free plan
+# allows 8 credits a minute, CoinGecko's demo plan about 30 calls a minute). So queries are short, matches are cached
+# for a while, and each user can only start a limited number of new (uncached) searches a minute.
+SEARCH_QUERY_MAX_LENGTH = 20  # longer than any ticker or coin name people actually type
+SEARCH_CACHE_SIZE = 256  # queries kept per cache; the least recently used one is dropped first
+STOCK_SEARCH_TTL = 600  # TwelveData matches hardly change, keep them 10 minutes
+CRYPTO_SEARCH_TTL = 300  # CoinGecko results include prices, so only 5 minutes
+SEARCH_RATE_LIMIT = 20  # new (uncached) searches per user per window
+SEARCH_RATE_WINDOW = 60  # seconds
+
+# {query: (time stored, results)}. Dicts keep insertion order, so the first key is the least recently used
+_stock_search_cache: dict[str, tuple[float, list[dict]]] = {}
+_crypto_search_cache: dict[str, tuple[float, list[dict]]] = {}
+_search_times: dict = {}  # {user id: deque of the times of their recent uncached searches}
 
 
-async def find_us_stock_symbols(query: str) -> list[str]:
+def _cache_get(cache: dict, key: str, ttl: float):
+    """The cached value for `key`, or None when it's missing or older than `ttl` seconds."""
+    entry = cache.get(key)
+    if entry is None:
+        return None
+    if time.monotonic() - entry[0] >= ttl:
+        cache.pop(key, None)
+        return None
+    cache[key] = cache.pop(key)  # move it to the end: most recently used
+    return entry[1]
+
+
+def _cache_put(cache: dict, key: str, value) -> None:
+    cache.pop(key, None)
+    cache[key] = (time.monotonic(), value)
+    while len(cache) > SEARCH_CACHE_SIZE:
+        cache.pop(next(iter(cache)))  # least recently used
+
+
+def _check_search_rate(user_id) -> None:
+    """Count one new search for the user, or raise a 429 when they started too many in the last minute."""
+    now = time.monotonic()
+    recent = _search_times.get(user_id)
+    if recent is None:
+        if len(_search_times) >= 10_000:  # forget users who haven't searched in the last minute, so this stays small
+            idle = [uid for uid, times in _search_times.items() if not times or now - times[-1] >= SEARCH_RATE_WINDOW]
+            for uid in idle:
+                del _search_times[uid]
+        recent = _search_times[user_id] = deque()
+    while recent and now - recent[0] >= SEARCH_RATE_WINDOW:
+        recent.popleft()
+    if len(recent) >= SEARCH_RATE_LIMIT:
+        raise HTTPException(status_code=429,
+                            detail="You're searching very quickly. Please wait a minute and try again.")
+    recent.append(now)
+
+
+def clean_search_query(asset: str) -> str:
+    asset = asset.strip()
+    if len(asset) > SEARCH_QUERY_MAX_LENGTH:
+        raise HTTPException(status_code=422, detail=f"Search for {SEARCH_QUERY_MAX_LENGTH} characters or fewer, "
+                                                    "e.g. a ticker like AAPL or a coin like BTC.")
+    return asset
+
+
+async def find_us_stock_symbols(query: str, user_id=None) -> list[dict]:
     """
-    Up to 6 unique US-listed stock / ETF symbols matching the query, from TwelveData's symbol search (1 credit).
-    Raises a 503 when TwelveData returns an error (usually the per-minute credit limit) so the user sees that instead
-    of "no results".
+    Up to 6 unique US-listed stocks / ETFs matching the query as {"symbol", "name"}, from TwelveData's symbol search
+    (1 credit). Raises a 503 when TwelveData returns an error (usually the per-minute credit limit) so the user sees
+    that instead of "no results", and a 429 when the user starts too many new searches.
     """
-    cached = _stock_search_cache.get(query)
-    if cached and time.monotonic() - cached[0] < STOCK_SEARCH_TTL:
-        return cached[1]
+    cached = _cache_get(_stock_search_cache, query, STOCK_SEARCH_TTL)
+    if cached is not None:
+        return cached
+    if user_id is not None:
+        _check_search_rate(user_id)
 
     async with httpx.AsyncClient(timeout=10) as client:
         response = await client.get(
@@ -436,43 +494,46 @@ async def find_us_stock_symbols(query: str) -> list[str]:
                                 detail="Stock search is busy right now. Please try again in a minute.")
         raise HTTPException(status_code=503, detail="Stock search is temporarily unavailable")
 
-    symbols = []
+    matches, seen = [], set()
     for result in body["data"]:
         is_us = result.get("country") == "United States"
         is_valid_type = result.get("instrument_type") in ["Common Stock", "ETF"]
-        if is_us and is_valid_type and result["symbol"] not in symbols:  # skip duplicate listings
-            symbols.append(result["symbol"])
-        if len(symbols) == 6:
+        if is_us and is_valid_type and result["symbol"] not in seen:  # skip duplicate listings
+            seen.add(result["symbol"])
+            matches.append({"symbol": result["symbol"], "name": result.get("instrument_name") or ""})
+        if len(matches) == 6:
             break
 
-    _stock_search_cache[query] = (time.monotonic(), symbols)
-    return symbols
+    _cache_put(_stock_search_cache, query, matches)
+    return matches
 
 
 @router.get("/assets/search/stock")
-async def search_assets_stocks(asset: str, current_user: User = Depends(current_active_user)):
+async def search_assets_stocks(asset: Annotated[str, Query(max_length=200)],
+                               current_user: User = Depends(current_active_user)):
     """
     Search US stocks and ETFs. For example if asset is "AAP" this returns up to 6 items like AAPL, AAPD, etc. with
-    their price and daily change in the user's currency. Matches come from TwelveData, prices from Yahoo (free).
+    their name, price and daily change in the user's currency. Matches come from TwelveData, prices from Yahoo (free).
     """
-    asset = asset.strip().upper()
+    asset = clean_search_query(asset).upper()
     if not asset:
         return []
 
-    symbols = await find_us_stock_symbols(asset)
-    if not symbols:
+    matches = await find_us_stock_symbols(asset, current_user.id)
+    if not matches:
         return []
 
     rates = await get_all_conversion_rates()
     conversion = get_conversion_factor(rates, current_user.currency)
     usd_to_user = float(rates["usd_to_cad"]) * conversion  # only US listings are kept, so prices are in USD
 
-    quotes = await get_latest_stock_quotes(symbols)
+    quotes = await get_latest_stock_quotes([m["symbol"] for m in matches])
     if not quotes:
         raise HTTPException(status_code=503, detail="Stock prices are temporarily unavailable")
 
     final = []
-    for symbol in symbols:  # keep TwelveData's relevance order
+    for match in matches:  # keep TwelveData's relevance order
+        symbol = match["symbol"]
         quote = quotes.get(symbol)
         if quote is None:  # Yahoo has no prices for it (e.g. a newly listed or delisted ticker)
             continue
@@ -480,6 +541,7 @@ async def search_assets_stocks(asset: str, current_user: User = Depends(current_
         final.append({
             "api_id": symbol,
             "symbol": symbol,
+            "name": match["name"],  # company or fund name, shown under the ticker
             "type": "stock",
             "image": "",
             "price": quote["close"] * usd_to_user,
@@ -490,29 +552,26 @@ async def search_assets_stocks(asset: str, current_user: User = Depends(current_
     return final
 
 
-@router.get("/assets/search/crypto")
-async def search_assets_crypto(asset: str, current_user: User = Depends(current_active_user)):
+async def find_coins(query: str, user_id) -> list[dict]:
     """
-    Use coingecko api to fetch crypto prices of assets, similar to the route above in format.
+    CoinGecko market data (prices in CAD) for the top 6 coins matching the query, cached per query because CoinGecko
+    is rate limited. Raises a 503 when CoinGecko returns an error instead of prices.
     """
-    gecko = os.getenv("API_KEY_COINEGECKO")
-
-    asset = asset.strip()
-    if not asset:
-        return []
-
-    rates = await get_all_conversion_rates()
-    conversion = get_conversion_factor(rates, current_user.currency)
+    cached = _cache_get(_crypto_search_cache, query, CRYPTO_SEARCH_TTL)
+    if cached is not None:
+        return cached
+    _check_search_rate(user_id)
 
     headers = {
-        "x-cg-demo-api-key": gecko
+        "x-cg-demo-api-key": os.getenv("API_KEY_COINEGECKO")
     }
 
     async with httpx.AsyncClient(timeout=10, headers=headers) as client:
-        res = await client.get("https://api.coingecko.com/api/v3/search", params={"query": asset})
+        res = await client.get("https://api.coingecko.com/api/v3/search", params={"query": query})
 
         data = res.json().get("coins", [])[:6]  # top 6 results and luckily coingecko sorts by popularity
         if not data:
+            _cache_put(_crypto_search_cache, query, [])
             return []
 
         ids = ",".join(coin["api_symbol"] for coin in data)
@@ -526,13 +585,34 @@ async def search_assets_crypto(asset: str, current_user: User = Depends(current_
             }
         )
 
-    data_1 = response.json()
-    if not isinstance(data_1, list):  # coingecko returns an error dict when rate limited
+    coins = response.json()
+    if not isinstance(coins, list):  # coingecko returns an error dict when rate limited
         raise HTTPException(status_code=503, detail="Crypto prices are temporarily unavailable")
+
+    _cache_put(_crypto_search_cache, query, coins)
+    return coins
+
+
+@router.get("/assets/search/crypto")
+async def search_assets_crypto(asset: Annotated[str, Query(max_length=200)],
+                               current_user: User = Depends(current_active_user)):
+    """
+    Use coingecko api to fetch crypto prices of assets, similar to the route above in format.
+    """
+    asset = clean_search_query(asset)
+    if not asset:
+        return []
+
+    coins = await find_coins(asset.lower(), current_user.id)
+    if not coins:
+        return []
+
+    rates = await get_all_conversion_rates()
+    conversion = get_conversion_factor(rates, current_user.currency)
 
     final = []
     seen = set()
-    for coin in data_1:
+    for coin in coins:
         if (
                 coin.get("current_price") is None
                 or coin.get("price_change_24h") is None
@@ -544,9 +624,10 @@ async def search_assets_crypto(asset: str, current_user: User = Depends(current_
         final.append({
             "api_id": coin["symbol"],
             "symbol": coin["symbol"],
+            "name": coin.get("name") or "",  # e.g. "Bitcoin", shown under the ticker
             "coin_id": coin.get("id"),  # CoinGecko id (e.g. "bitcoin"), used by the market analyst
             "type": "crypto",
-            "image": coin["image"],  # may or may not use
+            "image": coin.get("image") or "",  # some coins have no logo; the page then shows none
             "price": coin["current_price"] * conversion,
             "change": coin["price_change_24h"] * conversion,
             "change_pct": coin["price_change_percentage_24h"]

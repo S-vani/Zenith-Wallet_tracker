@@ -47,8 +47,8 @@ function HomePage() {
                         See your money <span className="hero-accent">move</span>.
                     </h1>
                     <p className="hero-subtitle">
-                        Track holdings, log transactions, and watch your net worth
-                        evolve in real time — all in one calm, focused dashboard.
+                        Log your stock and crypto trades, see every holding in one place, and follow how
+                        your portfolio's value changes over time — all in one calm, focused dashboard.
                     </p>
                     <div className="hero-actions">
                         <Link to={loggedIn ? "/dashboard" : "/signup"} className="auth-btn signup-btn large">
@@ -78,8 +78,8 @@ function HomePage() {
                         )}
                         <div className="hero-stat-divider"/>
                         <div className="hero-stat">
-                            <span className="hero-stat-value">24/7</span>
-                            <span className="hero-stat-label">Live market sync</span>
+                            <span className="hero-stat-value">3</span>
+                            <span className="hero-stat-label">Currencies: CAD, USD, EUR</span>
                         </div>
                         <div className="hero-stat-divider"/>
                         <div className="hero-stat">
@@ -150,18 +150,21 @@ function HomePage() {
             <section className="home-features" id="features">
                 <div className="feature-card">
                     <span className="feature-icon">⟳</span>
-                    <h3>Real-time tracking</h3>
-                    <p>Prices and balances update automatically, so your dashboard always reflects the market.</p>
+                    <h3>Up-to-date prices</h3>
+                    <p>
+                        Prices are fetched each time you open a page. Market data can be delayed, and nothing
+                        here is financial advice.
+                    </p>
                 </div>
                 <div className="feature-card">
                     <span className="feature-icon">▤</span>
                     <h3>Unified holdings</h3>
-                    <p>Stocks, crypto, and cash in one view, with breakdowns that show where your money sits.</p>
+                    <p>US stocks, ETFs and crypto in one view, with the value and return of every position.</p>
                 </div>
                 <div className="feature-card">
                     <span className="feature-icon">↗</span>
                     <h3>Transaction history</h3>
-                    <p>Every buy, sell, and transfer logged and searchable, so nothing slips through the cracks.</p>
+                    <p>Every buy and sell you log, filterable by symbol, type and date, so nothing slips through the cracks.</p>
                 </div>
             </section>
 

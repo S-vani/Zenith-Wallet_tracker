@@ -10,7 +10,10 @@ import "../css/Holdings.css";
 
 function SearchResults({ results }) {
     const [expandedId, setExpandedId] = useState(null);
+    const [brokenImages, setBrokenImages] = useState(() => new Set()); // logos that failed to load are left out
     const { currency } = useUser();
+
+    const hideImage = (id) => setBrokenImages((current) => new Set(current).add(id));
 
     return (
         <div className="search-results-list">
@@ -24,10 +27,18 @@ function SearchResults({ results }) {
                                 onClick={() => setExpandedId(isExpanded ? null : result.api_id)}
                                 aria-expanded={isExpanded}>
                             <div className="search-result-left">
-                                {result.image && <img className="search-result-image" src={result.image} alt=""/>}
+                                {/* no logo (or a broken one) means no image at all, rather than an empty circle */}
+                                {result.image && !brokenImages.has(result.api_id) && (
+                                    <img className="search-result-image" src={result.image} alt=""
+                                         onError={() => hideImage(result.api_id)}/>
+                                )}
                                 <div className="search-result-info">
                                     <span className="search-result-symbol">{result.symbol}</span>
-                                    <span className="search-result-type">{result.type}</span>
+                                    {result.name ? (
+                                        <span className="search-result-name" title={result.name}>{result.name}</span>
+                                    ) : (
+                                        <span className="search-result-type">{result.type}</span>
+                                    )}
                                 </div>
                             </div>
 

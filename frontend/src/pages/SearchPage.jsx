@@ -4,6 +4,14 @@ import {searchCrypto, searchStock} from "../services/api.js";
 import SearchResults from "../Search/SearchResults.jsx"
 import usePageTitle from "../utils/usePageTitle.js";
 
+// tappable examples shown before the first search
+const EXAMPLES = {
+    stock: ["AAPL", "NVDA", "MSFT", "VOO"],
+    crypto: ["BTC", "ETH", "SOL", "USDT"],
+};
+
+const MAX_QUERY_LENGTH = 20; // the backend rejects longer searches
+
 function SearchPage() {
     usePageTitle("Search");
 
@@ -31,6 +39,11 @@ function SearchPage() {
         runSearch(query, searchSymbol.type);
     }
 
+    function searchExample(symbol) {
+        setSearchSymbol({...searchSymbol, symbol});
+        runSearch(symbol, searchSymbol.type);
+    }
+
     async function runSearch(query, type) {
 
         const id = ++searchId.current;
@@ -52,7 +65,7 @@ function SearchPage() {
         <div className="app-page search-page-wrapper">
             <header className="search-header">
                 <h1 className="page-headers">Search</h1>
-                <p className="page-subtitle">Look up live prices for stocks and crypto.</p>
+                <p className="page-subtitle">Look up recent prices for US stocks and crypto.</p>
             </header>
 
             <div className="search-area">
@@ -84,6 +97,7 @@ function SearchPage() {
                         aria-label={`Search ${searchSymbol.type}`}
                         placeholder={searchSymbol.type === "stock" ? "Search a ticker, e.g. AAPL" : "Search a coin, e.g. BTC"}
                         autoComplete="off"
+                        maxLength={MAX_QUERY_LENGTH}
                         autoFocus
                     />
                     <button className="btn btn-primary" type="submit" disabled={!searchSymbol.symbol.trim()}>
@@ -93,6 +107,24 @@ function SearchPage() {
             </div>
 
             {error && <p className="alert-error search-error" role="alert">{error}</p>}
+
+            {!searchResults && !loading && !error && (
+                <div className="search-intro">
+                    <strong>Find a {searchSymbol.type === "stock" ? "stock or ETF" : "coin"}</strong>
+                    <p>
+                        Search by ticker or name, then tap a result to open its price chart and a Market Analyst
+                        report.
+                    </p>
+                    <div className="search-examples" role="group" aria-label="Example searches">
+                        {EXAMPLES[searchSymbol.type].map((symbol) => (
+                            <button key={symbol} type="button" className="search-example"
+                                    onClick={() => searchExample(symbol)}>
+                                {symbol}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {searchResults && (
                 searchResults.length > 0 ? (

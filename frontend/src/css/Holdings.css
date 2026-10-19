@@ -122,7 +122,26 @@
 
 .chart-header {
     display: flex;
-    justify-content: flex-end;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+}
+
+.chart-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.chart-title-note {
+    font-weight: 400;
+    color: var(--text-subtle);
+}
+
+/* refreshing holdings keep the list on screen; a failed refresh shows this above it */
+.holdings-refresh-error {
+    margin: 1rem 1.5rem 0;
 }
 
 .chart-body {
@@ -190,7 +209,7 @@
     }
 
     .chart-wrapper {
-        height: 18rem;
+        height: 20rem; /* a little taller now that the title and range buttons can wrap onto two lines */
         padding: 0.75rem;
     }
 }

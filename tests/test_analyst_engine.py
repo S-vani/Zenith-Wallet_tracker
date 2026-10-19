@@ -267,6 +267,81 @@ def test_watch_list_has_at_most_3_items():
         assert 1 <= len(build_report(data).watch) <= 3
 
 
+def gentle_uptrend():
+    # a slow, steady climb: bullish, nothing stretched, so the main risk is only the ordinary volatility
+    data = make_data("up")
+    data.closes = [100 * math.exp(0.001 * i + 0.01 * math.sin(i)) for i in range(365)]
+    return data
+
+
+@pytest.mark.parametrize("data,phrase", [
+    (make_data("up", fundamentals={**GOOD_FUNDAMENTALS, "trailingPE": 80.0}), "its rich valuation"),
+    (make_data("up", calendar={"Earnings Date": utc_today() + timedelta(days=10)}), "the upcoming earnings report"),
+    (crypto_up(), "a broad crypto sell-off led by Bitcoin"),
+    (make_data("down"), "a rebound, given an oversold RSI of"),
+], ids=["valuation", "earnings", "bitcoin", "rebound"])
+def test_bottom_line_names_the_main_risk_in_a_sentence(data, phrase):
+    report = build_report(data)
+    assert "Main risk to watch:" not in report.bottom_line
+    assert f"The main risk to watch is {phrase}" in report.bottom_line
+    assert report.bottom_line.endswith(".")
+
+
+def test_bottom_line_skips_ordinary_volatility_as_the_main_risk():
+    report = build_report(gentle_uptrend())
+    assert report.main_risk.title == "Normal price swings"  # still shown in the risk card
+    assert "risk" not in report.bottom_line.lower()
+    assert "price swings" not in report.bottom_line.lower()
+
+
+@pytest.mark.parametrize("data", [make_data("up", fundamentals=dict(GOOD_FUNDAMENTALS)),
+                                  make_data("down", fundamentals=dict(BAD_FUNDAMENTALS)), make_data("flat")],
+                         ids=["bullish", "bearish", "neutral"])
+def test_base_case_is_described_neutrally(data):
+    # the base range is symmetric around the price, so its wording can't lean either way
+    report = build_report(data)
+    base = next(s for s in report.scenarios if s.case == "base")
+    for word in ("likely", "leans", "higher", "lower", "evidence"):
+        assert word not in base.summary.lower(), word
+    low, high = base.ranges[0].low, base.ranges[0].high
+    assert low < report.asset.price < high
+
+
+def _signal(key, score, weight):
+    return engine.Signal(key, score, weight, "reason", "phrase")
+
+
+def test_split_trend_caps_confidence_at_medium():
+    facts = engine.calculate_facts(make_data("up"))
+    agreeing = [_signal("momentum", 1.0, 1.5), _signal("fundamentals", 0.8, 1.2), _signal("analysts", 0.8, 0.7)]
+    assert engine._confidence([_signal("trend", 1.0, 1.5), *agreeing], 0.9, facts) == "high"
+    # price above one average but below the other: "Mixed trend signals" can't sit next to "high confidence"
+    assert engine._confidence([_signal("trend", 1 / 3, 1.5), *agreeing], 0.75, facts) == "medium"
+
+
+def test_a_real_counter_signal_caps_confidence_at_medium():
+    facts = engine.calculate_facts(make_data("up"))
+    signals = [_signal("trend", 1.0, 1.5), _signal("momentum", 1.0, 1.5), _signal("analysts", 0.8, 0.7),
+               _signal("fundamentals", -0.6, 1.2)]
+    assert engine._confidence(signals, 0.5, facts) == "medium"
+
+
+def test_reports_with_mixed_trend_never_claim_high_confidence():
+    datasets = [make_data(shape, fundamentals=dict(fu)) for shape in ("up", "down", "flat")
+                for fu in (GOOD_FUNDAMENTALS, BAD_FUNDAMENTALS, MIXED_FUNDAMENTALS)]
+    # an uptrend that has just dropped below its 50-day average while staying above its 200-day one
+    pullback = make_data("up", fundamentals=dict(GOOD_FUNDAMENTALS))
+    pullback.closes = pullback.closes[:-15] + [pullback.closes[-16] * (1 - 0.012 * i) for i in range(1, 16)]
+    datasets.append(pullback)
+    seen_mixed = False
+    for data in datasets:
+        report = build_report(data)
+        if any(i.title == "Mixed trend signals" for i in report.insights):
+            seen_mixed = True
+            assert report.confidence != "high", report.summary
+    assert seen_mixed  # the pullback case really produces a mixed trend
+
+
 def test_only_dated_events_carry_a_date():
     report = build_report(make_data("up", calendar={"Earnings Date": utc_today() + timedelta(days=5)}))
     for item in report.watch:

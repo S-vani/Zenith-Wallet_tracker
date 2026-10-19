@@ -28,20 +28,20 @@ function SignupPage() {
                 </div>
 
                 <div className="signup-page-information">
-                    <h2>Everything you need to invest with confidence</h2>
+                    <h2>Everything you need to keep track of your investments</h2>
                     <ul className="signup-benefits">
                         <li>
                             <span className="feature-icon">◆</span>
                             <div>
-                                <h3>Real-time portfolio tracking</h3>
-                                <p>See every holding update live, across stocks and crypto.</p>
+                                <h3>Up-to-date portfolio tracking</h3>
+                                <p>Prices refresh whenever you open a page, across US stocks and crypto.</p>
                             </div>
                         </li>
                         <li>
                             <span className="feature-icon">◆</span>
                             <div>
                                 <h3>Performance insights</h3>
-                                <p>Understand what's driving your gains and losses over time.</p>
+                                <p>See your return over the past day, week, month, year and all time.</p>
                             </div>
                         </li>
                         <li>

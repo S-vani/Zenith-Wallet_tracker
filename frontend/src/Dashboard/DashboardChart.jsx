@@ -1,85 +1,38 @@
-import {useEffect, useState} from "react";
-import {getPortfolioHistory} from "../services/api.js";
-import useRefreshKey from "../native/useRefreshKey.js";
+import {Link} from "react-router-dom";
 import {AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer} from "recharts";
 import {formatMoney} from "../utils/format.js";
-import {CHART_DOWN, CHART_UP, INITIAL_DIMENSION, TOOLTIP_STYLE, dailyTicks, tooltipDate} from "../utils/chart.js";
+import {
+    CHART_DOWN, CHART_UP, INITIAL_DIMENSION, TOOLTIP_STYLE, axisMoneyOptions, axisTicks, formatAxisTick, tickUnit,
+    tooltipDate,
+} from "../utils/chart.js";
 
-const RANGE_DAYS = {
-    day: 1,
-    week: 7,
-    month: 30,
-    year: 365,
-};
-
-function DashboardChart({range, currency, dateJoined, trendUp}) {
-    const [data, setData] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [now] = useState(() => Date.now());
-
-    // "All" goes back to the day the user joined (a year if that's unknown)
-    let days = RANGE_DAYS[range] ?? 1;
-    if (range === "all") {
-        const joined = dateJoined ? new Date(dateJoined).getTime() : NaN;
-        days = Number.isFinite(joined) ? Math.max(1, Math.ceil((now - joined) / (1000 * 60 * 60 * 24))) : 365;
-    }
-
-    const refreshKey = useRefreshKey();
-
-    useEffect(() => {
-        let ignore = false;
-
-        const loadDashboardChart = async () => {
-            try {
-                setLoading(true);
-                setError(null);
-                const res = await getPortfolioHistory(days);
-                if (!ignore) setData(res);
-            } catch (err) {
-                if (!ignore) setError(err.message);
-            } finally {
-                if (!ignore) setLoading(false);
-            }
-        };
-
-        loadDashboardChart();
-        return () => {
-            ignore = true;
-        };
-    }, [days, refreshKey]);
-
-    const formatTick = (v) => {
-        const date = new Date(v);
-        if (days === 1) {
-            return date.toLocaleTimeString(undefined, {hour: "numeric", minute: "2-digit"});
-        }
-        if (days > 365) {
-            return date.toLocaleDateString(undefined, {month: "short", year: "2-digit"});
-        }
-        return date.toLocaleDateString(undefined, {month: "short", day: "numeric"});
-    };
-
+// `entry` is one range's {days, stats, chart}, loaded by the page; `updating` dims it while another range loads
+function DashboardChart({entry, updating = false, currency, error}) {
+    const data = entry?.chart ?? [];
+    const days = entry?.days ?? 1;
     const hasValues = data.some((d) => d.value > 0);
-    // value charts start at 0 before the first buy, so use the period's return (from the card) for the colour
-    const isUp = trendUp ?? (data.length > 1 && data[data.length - 1].value >= data[0].value);
-    const color = isUp ? CHART_UP : CHART_DOWN;
+    // the value line includes money added and taken out, so its colour follows the period's return shown in the
+    // card above (never the line's own start vs end, which deposits make look like a gain)
+    const color = Number(entry?.stats?.curr_timeperiod) >= 0 ? CHART_UP : CHART_DOWN;
+    const unit = tickUnit(data);
+    const valueOptions = axisMoneyOptions(data.map((d) => d.value));
 
     let body;
-    if (loading) {
+    if (error) {
+        body = <div className="state-message"><p className="alert-error" role="alert">{error}</p></div>;
+    } else if (!entry) {
         body = (
             <div className="state-message">
                 <div className="spinner"/>
                 Building your portfolio history…
             </div>
         );
-    } else if (error) {
-        body = <div className="state-message"><p className="alert-error">{error}</p></div>;
     } else if (!hasValues) {
         body = (
             <div className="state-message">
                 <strong>No history yet</strong>
                 Add a transaction and your portfolio value will be charted here.
+                <Link to="/transactions" className="btn btn-primary">Add your first transaction</Link>
             </div>
         );
     } else {
@@ -94,21 +47,21 @@ function DashboardChart({range, currency, dateJoined, trendUp}) {
                     </defs>
                     <XAxis
                         dataKey="time"
-                        ticks={days === 7 ? dailyTicks(data) : undefined}
-                        minTickGap={40}
+                        ticks={axisTicks(data, unit)}
+                        minTickGap={24}
                         tickMargin={10}
                         tick={{fill: "#8b93a1", fontSize: 11}}
                         axisLine={{stroke: "rgba(255,255,255,0.06)"}}
                         tickLine={false}
-                        tickFormatter={formatTick}
+                        tickFormatter={(v) => formatAxisTick(v, unit)}
                     />
                     <YAxis
-                        width={70}
+                        width={76}
                         domain={["auto", "auto"]}
                         tick={{fill: "#8b93a1", fontSize: 11}}
                         axisLine={false}
                         tickLine={false}
-                        tickFormatter={(v) => formatMoney(v, currency, {notation: "compact", minimumFractionDigits: 0})}
+                        tickFormatter={(v) => formatMoney(v, currency, valueOptions)}
                     />
                     <Tooltip
                         contentStyle={TOOLTIP_STYLE}
@@ -132,9 +85,17 @@ function DashboardChart({range, currency, dateJoined, trendUp}) {
     }
 
     return (
-        <div className="chart-wrapper-dashboard">
-            <div className="chart-body">{body}</div>
-        </div>
+        <figure className="dashboard-chart">
+            <div className="chart-wrapper-dashboard">
+                <div className={`chart-body${updating ? " is-updating" : ""}`} aria-busy={updating}>{body}</div>
+            </div>
+            {hasValues && !error && (
+                <figcaption className="chart-note">
+                    The line is your total portfolio value, so buys and sells move it too. The return above leaves
+                    them out.
+                </figcaption>
+            )}
+        </figure>
     );
 }
 
