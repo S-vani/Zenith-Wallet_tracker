@@ -1,6 +1,7 @@
 import {describe, expect, it} from "vitest";
 import {
-    MONTHS, axisMoneyOptions, axisTicks, dailyTicks, formatAxisTick, tickUnit, tooltipDate,
+    MONTHS, RANGE_PHRASES, axisMoneyOptions, axisTicks, chartSummary, dailyTicks, formatAxisTick, priceChartSummary,
+    tickUnit, tooltipDate,
 } from "../src/utils/chart.js";
 import {formatMoney} from "../src/utils/format.js";
 
@@ -208,5 +209,34 @@ describe("axisMoneyOptions", () => {
 
     it("handles a portfolio that starts at zero", () => {
         expect(tickLabels(0, 60_000)).toEqual(["CA$0", "CA$15K", "CA$30K", "CA$45K", "CA$60K"]);
+    });
+});
+
+describe("chart summaries for screen readers", () => {
+    const money = (v) => formatMoney(v, "CAD");
+    const points = [{price: 2}, {price: 5}, {price: 1}, {price: 3}];
+
+    it("gives the first, last, high and low", () => {
+        expect(normalize(chartSummary("BTC price", "over the past month", points, "price", money)))
+            .toBe("BTC price over the past month: from CA$2.00 to CA$3.00, high CA$5.00, low CA$1.00.");
+    });
+
+    it("skips missing values and handles one or no points", () => {
+        expect(normalize(chartSummary("X", "over the past day", [{price: null}, {price: 4}], "price", money)))
+            .toBe("X over the past day: CA$4.00.");
+        expect(chartSummary("X", "over the past day", [], "price", money)).toBe("X over the past day: no data.");
+        expect(chartSummary("X", "", undefined, "price", money)).toBe("X: no data.");
+    });
+
+    it("words each price chart range", () => {
+        for (const range of ["1D", "1W", "1M", "1Y", "5Y"]) {
+            expect(priceChartSummary("AAPL", range, null, points, money))
+                .toMatch(new RegExp(`^AAPL price ${RANGE_PHRASES[range]}: from `));
+        }
+    });
+
+    it("describes the range the prices really cover (CoinGecko's 5Y is one year)", () => {
+        expect(priceChartSummary("PEPE", "5Y", "1Y", points, money)).toMatch(/^PEPE price over the past year: /);
+        expect(priceChartSummary("PEPE", "5Y", null, points, money)).toMatch(/^PEPE price over the past 5 years: /);
     });
 });

@@ -14,6 +14,15 @@ describe("dashboard range cache", () => {
         expect(readDashboardCache("k", 1000 + CACHE_MS - 1)).toBe(entry);
     });
 
+    it("keeps each range's chart with its invested amounts", () => {
+        const week = {...entry, chart: [{time: "t1", value: 120, invested: 100}]};
+        const year = {range: "year", days: 365, stats: entry.stats, chart: [{time: "t0", value: 90, invested: 80}]};
+        writeDashboardCache("week", week, 0);
+        writeDashboardCache("year", year, 0);
+        expect(readDashboardCache("week", 1).chart[0].invested).toBe(100);
+        expect(readDashboardCache("year", 1).chart[0].invested).toBe(80);
+    });
+
     it("forgets it after a minute", () => {
         writeDashboardCache("k", entry, 1000);
         expect(readDashboardCache("k", 1000 + CACHE_MS)).toBeUndefined();

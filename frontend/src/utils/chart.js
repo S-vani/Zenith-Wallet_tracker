@@ -10,6 +10,18 @@ export const TOOLTIP_STYLE = {
 
 export const CHART_UP = "#22c55e";
 export const CHART_DOWN = "#ef4444";
+// the dashboard's "invested" line: faint and dashed so the value line stays the main one
+export const CHART_INVESTED = "#94a3b8";
+
+// How each chart range reads in a screen reader summary ("Portfolio value over the past year: …")
+export const RANGE_PHRASES = {
+    "1D": "over the past day",
+    "1W": "over the past week",
+    "1M": "over the past month",
+    "1Y": "over the past year",
+    "5Y": "over the past 5 years",
+    All: "since you joined",
+};
 
 // Avoids recharts' "width(-1) and height(-1)" warning on the first render
 export const INITIAL_DIMENSION = {width: 1, height: 1};
@@ -126,4 +138,25 @@ export function axisMoneyOptions(values) {
     // whole dollars, or at least cents ("CA$766.50", never "CA$766.5")
     const decimals = digits === 0 ? 0 : Math.min(12, Math.max(2, digits));
     return {minimumFractionDigits: decimals, maximumFractionDigits: decimals};
+}
+
+// Text a screen reader can read instead of the chart's picture, e.g. "Portfolio value over the past year: from
+// CA$12,000 to CA$53,900, high CA$56,000, low CA$11,500." `format` turns a number into money text.
+export function chartSummary(title, phrase, data, key, format) {
+    // null is a missing price, not 0 (Number(null) would make it one)
+    const values = (data ?? []).map((d) => d?.[key]).filter((v) => v !== null && v !== undefined && v !== "")
+        .map(Number).filter(Number.isFinite);
+    const span = phrase ? `${title} ${phrase}` : title;
+    if (values.length === 0) return `${span}: no data.`;
+
+    const first = format(values[0]);
+    const last = format(values[values.length - 1]);
+    if (values.length === 1) return `${span}: ${last}.`;
+    return `${span}: from ${first} to ${last}, high ${format(Math.max(...values))}, low ${format(Math.min(...values))}.`;
+}
+
+// Summary for a holding / search price chart. `covered` is the range the prices really cover when it's shorter than
+// the one asked for (CoinGecko's free plan stops at a year, so its "5Y" is one year), so the text never overstates.
+export function priceChartSummary(label, range, covered, data, format) {
+    return chartSummary(`${label} price`, RANGE_PHRASES[covered || range] ?? "", data, "price", format);
 }

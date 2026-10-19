@@ -122,3 +122,54 @@
 .stat-value {
     overflow-wrap: anywhere;
 }
+
+/* holdings with no price right now: said under the cards, since the totals leave them out */
+.unpriced-note {
+    margin: 0;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+}
+
+/* "Value" / "Invested" key above the chart */
+.chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.4rem 1rem;
+    padding: 0 0.25rem 0.5rem 0;
+    font-size: 0.75rem;
+    color: var(--text-subtle);
+}
+
+.chart-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.chart-legend-swatch {
+    width: 1.1rem;
+    border-top: 2px solid var(--text-subtle);
+}
+
+.chart-legend-swatch.dashed {
+    border-top: 2px dashed #94a3b8;
+    opacity: 0.8;
+}
+
+/* the chart's numbers as text for screen readers, invisible on screen */
+.chart-sr-summary {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
