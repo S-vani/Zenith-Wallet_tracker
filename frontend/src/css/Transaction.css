@@ -1,3 +1,11 @@
+/* .app-page spaces its children with a gap, but the header and layout sit inside this wrapper (it's what goes
+   inert behind the add dialog), so give the subtitle the same room before the first card / Add button */
+.transactions-page-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
 /* list on the left, filters on the right (stacks on small screens) */
 .transactions-layout {
     display: grid;
@@ -163,6 +171,66 @@
     background: rgba(255, 255, 255, 0.08);
     margin: 0.35rem 0;
     width: 100%;
+}
+
+/* Edit / Delete under an expanded trade */
+.transaction-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    margin-top: 0.5rem;
+}
+
+.transaction-delete-button {
+    color: #fca5a5;
+    border-color: rgba(239, 68, 68, 0.35);
+}
+
+.transaction-delete-button:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.55);
+}
+
+.transaction-delete-confirm {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin-top: 0.5rem;
+    padding: 0.85rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.06);
+    font-size: 0.9rem;
+}
+
+.transaction-delete-confirm .transaction-actions {
+    margin-top: 0;
+}
+
+.transaction-delete-submit {
+    color: #fff;
+    background: #b91c1c;
+    border-color: #dc2626;
+}
+
+.transaction-delete-submit:hover:not(:disabled) {
+    background: #dc2626;
+}
+
+/* the date picker icon and popup follow the dark theme */
+.trade-date-input {
+    color-scheme: dark;
+    min-width: 0; /* iOS gives date inputs a wide minimum that overflows the bottom sheet */
+}
+
+.trade-date-input::-webkit-date-and-time-value {
+    text-align: left; /* iOS centres it */
+}
+
+.trade-date-input::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.8;
 }
 
 /* ---------- Filters ---------- */
@@ -661,8 +729,15 @@
         grid-template-columns: 1fr;
     }
 
-    .create-transaction-buttons .btn {
+    .create-transaction-buttons .btn,
+    .transaction-actions .btn {
         flex: 1;
+        min-height: 2.75rem;
+    }
+
+    .transaction-expanded {
+        margin: 0 0.75rem 0.75rem;
+        padding: 1rem;
     }
 }
 

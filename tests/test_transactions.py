@@ -32,7 +32,7 @@ def test_create_buy(client, user, db):
 
 @pytest.mark.parametrize("overrides", [
     {"quantity": 1e30},
-    {"quantity": 1e12 + 1},
+    {"quantity": 1e9 + 1},
     {"quantity": 0},
     {"quantity": -1},
     {"price_of_one": 0},
@@ -50,7 +50,7 @@ def test_create_rejects_invalid_input(client, user, overrides):
 
 
 def test_create_accepts_the_limits(client, user):
-    res = client.post("/transactions", headers=user.headers, json=tx_body(quantity=1e12, price_of_one=1e9))
+    res = client.post("/transactions", headers=user.headers, json=tx_body(quantity=1e9, price_of_one=1e9))
     assert res.status_code == 200, res.text
 
 

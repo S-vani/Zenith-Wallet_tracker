@@ -59,6 +59,11 @@ async def return_transaction_with_id(
     return transaction
 
 
+# 409 messages; the frontend turns these into a sentence about the trade being saved, edited or deleted
+OVERSOLD = "Insufficient holdings"
+OVERSOLD_AFTER_DELETE = "Deleting this would leave you selling more than you owned"
+
+
 @router.delete("/transactions/{trans_id}")
 async def delete_transaction_with_id(
         trans_id: str,
@@ -90,7 +95,7 @@ async def delete_transaction_with_id(
     # e.g. deleting the buy behind a sell would leave a negative position
     if not await rebuild_symbol_ledger(session, current_user.id, symbol):
         await session.rollback()
-        raise HTTPException(status_code=409, detail="Deleting this would leave you selling more than you owned")
+        raise HTTPException(status_code=409, detail=OVERSOLD_AFTER_DELETE)
 
     await session.commit()
 
@@ -123,18 +128,24 @@ async def update_transaction_with_id(
     if updates.price_of_one:
         rates = await get_all_conversion_rates()
         transaction.price_of_one = updates.price_of_one / get_conversion_factor(rates, current_user.currency)
+        # the new price was typed in the user's currency, keep it as typed so it doesn't drift with FX
+        transaction.price_entered = updates.price_of_one
+        transaction.currency_entered = current_user.currency.upper()
     if updates.quantity:
         transaction.quantity = updates.quantity
     if updates.api_id:
         transaction.api_id = updates.api_id
+    if updates.created_at:
+        transaction.created_at = updates.created_at  # already naive UTC and not in the future (schema)
 
     await session.flush()
 
-    # replay the affected symbols: no selling more than owned, and sell profits follow the edited prices
+    # replay the affected symbols: no selling more than owned (at any point in time, so moving a trade's date is
+    # checked too), and sell profits follow the edited prices
     for symbol in {old_symbol, transaction.symbol}:
         if not await rebuild_symbol_ledger(session, current_user.id, symbol):
             await session.rollback()
-            raise HTTPException(status_code=409, detail="Insufficient holdings")
+            raise HTTPException(status_code=409, detail=OVERSOLD)
 
     await session.commit()
     await session.refresh(transaction)
@@ -163,6 +174,7 @@ async def return_holdings_with_filter(
                 "price_of_one": float(trans.price_of_one),
                 "quantity": float(trans.quantity),
                 "created_at": trans.created_at.isoformat()
+    Prices and profits are in the user's currency: as typed when typed in that currency, otherwise from CAD.
     """
     query = create_holding_filter(current_user.id, symbol, action, start_date, end_date)
 
@@ -172,7 +184,7 @@ async def return_holdings_with_filter(
     rates = await get_all_conversion_rates()
     conversion = get_conversion_factor(rates, current_user.currency)
 
-    return turn_list_to_dict(result, conversion)
+    return turn_list_to_dict(result, conversion, current_user.currency)
 
 
 @router.post("/transactions")
@@ -182,41 +194,38 @@ async def make_transaction(
         current_user: User = Depends(current_active_user)
 ):
     """
-    The route used to make a transaction where the user enters the data manually and then if it is a sell,
-    the profit is calculated and set up. This variable profit that comes with every sell transaction is used later to
-    calculate realized profit by simply looping through every sell and adding the profit made. A transaction instance is made
-    the added to the database.
+    The route used to make a transaction where the user enters the data manually. The trade is dated now unless
+    `created_at` says otherwise (backdated trades). The symbol's history is then replayed in date order: that sets
+    the profit of every sell (used later to add up realized profit) and rejects the trade with a 409 if any point
+    of the history would sell more than was owned, e.g. a backdated sell before the buy it needs.
     """
-    # Prices are stored in CAD and converted on the way out, so convert what the user typed (in their currency) to CAD
+    # Prices are stored in CAD and converted on the way out, so convert what the user typed (in their currency) to CAD.
+    # The typed price and currency are kept too, so the trade keeps showing exactly what was typed.
     rates = await get_all_conversion_rates()
     conversion = get_conversion_factor(rates, current_user.currency)
-    data = data.model_copy(update={"price_of_one": data.price_of_one / conversion})
-
-    profit_calculated = 0.0
-    if data.action == "SELL":
-        curr_holdings = await current_quantity(session, current_user.id, data.symbol)
-        # compare as Decimals at the database's 10 decimal places so selling "everything" isn't blocked by float error
-        sell_quantity = Decimal(str(data.quantity)).quantize(Decimal("1e-10"))
-        if sell_quantity > curr_holdings:
-            raise HTTPException(status_code=409,
-                                detail="Insufficient holdings")  # Error if you are trying to sell more than you have
-
-        profit_calculated = await calculate_profit_for_one_transaction(session,
-                                                                       current_user.id,
-                                                                       data,
-                                                                       current_user.currency)  # Calculate profit for the sell
 
     transaction = Transaction(
         action=data.action,
-        profit=profit_calculated,
+        profit=0,
         asset_type=data.asset_type,
         symbol=data.symbol,
         api_id=data.api_id,
-        price_of_one=data.price_of_one,
+        price_of_one=data.price_of_one / conversion,
+        price_entered=data.price_of_one,
+        currency_entered=current_user.currency.upper(),
         quantity=data.quantity,
         user_id=current_user.id
     )
+    if data.created_at is not None:
+        transaction.created_at = data.created_at  # already naive UTC and not in the future (schema)
+
     session.add(transaction)
+    await session.flush()
+
+    if not await rebuild_symbol_ledger(session, current_user.id, data.symbol):
+        await session.rollback()
+        raise HTTPException(status_code=409, detail=OVERSOLD)  # Error if you are trying to sell more than you have
+
     await session.commit()
     await session.refresh(transaction)
     return transaction

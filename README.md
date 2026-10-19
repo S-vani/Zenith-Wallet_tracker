@@ -57,7 +57,7 @@ writes can be traced back to a number.
 |---|---|
 | **Portfolio dashboard** | Total value, today's and all-time return, and a value chart for 1D / 1W / 1M / 1Y / All. |
 | **Holdings** | Every open position with its value, quantity and return, each with its own price chart. |
-| **Transactions** | Log buys and sells with live symbol search and a pre-filled market price; filter by symbol, action and date; edit or delete past trades and the history stays consistent. |
+| **Transactions** | Log buys and sells with live symbol search and a pre-filled market price, dated now or backdated; filter by symbol, action and date; edit or delete past trades and the history stays consistent. |
 | **Search** | Live prices for US stocks, ETFs and thousands of cryptocurrencies, with interactive charts. |
 | **Market Analyst** | Bullish / neutral / bearish outlook with a confidence level, key insights, volatility-based scenarios, what to watch and the main risk. |
 | **Multi-currency** | View everything in CAD, USD or EUR; stocks listed in other currencies are converted automatically. |

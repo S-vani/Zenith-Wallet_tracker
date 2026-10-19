@@ -32,7 +32,13 @@ async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 # Columns added to existing tables after the first release. create_all() only creates missing *tables*, so the
 # production database (made before these columns existed) gets them here, once, with ALTER TABLE ADD COLUMN.
 # Add new columns as {table: {column: "SQL type and default"}}; keep the model and this list in step.
-ADDED_COLUMNS: dict[str, dict[str, str]] = {}
+ADDED_COLUMNS: dict[str, dict[str, str]] = {
+    # the price and currency a trade was typed in (nullable: older trades only have the CAD price)
+    "transactions": {
+        "price_entered": "NUMERIC(20, 10)",
+        "currency_entered": "VARCHAR",
+    },
+}
 
 
 def _add_missing_columns(sync_conn):
