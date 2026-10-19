@@ -39,6 +39,7 @@ const FIELD_LABELS = {
     quantity: "Quantity",
     price_of_one: "Price",
     asset_type: "Asset type",
+    created_at: "Date",
 };
 
 // Turn a FastAPI/pydantic validation error into something a person can read
@@ -146,6 +147,22 @@ export async function createTransaction(data) {
         method: "POST",
         body: JSON.stringify(data),
         fallbackError: "Failed to create transaction.",
+    });
+}
+
+// Only the fields that changed; a 409 means the edit would sell more than was owned (see ledgerErrorMessage)
+export async function updateTransaction(id, changes) {
+    return request(`/transactions/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        body: JSON.stringify(changes),
+        fallbackError: "Couldn't save your changes to this trade.",
+    });
+}
+
+export async function deleteTransaction(id) {
+    return request(`/transactions/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        fallbackError: "Couldn't delete this trade. Please try again.",
     });
 }
 

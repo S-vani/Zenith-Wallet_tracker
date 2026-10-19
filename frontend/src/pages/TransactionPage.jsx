@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {getTransactions} from "../services/api";
 import useRefreshKey from "../native/useRefreshKey.js";
 import TransactionList from "../Transactions/TransactionList";
@@ -6,6 +6,7 @@ import TransactionCreate from "../Transactions/TransactionCreate.jsx"
 import TransactionFilter from "../Transactions/TransactionFilter.jsx"
 import TransactionSymbolSearch from "../Transactions/TransactionSymbolSearch.jsx";
 import usePageTitle from "../utils/usePageTitle.js";
+import useDialog from "../Transactions/useDialog.js";
 
 import '../css/Transaction.css'
 
@@ -23,6 +24,8 @@ function TransactionsPage() {
     const [reloadKey, setReloadKey] = useState(0);
     const refreshKey = useRefreshKey(); // app only: pull to refresh / coming back to the app
     const [filtersOpen, setFiltersOpen] = useState(false); // only matters on phones, where filters start collapsed
+    const dialogRef = useRef(null);
+    const addButtonRef = useRef(null);
 
     useEffect(() => {
         let ignore = false; // drop responses for filters the user has already changed
@@ -56,17 +59,13 @@ function TransactionsPage() {
         setSymbolData(null);
     };
 
-    // close the modal with Escape
-    useEffect(() => {
-        if (step === "closed") return;
-        const onKey = (e) => e.key === "Escape" && closeModal();
-        window.addEventListener("keydown", onKey);
-        return () => window.removeEventListener("keydown", onKey);
-    }, [step]);
-
     const hasFilters = Object.values(filters).some(Boolean);
     const activeFilterCount = Object.values(filters).filter(Boolean).length;
     const modalOpen = step !== "closed";
+
+    // Tab stays in the dialog, Esc closes it, the page and nav behind it are inert, and focus goes back to the
+    // "Add transaction" button that opened it
+    useDialog(dialogRef, modalOpen, closeModal, addButtonRef);
 
     // stop the page behind the modal from scrolling
     useEffect(() => {
@@ -97,13 +96,13 @@ function TransactionsPage() {
             </div>
         );
     } else {
-        content = <TransactionList transactions={transactions}/>;
+        content = <TransactionList transactions={transactions} onChanged={reload}/>;
     }
 
     return (
         <div className="app-page">
-            {/* inert: keyboard and screen readers can't reach the page behind the modal */}
-            <div className="transactions-page-content" inert={modalOpen}>
+            {/* made inert by useDialog while the add dialog is open */}
+            <div className="transactions-page-content">
             <header>
                 <h1 className="page-headers">Transactions</h1>
                 <p className="page-subtitle">Every buy and sell you've logged.</p>
@@ -115,7 +114,8 @@ function TransactionsPage() {
                 </section>
 
                 <aside className="transactions-sidebar">
-                    <button className="btn btn-primary transaction-button-add" onClick={() => setStep("search")}>
+                    <button className="btn btn-primary transaction-button-add" ref={addButtonRef}
+                            onClick={() => setStep("search")}>
                         <span aria-hidden="true">+</span> Add transaction
                     </button>
 
@@ -142,7 +142,8 @@ function TransactionsPage() {
 
             {step !== "closed" && (
                 <div className="transaction-create-overlay" onMouseDown={(e) => e.target === e.currentTarget && closeModal()}>
-                    <div className="transaction-create-box" role="dialog" aria-modal="true" aria-labelledby="add-transaction-title">
+                    <div className="transaction-create-box" role="dialog" aria-modal="true" aria-labelledby="add-transaction-title"
+                         ref={dialogRef} tabIndex={-1}>
                         <div className="modal-header">
                             <h2 id="add-transaction-title">Add transaction</h2>
                             <button className="transaction-create-close-button" onClick={closeModal} aria-label="Close">
