@@ -154,8 +154,8 @@ def test_stock_prices_convert_usd_listings_to_cad_then_user_currency():
     assert usd["AAPL"] == pytest.approx(100 * RATES["usd_to_cad"] * RATES["usd"])
 
 
-def test_unknown_stock_is_worth_zero():
-    assert asyncio.run(services.get_stock_prices_at(["NOPE"], datetime.now(timezone.utc), "CAD")) == {"NOPE": 0.0}
+def test_unknown_stock_has_no_price():
+    assert asyncio.run(services.get_stock_prices_at(["NOPE"], datetime.now(timezone.utc), "CAD")) == {"NOPE": None}
 
 
 def test_crypto_prices_keep_the_stored_lowercase_id(market):
@@ -171,11 +171,11 @@ def test_price_lookups_with_no_symbols_skip_the_api(market):
     assert market.requested == []
 
 
-def test_history_of_prices_crypto_uses_usd_pair_and_converts():
+def test_history_of_prices_crypto_uses_cad_pair_and_converts():
     data, ticker = asyncio.run(services.get_history_of_prices("BTC", "crypto", "1W", "USD"))
-    assert ticker == "BTC-USD"
+    assert ticker == "BTC-CAD"  # the same pair as the holdings value, so chart and card agree
     assert data
-    assert data[0]["price"] == pytest.approx(40000 * RATES["usd_to_cad"] * RATES["usd"])
+    assert data[0]["price"] == pytest.approx(50000 * RATES["usd"])
     datetime.fromisoformat(data[0]["time"])  # times must be parseable by the routes
 
 

@@ -241,6 +241,7 @@ def stub_external_services(monkeypatch):
     market = FakeMarket()
     monkeypatch.setattr(services, "yf", market)
     monkeypatch.setattr(services, "_symbol_currency_cache", {})
+    monkeypatch.setattr(services, "_series_cache", {})  # cached price histories must not leak between tests
 
     routes_http = FakeHttpx()
     services_http = FakeHttpx()
