@@ -1021,9 +1021,12 @@ async def get_portfolio_value_history(
         currency: str
 ):
     """
-    return the data needed to graph the portfolios historical values.
-    Each point is the quantity held then times the latest close known then; a holding with no price at a point is
+    return the data needed to graph the portfolios historical values, as [{"time", "value", "invested"}].
+    Each value is the quantity held then times the latest close known then; a holding with no price at a point is
     left out of that point. The last point ("now") is priced exactly like the portfolio value card.
+    `invested` is the cost basis of the same holdings at that time (what was paid for what was still held, average
+    cost method, prices as typed via price_in_currency so it doesn't drift with FX): it only moves with buys and
+    sells, so the gap between the two lines is the unrealized gain. It ends on the holdings' "price paid" total.
     """
     timestamps, _ = calculate_timespans_for_portfolio_history(ranges)
     now = timestamps[-1]
@@ -1031,11 +1034,12 @@ async def get_portfolio_value_history(
     result = await db.execute(
         select(Transaction)
         .where(Transaction.user_id == user_id, Transaction.created_at <= _naive_utc(now))
-        .order_by(Transaction.created_at.asc())
+        .order_by(Transaction.created_at.asc(), Transaction.id.asc())  # same order as get_holdings_at_time
     )
     transactions = result.scalars().all()  # read once and replayed below, instead of one query per point
 
     data = []
+    positions: dict[str, dict] = {}  # api_id -> {"avg_price", "qty", "type"}, as get_holdings_at_time builds them
     if transactions:
         types = {str(t.api_id): str(t.asset_type) for t in transactions}
         coin_ids = {str(t.api_id): t.coin_id for t in transactions if t.coin_id}  # the newest one wins
@@ -1054,30 +1058,35 @@ async def get_portfolio_value_history(
         histories = {api_id: (series, to_cad) for api_id, series, to_cad in
                      await asyncio.gather(*[load(api_id) for api_id in types])}
 
-        quantities: dict[str, Decimal] = {}
         i = 0
         for ts in timestamps[:-1]:
             while i < len(transactions) and _naive_utc(transactions[i].created_at) <= _naive_utc(ts):
-                t = transactions[i]
-                qty = Decimal(str(t.quantity))
-                quantities[str(t.api_id)] = quantities.get(str(t.api_id), Decimal(0)) + (
-                    qty if str(t.action) == "BUY" else -qty)
+                apply_trade(positions, transactions[i], currency, conversion)
                 i += 1
 
             curr_total = 0.0
-            for api_id, qty in quantities.items():
+            invested = 0.0
+            for api_id, position in positions.items():  # fully sold positions are already gone
                 series, to_cad = histories[api_id]
-                if qty <= Decimal("1e-9") or not series:  # fully sold, or no price data for this holding
+                close = series.close_at(ts) if series else None
+                if close is None:  # no price then: left out of both lines, so they cover the same holdings
                     continue
-                close = series.close_at(ts)
-                if close is not None:
-                    curr_total += float(qty) * close * to_cad * conversion
-            data.append({"time": ts.isoformat(), "value": curr_total})
+                curr_total += float(position["qty"]) * close * to_cad * conversion
+                invested += float(position["avg_price"]) * float(position["qty"])
+            data.append({"time": ts.isoformat(), "value": curr_total, "invested": invested})
+
+        for t in transactions[i:]:  # the rest, up to now, for the last point
+            apply_trade(positions, t, currency, conversion)
     else:
-        data = [{"time": ts.isoformat(), "value": 0.0} for ts in timestamps[:-1]]
+        data = [{"time": ts.isoformat(), "value": 0.0, "invested": 0.0} for ts in timestamps[:-1]]
 
     # same holdings and prices as the dashboard's value card, so the chart ends on the card's number
     final = await get_position_values_at(db, user_id, now, currency) if transactions else {}
-    data.append({"time": now.isoformat(), "value": sum(v for v in final.values() if v is not None)})
+    data.append({
+        "time": now.isoformat(),
+        "value": sum(v for v in final.values() if v is not None),
+        "invested": sum(float(p["avg_price"]) * float(p["qty"]) for api_id, p in positions.items()
+                        if final.get(api_id) is not None),
+    })
 
     return data
