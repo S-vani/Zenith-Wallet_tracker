@@ -65,8 +65,22 @@ workflows:
           if [ -z "$APP_STORE_APPLE_ID" ]; then
             echo "Set APP_STORE_APPLE_ID in Codemagic (setup step 6 at the top of this file)" && exit 1
           fi
-          # "|| echo 0" only covers the very first upload, when there's no TestFlight build yet
-          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" || echo 0)
+          # Starting from 0 is only right when App Store Connect answered and simply has no TestFlight build yet
+          # (the very first upload): the tool then succeeds and prints no number ("Did not find latest build" goes
+          # to the log). Any failure (bad key, network, wrong Apple ID) exits non-zero and stops the build here,
+          # instead of quietly reusing build number 1, which App Store Connect would reject after signing.
+          if ! LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID"); then
+            echo "Couldn't read the latest TestFlight build number from App Store Connect (see the error above)"
+            exit 1
+          fi
+          LATEST=$(printf '%s' "$LATEST" | tr -d '[:space:]')
+          if [ -z "$LATEST" ]; then
+            echo "No TestFlight build yet, this will be build 1"
+            LATEST=0
+          fi
+          case "$LATEST" in
+            *[!0-9]*) echo "Unexpected build number from App Store Connect: '$LATEST'" && exit 1 ;;
+          esac
           cd frontend/ios/App && agvtool new-version -all $((LATEST + 1))
       - name: Build the signed .ipa
         script: xcode-project build-ipa --project "$XCODE_PROJECT" --scheme "$XCODE_SCHEME"

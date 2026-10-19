@@ -19,6 +19,11 @@
     "StatusBar": {
       "style": "DARK",
       "overlaysWebView": true
+    },
+    "Keyboard": {
+      "resize": "native",
+      "style": "DARK",
+      "autoBackdropColor": "auto"
     }
   }
 }
