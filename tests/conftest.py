@@ -94,6 +94,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import select, update  # noqa: E402
 
 import backend.db_models.assets as models_module  # noqa: E402
+import backend.ratelimit as ratelimit  # noqa: E402
 import backend.routes.assets as routes_module  # noqa: E402
 import backend.services.asset_services as services  # noqa: E402
 from backend.db.database import DATABASE_URL, async_session_maker, engine  # noqa: E402
@@ -251,6 +252,10 @@ def stub_external_services(monkeypatch):
 
     FakeSMTP.instances = []
     monkeypatch.setattr(models_module.smtplib, "SMTP", FakeSMTP)
+
+    # The auth rate limiter counts in memory per IP, and every test client has the same one ("testclient"):
+    # start each test with empty counters so the whole suite doesn't add up to a 429 (test_security.py tests it)
+    ratelimit.limiter.reset()
 
     return SimpleNamespace(market=market, routes_http=routes_http, services_http=services_http)
 

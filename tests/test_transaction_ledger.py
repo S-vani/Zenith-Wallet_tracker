@@ -287,7 +287,7 @@ def test_new_columns_are_added_to_an_existing_table(tmp_path):
         _add_missing_columns(conn)  # running again on every start is harmless
 
         columns = {c["name"] for c in inspect(conn).get_columns("transactions")}
-        assert set(ADDED_COLUMNS["transactions"]) <= columns
+        assert {name for name, *_ in ADDED_COLUMNS["transactions"]} <= columns
         row = conn.execute(text("SELECT price_entered, currency_entered FROM transactions")).one()
         assert tuple(row) == (None, None)  # old rows keep the CAD-only behaviour
     engine.dispose()

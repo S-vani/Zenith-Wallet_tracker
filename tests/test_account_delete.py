@@ -5,7 +5,12 @@ from sqlalchemy import func, select
 
 from backend.db.database import async_session_maker
 from backend.db_models.assets import OAuthAccount, Transaction
-from conftest import login, register
+from conftest import PASSWORD, login, register
+
+
+def delete_me(client, owner, password=PASSWORD):
+    # Updated with the security hardening: deleting now needs the current password in the body, not just a token
+    return client.request("DELETE", "/user", headers=owner.headers, json={"current_password": password})
 
 
 async def _link_google(user_id, email):
@@ -27,7 +32,7 @@ def test_delete_account_removes_the_user_and_everything_they_own(client, user, d
     buy(user, "btc", 0.1, 50000, asset_type="crypto")
     run(_link_google, user.id, user.email)
 
-    res = client.delete("/user", headers=user.headers)
+    res = delete_me(client, user)
     assert res.status_code == 200
     assert res.json() == {"message": "Account deleted"}
 
@@ -37,14 +42,14 @@ def test_delete_account_removes_the_user_and_everything_they_own(client, user, d
 
 
 def test_deleted_account_can_no_longer_be_used(client, user):
-    client.delete("/user", headers=user.headers)
+    delete_me(client, user)
 
     assert client.get("/user", headers=user.headers).status_code == 401  # the old token is dead
     assert login(client, user.email).status_code == 400  # and the password no longer works
 
 
 def test_email_can_sign_up_again_after_deleting(client, user):
-    client.delete("/user", headers=user.headers)
+    delete_me(client, user)
     assert register(client, email=user.email).status_code == 201
 
 
@@ -53,7 +58,7 @@ def test_deleting_one_account_leaves_other_users_alone(client, make_user, buy, r
     buy(leaving, "AAPL", 1, 100)
     buy(staying, "AAPL", 3, 100)
 
-    client.delete("/user", headers=leaving.headers)
+    delete_me(client, leaving)
 
     assert client.get("/user", headers=staying.headers).status_code == 200
     assert run(_count, Transaction, staying.id) == 1
@@ -63,9 +68,18 @@ def test_delete_account_requires_login(client):
     assert client.delete("/user").status_code == 401
 
 
+def test_delete_account_requires_the_current_password(client, user, db):
+    # a stolen token alone can't delete the account
+    assert client.delete("/user", headers=user.headers).status_code == 422
+    wrong = delete_me(client, user, password="not-my-password")
+    assert wrong.status_code == 400  # not 401/403, which would sign the real user out in the frontend
+    assert wrong.json()["detail"] == "Your current password is incorrect."
+    assert db.get_user(user.email) is not None
+
+
 def test_delete_account_forgets_the_analyst_rate_limit(client, user):
     from backend.analyst import service
 
     service._user_generations[str(uuid.UUID(user.id))].append(1.0)
-    client.delete("/user", headers=user.headers)
+    delete_me(client, user)
     assert str(uuid.UUID(user.id)) not in service._user_generations

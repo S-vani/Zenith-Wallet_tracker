@@ -9,7 +9,7 @@ from email.mime.text import MIMEText
 from dotenv import load_dotenv
 from fastapi_users import BaseUserManager, UUIDIDMixin, exceptions, models
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTableUUID, SQLAlchemyBaseOAuthAccountTableUUID
-from sqlalchemy import Column, String, DateTime, ForeignKey, Numeric
+from sqlalchemy import Boolean, Column, String, DateTime, ForeignKey, Integer, Numeric, false, true
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, relationship
 from starlette.requests import Request
@@ -32,9 +32,24 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     name = Column(String, nullable=False, default="")  # Google sign ups start blank and get their Google name
     date_joined = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     currency = Column(String, nullable=False, default="CAD")
+    # Written into every login token; bumping it signs out every device (see VersionedJWTStrategy).
+    # Columns added after the first release are also listed in ADDED_COLUMNS (backend/db/database.py).
+    token_version = Column(Integer, nullable=False, default=0, server_default="0")
+    # False when the owner doesn't know a password: accounts made with Google, or whose password was replaced
+    # when Google was linked. They're told to use "Forgot password" to set one.
+    has_password = Column(Boolean, nullable=False, default=True, server_default=true())
+    # True once an email has been confirmed (by link or Google). Accounts that never got there are deleted after
+    # 7 days; a later email change makes is_verified False again but leaves this alone.
+    ever_verified = Column(Boolean, nullable=False, default=False, server_default=false())
 
     transactions = relationship("Transaction", back_populates="user")
     oauth_accounts = relationship("OAuthAccount", lazy="joined")
+
+
+def _ratelimit():
+    # imported on first use: backend.ratelimit pulls in FastAPI, which this models module doesn't otherwise need
+    from backend import ratelimit
+    return ratelimit
 
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
@@ -52,6 +67,24 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         if user is not None and getattr(user, "email", None) and password.lower() == str(user.email).lower():
             raise exceptions.InvalidPasswordException(reason="Password can't be your email address.")
 
+    async def authenticate(self, credentials):
+        # counts wrong passwords per email, so the login route can lock that account out for a while (ratelimit.py)
+        user = await super().authenticate(credentials)
+        if user is None:
+            _ratelimit().record_login_failure(credentials.username)
+        else:
+            _ratelimit().clear_login_failures(credentials.username)
+        return user
+
+    def check_password(self, user: User, password: str) -> bool:
+        verified, _ = self.password_helper.verify_and_update(password or "", user.hashed_password)
+        return verified
+
+    async def sign_out_everywhere(self, user: User, **changes) -> User:
+        """Bump token_version, so every token issued so far stops working, together with any other changes."""
+        # an SQL expression, so two requests at once can't both write the same new number
+        return await self.user_db.update(user, {"token_version": User.token_version + 1, **changes})
+
     async def on_after_register(self,
                                 user: User,
                                 request: Request | None = None):
@@ -63,40 +96,78 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         await send_link_email(user, "verify", token, subject="Verify your Zenith email",
                               intro="Click the link below to verify your Zenith account:")
 
+    async def on_after_verify(self, user, request=None):
+        if not user.ever_verified:
+            await self.user_db.update(user, {"ever_verified": True})
+
     async def on_after_forgot_password(self, user, token, request=None):
         await send_link_email(user, "reset-password", token, subject="Reset your Zenith password",
                               intro="Click the link below to choose a new Zenith password. It works for one hour. "
                                     "If you didn't ask for this, you can ignore this email.")
+
+    async def on_after_reset_password(self, user, request=None):
+        # Whoever knew the old password may still be signed in somewhere; this ends those sessions.
+        # The owner knows a password now, even if the account started with Google.
+        await self.sign_out_everywhere(user, has_password=True)
+
+
+def _email_account():
+    return os.getenv("GMAIL_USER"), os.getenv("GMAIL_PASS")
+
+
+# Emails go out in the background so a request never waits on Gmail. That also makes /auth/forgot-password answer
+# as fast for an address with an account as for one without, so its timing doesn't reveal who has signed up.
+_pending_emails: set = set()
+
+
+def _send_in_background(to_address: str, subject: str, body: str) -> None:
+    sender, app_pass = _email_account()
+    message = MIMEText(body)
+    message["Subject"] = subject
+    message["From"] = sender
+    message["To"] = to_address
+
+    def send():
+        # smtplib is blocking, so it runs in a worker thread to keep the event loop free
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as server:
+            server.starttls()
+            server.login(str(sender), str(app_pass))
+            server.sendmail(str(sender), to_address, message.as_string())
+
+    async def run():
+        try:
+            await asyncio.to_thread(send)
+        except Exception:
+            logging.getLogger("uvicorn.error").exception("Couldn't send the \"%s\" email", subject)
+
+    task = asyncio.get_running_loop().create_task(run())
+    _pending_emails.add(task)  # keep a reference until it's done, or the task could be garbage collected
+    task.add_done_callback(_pending_emails.discard)
 
 
 async def send_link_email(user, page: str, token: str, subject: str, intro: str) -> None:
     """Email the user a link to a frontend page (/verify, /reset-password) that carries a one-time token."""
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173").split(",")[0].strip().rstrip("/")
     link = f"{frontend_url}/{page}?token={token}"
-
-    sender = os.getenv("GMAIL_USER")
-    app_pass = os.getenv("GMAIL_PASS")
     user_email = str(user.email)
 
+    sender, app_pass = _email_account()
     if not sender or not app_pass:
         # no email account configured (local development): log the link instead of sending an email
         label = "Verification" if page == "verify" else "Password reset"
         logging.getLogger("uvicorn.error").warning("%s link for %s: %s", label, user_email, link)
         return
 
-    message = MIMEText(f"{intro}\n\n{link}\n")
-    message["Subject"] = subject
-    message["From"] = sender
-    message["To"] = user_email
+    _send_in_background(user_email, subject, f"{intro}\n\n{link}\n")
 
-    def send():
-        # smtplib is blocking, so it runs in a worker thread to keep the event loop free
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
-            server.starttls()
-            server.login(str(sender), str(app_pass))
-            server.sendmail(str(sender), user_email, message.as_string())
 
-    await asyncio.to_thread(send)
+async def send_notice_email(to_address: str, subject: str, body: str) -> None:
+    """A security notice without a link, e.g. to the old address after the email was changed."""
+    sender, app_pass = _email_account()
+    if not sender or not app_pass:
+        logging.getLogger("uvicorn.error").warning("Security notice for %s: %s", to_address, subject)
+        return
+    _send_in_background(to_address, subject, body)
 
 
 class Transaction(Base):

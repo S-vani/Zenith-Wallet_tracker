@@ -11,11 +11,13 @@ from fastapi_users import exceptions
 from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.analyst.service import forget_user
-from backend.authentication.authentication import current_active_user, get_user_manager
+from backend.authentication.authentication import auth_backend, current_active_user, get_user_manager
+from backend.authentication.cleanup import delete_users
+from backend.authentication.schemas import ChangeEmail, ChangePassword, ConfirmPassword
 from backend.db.database import get_async_session
-from backend.db_models.assets import Transaction, User, UserManager, OAuthAccount
-from backend.schemas.assets import CreateTransaction, UpdateTransaction, UpdateUserInfo, UpdateUserEmail
+from backend.db_models.assets import Transaction, User, UserManager, send_notice_email
+from backend.ratelimit import check_email_cooldown, check_reauth_allowed, record_reauth_failure
+from backend.schemas.assets import CreateTransaction, UpdateTransaction, UpdateUserInfo
 from backend.services.asset_services import (current_quantity, create_holding_filter, \
                                              turn_list_to_dict, calculate_profit_for_one_transaction,
                                              get_curr_holdings_prices, \
@@ -568,7 +570,9 @@ async def return_user_information(
         if current_user.date_joined else None,
         # accounts made before signup sent a currency can have "" saved, fall back to CAD
         "currency": current_user.currency if current_user.currency in ("CAD", "USD", "EUR") else "CAD",
-        "isVerified": current_user.is_verified
+        "isVerified": current_user.is_verified,
+        # False for Google accounts without a password of their own: the Account page then points to Forgot password
+        "hasPassword": bool(current_user.has_password),
     }
 
     return information
@@ -603,55 +607,116 @@ async def edit_user_info(new_info: UpdateUserInfo,
     return await return_user_information(current_user)
 
 
+NO_PASSWORD_MESSAGE = ("Your account doesn't have a password yet because you signed in with Google. "
+                       "Use Forgot password to set one first.")
+
+
+async def require_current_password(user: User, password: str, user_manager: UserManager) -> None:
+    """
+    Sensitive changes need the current password, not just a (possibly stolen) login token.
+    Errors are 400s on purpose: a 401/403 would make the frontend sign the user out.
+    """
+    check_reauth_allowed(user.id)  # a stolen token mustn't become a way to guess the password
+    if not user.has_password:
+        raise HTTPException(status_code=400, detail=NO_PASSWORD_MESSAGE)
+    if not user_manager.check_password(user, password):
+        record_reauth_failure(user.id)
+        message = "Your current password is incorrect."
+        if user.oauth_accounts:
+            message += " If you signed up with Google, use Forgot password to set one first."
+        raise HTTPException(status_code=400, detail=message)
+
+
 @router.put("/user/email")
 async def change_user_email(
-        new_email: UpdateUserEmail,
+        body: ChangeEmail,
+        current_user: User = Depends(current_active_user),
+        user_manager: UserManager = Depends(get_user_manager),
+):
+    """
+    Change the user's email (current password required). The account becomes unverified, every device is signed
+    out, a verification link goes to the new address and a notice goes to the old one, so the owner finds out if
+    someone else did this.
+    """
+    await require_current_password(current_user, body.current_password, user_manager)
+    email = str(body.email)
+    old_email = str(current_user.email)
+
+    if email.lower() == old_email.lower():
+        return {"message": "This email is already verified"}
+
+    try:
+        await user_manager.get_by_email(email)
+        raise HTTPException(status_code=409, detail="That email is already in use")
+    except exceptions.UserNotExists:
+        pass
+
+    check_email_cooldown(email)
+    user = await user_manager.sign_out_everywhere(current_user, email=email, is_verified=False)
+    await user_manager.request_verify(user)
+    await send_notice_email(
+        old_email, "Your Zenith email was changed",
+        f"The email address on your Zenith account was just changed from {old_email} to {email}.\n\n"
+        f"If you did this, there's nothing else to do. If you didn't, reply to this email so we can help you get "
+        f"your account back.\n",
+    )
+
+    return {"message": "Verification email sent"}
+
+
+@router.post("/user/password")
+async def change_password(
+        body: ChangePassword,
+        current_user: User = Depends(current_active_user),
+        user_manager: UserManager = Depends(get_user_manager),
+        strategy=Depends(auth_backend.get_strategy),
+):
+    """
+    Change the password (current password required). Every other device is signed out; this one gets a fresh token
+    back so the person changing it stays signed in.
+    """
+    await require_current_password(current_user, body.current_password, user_manager)
+    if body.new_password == body.current_password:
+        raise HTTPException(status_code=400, detail="Choose a new password that's different from your current one.")
+    try:
+        await user_manager.validate_password(body.new_password, current_user)
+    except exceptions.InvalidPasswordException as e:
+        raise HTTPException(status_code=400, detail=e.reason)
+
+    user = await user_manager.sign_out_everywhere(
+        current_user, hashed_password=user_manager.password_helper.hash(body.new_password), has_password=True,
+    )
+    await send_notice_email(
+        str(user.email), "Your Zenith password was changed",
+        "The password for your Zenith account was just changed and your other devices were signed out.\n\n"
+        "If this wasn't you, use \"Forgot password\" on the login page right away to choose a new one.\n",
+    )
+    return {"message": "Password changed", "access_token": await strategy.write_token(user), "token_type": "bearer"}
+
+
+@router.post("/user/logout-all")
+async def log_out_everywhere(
+        current_user: User = Depends(current_active_user),
+        user_manager: UserManager = Depends(get_user_manager),
+):
+    """Sign out every device, this one included (e.g. after losing a phone)."""
+    await user_manager.sign_out_everywhere(current_user)
+    return {"message": "Signed out of all devices"}
+
+
+@router.delete("/user")
+async def delete_account(
+        body: ConfirmPassword,
         current_user: User = Depends(current_active_user),
         session: AsyncSession = Depends(get_async_session),
         user_manager: UserManager = Depends(get_user_manager),
 ):
     """
-    Change the users email, mark them as unverified and send a verification email to the new address.
+    Permanently delete the signed-in user's account (current password required): their transactions, any linked
+    Google login and the user itself, all in one database transaction. There is no undo (the app stores require
+    in-app account deletion). Analyst reports are shared per asset, not per user, so they stay.
     """
-    email = str(new_email.email)
-
-    if email.lower() != current_user.email.lower():
-        try:
-            await user_manager.get_by_email(email)
-            raise HTTPException(status_code=409, detail="That email is already in use")
-        except exceptions.UserNotExists:
-            pass
-
-        current_user.email = email
-        current_user.is_verified = False
-
-        await session.commit()
-        await session.refresh(current_user)
-
-    elif current_user.is_verified:
-        return {"message": "This email is already verified"}
-
-    await user_manager.request_verify(current_user)
-
-    return {"message": "Verification email sent"}
-
-
-@router.delete("/user")
-async def delete_account(
-        current_user: User = Depends(current_active_user),
-        session: AsyncSession = Depends(get_async_session),
-):
-    """
-    Permanently delete the signed-in user's account: their transactions, any linked Google login and the user
-    itself, all in one database transaction. There is no undo (the app stores require in-app account deletion).
-    Analyst reports are shared per asset, not per user, so they stay.
-    """
-    user_id = current_user.id
-    # bulk deletes, so the ORM doesn't try to null out the foreign keys of the user's children first
-    await session.execute(delete(Transaction).where(Transaction.user_id == user_id))
-    await session.execute(delete(OAuthAccount).where(OAuthAccount.user_id == user_id))
-    await session.execute(delete(User).where(User.id == user_id))
-    await session.commit()
-    forget_user(str(user_id))
+    await require_current_password(current_user, body.current_password, user_manager)
+    await delete_users(session, [current_user.id])
 
     return {"message": "Account deleted"}

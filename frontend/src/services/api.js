@@ -2,6 +2,7 @@ import {saveToken as keepInKeychain} from "../native/secureToken.js";
 import {cacheTicket, forgetAll, recall, remember} from "../native/offlineCache.js";
 import {markFresh, markStale, requestStarted, requestTimeout} from "../native/connectivity.js";
 import {resetLockOnSignOut} from "../native/biometric.js";
+import {isNative} from "../native/platform.js";
 
 const BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -15,6 +16,14 @@ const ERROR_MESSAGES = {
     VERIFY_USER_ALREADY_VERIFIED: "Your email is already verified. You can log in.",
     RESET_PASSWORD_BAD_TOKEN: "This reset link is invalid or has expired. Request a new one.",
 };
+
+// Rate limits (429) come with a readable detail from the backend ("Please wait a minute…"); this is only used if
+// the body couldn't be read, e.g. when nginx's own limit answered
+const TOO_MANY_REQUESTS = "Too many attempts. Please wait a few minutes and try again.";
+
+// The iPhone app asks for a long-lived login token (30 days instead of 1 hour) so it isn't signed out every hour.
+// Only the app sends this header; "Log out of all devices" can still revoke those tokens.
+const APP_CLIENT_HEADERS = isNative ? {"X-Zenith-Client": "ios-app"} : {};
 
 export function getToken() {
     return localStorage.getItem("token");
@@ -38,6 +47,8 @@ const FIELD_LABELS = {
     name: "Name",
     email: "Email",
     password: "Password",
+    current_password: "Current password",
+    new_password: "New password",
     currency: "Currency",
     quantity: "Quantity",
     price_of_one: "Price",
@@ -75,7 +86,7 @@ async function errorMessage(res, fallback) {
     } catch {
         // body wasn't json, use the fallback
     }
-    return fallback;
+    return res.status === 429 ? TOO_MANY_REQUESTS : fallback;
 }
 
 // Shared fetch wrapper: attaches the token, turns error responses into readable messages,
@@ -118,7 +129,7 @@ async function request(path, {auth = true, fallbackError = "Something went wrong
             res = await fetch(`${BASE_URL}${path}`, {
                 ...options,
                 signal: controller ? controller.signal : signal,
-                headers: auth ? getAuthHeaders() : {"Content-Type": "application/json", ...options.headers},
+                headers: auth ? {...getAuthHeaders(), ...options.headers} : {"Content-Type": "application/json", ...options.headers},
             });
         } catch (err) {
             return unreachable(err);
@@ -260,7 +271,7 @@ export async function loginAuthentication(form) {
     try {
         res = await fetch(`${BASE_URL}/auth/jwt/login`, {
             method: "POST",
-            headers: {"Content-Type": "application/x-www-form-urlencoded"},
+            headers: {"Content-Type": "application/x-www-form-urlencoded", ...APP_CLIENT_HEADERS},
             body: formData
         });
     } catch {
@@ -372,18 +383,41 @@ export async function putUserInfo(new_info) {
     });
 }
 
-export async function putUserEmail(new_email) {
+// Changing the email needs the current password; it also signs out every device
+export async function putUserEmail(new_email, currentPassword) {
     return request("/user/email", {
         method: "PUT",
-        body: JSON.stringify({email: new_email.trim()}),
+        body: JSON.stringify({email: new_email.trim(), current_password: currentPassword}),
         fallbackError: "Couldn't send the verification email.",
     });
 }
 
-// Permanently deletes the account with all its transactions; the caller signs the user out afterwards
-export async function deleteAccount() {
+// Signs out every other device; this one gets a fresh token back so it stays signed in
+export async function changePassword(currentPassword, newPassword) {
+    const data = await request("/user/password", {
+        method: "POST",
+        headers: APP_CLIENT_HEADERS, // the app keeps its long-lived token
+        body: JSON.stringify({current_password: currentPassword, new_password: newPassword}),
+        fallbackError: "Couldn't change your password. Please try again.",
+    });
+    saveToken(data.access_token);
+    return data;
+}
+
+// Revokes every login token, this device's included; the caller signs the user out afterwards
+export async function logoutAllDevices() {
+    return request("/user/logout-all", {
+        method: "POST",
+        fallbackError: "Couldn't sign out your other devices. Please try again.",
+    });
+}
+
+// Permanently deletes the account with all its transactions (needs the current password); the caller signs the
+// user out afterwards
+export async function deleteAccount(currentPassword) {
     return request("/user", {
         method: "DELETE",
+        body: JSON.stringify({current_password: currentPassword}),
         fallbackError: "Couldn't delete your account. Please try again.",
     });
 }

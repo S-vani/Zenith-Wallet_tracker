@@ -126,17 +126,24 @@ async def google_callback(
         return fail("no_email")
 
     existing = True
+    password_replaced = False
     try:
         existing_user = await user_manager.get_by_email(account_email)
     except Exception:
         existing = False
     else:
-        if not existing_user.is_verified:
-            # Someone registered this email but never proved they own it. It could be an attacker who signed up with
-            # the victim's address, so drop that password before Google (who verified the email) takes over the
-            # account. The real owner can sign in with Google from now on.
-            await user_manager.user_db.update(
-                existing_user, {"hashed_password": user_manager.password_helper.hash(secrets.token_urlsafe(32))}
+        already_linked = any(account.oauth_name == "google" for account in existing_user.oauth_accounts)
+        if not already_linked:
+            # The first time Google is linked to an account that was made with a password, that password could
+            # belong to someone else: an attacker can register victim@gmail.com with their own password, and the
+            # victim may even click the verification link later. Google has just proved who owns the address, so
+            # the old password is replaced with a random one and every existing session is signed out. The owner
+            # signs in with Google, or uses Forgot password to choose a password of their own.
+            password_replaced = bool(existing_user.has_password)
+            await user_manager.sign_out_everywhere(
+                existing_user,
+                hashed_password=user_manager.password_helper.hash(secrets.token_urlsafe(32)),
+                has_password=False,
             )
 
     # finds the linked account, links an existing account with the same (Google-verified) email, or creates one
@@ -149,9 +156,14 @@ async def google_callback(
     if not user.is_active:
         return fail("inactive")
 
-    if not user.is_verified:
+    changes = {}
+    if not user.is_verified or not user.ever_verified:
         # Google has verified this address, so an account waiting on email verification can be trusted now
-        user = await user_manager.user_db.update(user, {"is_verified": True})
+        changes.update(is_verified=True, ever_verified=True)
+    if not existing and user.has_password:
+        changes["has_password"] = False  # made by Google with a random password the owner never saw
+    if changes:
+        user = await user_manager.user_db.update(user, changes)
 
     if not user.name:
         name = account_email.split("@")[0]
@@ -164,8 +176,10 @@ async def google_callback(
 
     access_token = await strategy.write_token(user)
 
-    fragment = urlencode({"token": access_token, "new": "0" if existing else "1", "next": state_data["next"]},
-                         quote_via=quote)
+    values = {"token": access_token, "new": "0" if existing else "1", "next": state_data["next"]}
+    if password_replaced:
+        values["notice"] = "password_replaced"  # the callback page explains why the old password stopped working
+    fragment = urlencode(values, quote_via=quote)
     response = RedirectResponse(f"{frontend_url()}/auth/callback#{fragment}", status_code=302)
     response.delete_cookie(CSRF_COOKIE, path="/auth/google")
     return response

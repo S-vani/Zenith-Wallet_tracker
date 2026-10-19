@@ -40,12 +40,18 @@
     display: flex;
     flex-direction: column;
     gap: 0.15rem;
+    min-width: 0; /* lets a long name wrap instead of pushing the header wider than the phone */
 }
 
 .user-header-name {
     font-size: 1.3rem;
     font-weight: 700;
     color: #f5f7ff;
+    overflow-wrap: anywhere;
+}
+
+.user-avatar {
+    flex-shrink: 0;
 }
 
 .user-header-sub {
@@ -187,6 +193,27 @@
 
 .user-logout-button {
     align-self: flex-start;
+}
+
+.user-logout-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+/* change password, and the current-password field when changing the email */
+.user-password-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.user-field-full {
+    width: 100%;
+}
+
+.user-inline-link {
+    color: var(--accent-soft);
 }
 
 .user-logout-button:hover:not(:disabled) {

@@ -216,7 +216,9 @@ function PrivacyPage() {
                         <h2>Keeping and deleting your data</h2>
                         <p>
                             We keep your account and transactions for as long as your account exists. You can edit or
-                            delete individual transactions at any time on the Transactions page.
+                            delete individual transactions at any time on the Transactions page. If you sign up but
+                            never verify your email address, the account and anything attached to it are deleted
+                            automatically after 7 days.
                         </p>
                         <p>
                             <strong>To delete your account</strong>, open <em>Account → Delete account</em> in the app.

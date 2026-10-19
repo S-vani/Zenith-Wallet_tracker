@@ -1,4 +1,4 @@
-import {useEffect, useRef, useState} from "react";
+import {useState} from "react";
 import {Link, useSearchParams} from "react-router-dom";
 import {verify} from "../services/api"
 import usePageTitle from "../utils/usePageTitle.js";
@@ -12,16 +12,15 @@ function VerifyPage() {
 
     const [params] = useSearchParams();
     const token = params.get("token");
-    const [status, setStatus] = useState(token ? "loading" : "error");
+    // Verifying waits for a click: email scanners and link previews open links on their own, and that alone
+    // shouldn't confirm an account for whoever registered the address
+    const [status, setStatus] = useState(token ? "ready" : "error");
     const [message, setMessage] = useState(
         token ? "" : "This verification link is missing its token. Try the link from your email again."
     );
-    const requested = useRef(false); // StrictMode runs effects twice; a token can only be used once
 
-    useEffect(() => {
-        if (requested.current || !token) return;
-        requested.current = true;
-
+    const handleVerify = () => {
+        setStatus("loading");
         verify(token)
             .then(() => setStatus("success"))
             .catch((err) => {
@@ -32,11 +31,22 @@ function VerifyPage() {
                 setStatus("error");
                 setMessage(err.message);
             });
-    }, [token]);
+    };
 
     return (
         <div className="verify-page">
             <div className="login-form-card verify-card">
+                {status === "ready" && (
+                    <>
+                        <h1>Confirm your email</h1>
+                        <p>Click the button below to verify your email address and activate your Zenith account.</p>
+                        <button type="button" className="auth-btn signup-btn large" onClick={handleVerify}>
+                            Verify my email
+                        </button>
+                        <p className="verify-app-note">Didn't sign up for Zenith? You can close this page.</p>
+                    </>
+                )}
+
                 {status === "loading" && (
                     <>
                         <div className="spinner"/>

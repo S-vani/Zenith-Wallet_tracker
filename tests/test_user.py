@@ -3,7 +3,7 @@ from datetime import datetime
 
 import pytest
 
-from conftest import login, register, unique_email
+from conftest import PASSWORD, login, register, unique_email
 
 
 def test_get_user(client, make_user):
@@ -78,11 +78,11 @@ def test_update_rejects_invalid_values(client, user, body):
 
 
 # ---------------------------------------------------------------------------------------------------------------------
-# PUT /user/email
+# PUT /user/email (the bodies carry current_password since the security hardening: a token alone isn't enough)
 # ---------------------------------------------------------------------------------------------------------------------
 def test_change_email_marks_user_unverified(client, user, db):
     new_email = unique_email("changed")
-    res = client.put("/user/email", headers=user.headers, json={"email": new_email})
+    res = client.put("/user/email", headers=user.headers, json={"email": new_email, "current_password": PASSWORD})
     assert res.status_code == 200, res.text
 
     stored = db.get_user(new_email)
@@ -98,7 +98,7 @@ def test_change_email_marks_user_unverified(client, user, db):
 def test_change_email_to_one_already_in_use(client, make_user, db):
     alice, bob = make_user(), make_user()
     for taken in (bob.email, bob.email.upper()):
-        res = client.put("/user/email", headers=alice.headers, json={"email": taken})
+        res = client.put("/user/email", headers=alice.headers, json={"email": taken, "current_password": PASSWORD})
         assert res.status_code == 409
         assert res.json()["detail"] == "That email is already in use"
     assert db.get_user(alice.email).is_verified is True
@@ -107,12 +107,12 @@ def test_change_email_to_one_already_in_use(client, make_user, db):
 def test_change_email_to_unverified_accounts_email_is_also_rejected(client, user):
     other = unique_email()
     register(client, email=other)
-    assert client.put("/user/email", headers=user.headers, json={"email": other}).status_code == 409
+    assert client.put("/user/email", headers=user.headers, json={"email": other, "current_password": PASSWORD}).status_code == 409
 
 
 def test_change_email_rejects_invalid_email(client, user):
-    assert client.put("/user/email", headers=user.headers, json={"email": "nope"}).status_code == 422
+    assert client.put("/user/email", headers=user.headers, json={"email": "nope", "current_password": PASSWORD}).status_code == 422
 
 
 def test_change_email_to_same_email(client, user):
-    assert client.put("/user/email", headers=user.headers, json={"email": user.email}).status_code != 500
+    assert client.put("/user/email", headers=user.headers, json={"email": user.email, "current_password": PASSWORD}).status_code == 200
