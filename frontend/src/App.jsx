@@ -10,6 +10,7 @@ import HomePage from "./pages/HomePage.jsx";
 import NotFoundPage from "./pages/NotFoundPage.jsx";
 import OAuthCallbackPage from "./pages/OAuthCallbackPage.jsx";
 import Toaster from "./components/Toaster.jsx";
+import DataCredits from "./components/DataCredits.jsx";
 import {UserProvider} from "./context/UserContext.jsx";
 import {getToken} from "./services/api.js";
 import {isNative} from "./native/platform.js";
@@ -49,6 +50,7 @@ function ProtectedLayout() {
                 <Suspense fallback={<div className="state-message"><div className="spinner"/></div>}>
                     <Outlet/>
                 </Suspense>
+                <DataCredits/>
             </main>
         </UserProvider>
     );

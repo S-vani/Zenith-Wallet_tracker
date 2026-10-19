@@ -578,3 +578,24 @@ body::before {
         min-width: 44px;
     }
 }
+
+/* ---------- data provider credits (required by CoinGecko's and ExchangeRate-API's free plans) ---------- */
+.data-credits {
+    width: 100%;
+    max-width: 75rem;
+    margin: 2.5rem auto 0;
+    padding: 1rem 0 0;
+    border-top: 1px solid var(--border);
+    font-size: 0.75rem;
+    text-align: center;
+    color: var(--text-subtle);
+}
+
+.data-credits a {
+    color: var(--text-muted);
+}
+
+.data-credits a:hover,
+.data-credits a:focus-visible {
+    color: var(--accent-soft);
+}

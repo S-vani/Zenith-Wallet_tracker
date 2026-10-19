@@ -128,7 +128,17 @@ function SearchPage() {
 
             {searchResults && (
                 searchResults.length > 0 ? (
-                    <SearchResults results={searchResults}/>
+                    <>
+                        <SearchResults results={searchResults}/>
+                        {searchSymbol.type === "crypto" && (
+                            <p className="search-powered-by">
+                                Powered by{" "}
+                                <a href="https://www.coingecko.com/" target="_blank" rel="noopener noreferrer">
+                                    CoinGecko
+                                </a>
+                            </p>
+                        )}
+                    </>
                 ) : (
                     <div className="state-message">
                         <strong>No results for “{lastQuery}”</strong>
