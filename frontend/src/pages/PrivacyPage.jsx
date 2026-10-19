@@ -215,8 +215,8 @@ function PrivacyPage() {
                     <section id="retention" className="legal-section">
                         <h2>Keeping and deleting your data</h2>
                         <p>
-                            We keep your account and transactions for as long as your account exists. You can delete
-                            individual transactions at any time.
+                            We keep your account and transactions for as long as your account exists. You can edit or
+                            delete individual transactions at any time on the Transactions page.
                         </p>
                         <p>
                             <strong>To delete your account</strong>, open <em>Account → Delete account</em> in the app.
