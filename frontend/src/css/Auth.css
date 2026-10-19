@@ -14,9 +14,21 @@
 }
 
 .login-field input,
-.signup-field input {
+.signup-field input,
+.signup-field select {
     width: 100%;
     font-size: 0.95rem !important;
+    font-weight: 400;
+}
+
+/* phones: 16px like every other field (Global.css), which also stops iOS zooming in on focus. The rule above is
+   more specific than Global.css's, so without this the inputs were smaller than the currency picker */
+@media (max-width: 768px) {
+    .login-field input,
+    .signup-field input,
+    .signup-field select {
+        font-size: 16px !important;
+    }
 }
 
 .password-wrapper {

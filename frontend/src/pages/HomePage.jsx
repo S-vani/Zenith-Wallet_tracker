@@ -40,7 +40,7 @@ function HomePage() {
                 </nav>
             </header>
 
-            <main className="home-hero">
+            <main className="home-hero" id="main-content" tabIndex={-1}>
                 <div className="hero-copy">
                     <span className="hero-eyebrow">Portfolio tracking, simplified</span>
                     <h1 className="hero-title">

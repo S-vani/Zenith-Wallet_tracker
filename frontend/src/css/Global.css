@@ -112,6 +112,30 @@ button:disabled {
     background: rgba(59, 130, 246, 0.35);
 }
 
+/* "Skip to main content" (components/SkipLink.jsx): the first Tab stop on every page, off screen until focused */
+.skip-link {
+    position: fixed;
+    top: 0.75rem;
+    left: 0.75rem;
+    z-index: 4000; /* over the nav bar, toasts and dialogs */
+    padding: 0.6rem 1rem;
+    border-radius: 0.5rem;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    transform: translateY(calc(-100% - 1.5rem));
+}
+
+.skip-link:focus {
+    transform: none;
+}
+
+/* the skip link's target: focusable so Tab continues from there, but no ring around the whole page */
+#main-content:focus {
+    outline: none;
+}
+
 /* Shared page layout for the signed in pages, leaves room for the side nav */
 .main-content {
     padding-left: var(--nav-offset);

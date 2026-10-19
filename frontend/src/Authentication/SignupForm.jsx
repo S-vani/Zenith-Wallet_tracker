@@ -47,7 +47,7 @@ function SignupForm({onSubmit}) {
 
     if (registeredEmail) {
         return (
-            <div className="signup-form-side">
+            <main className="signup-form-side" id="main-content" tabIndex={-1}>
                 <div className="signup-form-card signup-success">
                     <div className="success-icon" aria-hidden="true">✓</div>
                     <div className="signup-form-header">
@@ -79,12 +79,12 @@ function SignupForm({onSubmit}) {
                         </button>
                     </div>
                 </div>
-            </div>
+            </main>
         );
     }
 
     return (
-        <div className="signup-form-side">
+        <main className="signup-form-side" id="main-content" tabIndex={-1}>
             <div className="signup-form-card">
                 <div className="signup-form-header">
                     <span className="preview-label">Get started</span>
@@ -169,7 +169,7 @@ function SignupForm({onSubmit}) {
                     <Link to="/login" className="hero-link-btn">Log in</Link>
                 </div>
             </div>
-        </div>
+        </main>
     );
 }
 
