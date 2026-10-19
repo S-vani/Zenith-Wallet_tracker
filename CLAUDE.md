@@ -7,9 +7,21 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
 ## Layout
 - `backend/` — FastAPI (Python 3.11+), async SQLAlchemy, fastapi-users JWT auth. Imports use the `backend.` prefix,
   so run from the project root (`backend/main.py` also fixes `sys.path` when run directly).
-  - `main.py` — app, CORS (`FRONTEND_URL`, comma-separated), JSON 500 handler, 422 handler that never echoes inputs.
-  - `routes/assets.py` — transactions CRUD + filters, holdings, dashboard, price/portfolio history, stock/crypto
-    search, user info/email, `DELETE /user` (account deletion: transactions + OAuth links + user, required by the
+  - `main.py` — app, CORS (`FRONTEND_URL`, comma-separated), JSON 500 handler, 422 handler that never echoes inputs,
+    security headers middleware; `/docs`/`/redoc`/`/openapi.json` are 404 unless `ENABLE_API_DOCS=1` (tests set it).
+  - Auth hardening: `ratelimit.py` (in-memory per-IP / per-email limits on login, register, verify and reset emails,
+    login lockout, re-auth attempts; trusts `X-Real-IP` only from 127.0.0.1), `authentication/` (JWT carries
+    `ver` = `user.token_version`, bumped on password reset/change, email change, first Google link and
+    `POST /user/logout-all`; logins with header `X-Zenith-Client: ios-app` get 30-day tokens, the website 1 h),
+    `authentication/cleanup.py` (`delete_users`; never-verified accounts older than 7 days are swept at startup and
+    every 6 h). Changing email, changing password (`POST /user/password`) and `DELETE /user` need
+    `current_password`. A first Google link to an existing account replaces its password (`has_password` false).
+  - `db/database.py` — SQLite in WAL mode with a pool of 8; `ADDED_COLUMNS` adds columns to existing tables at
+    startup (create_all only creates tables). Register every new column there.
+  - `routes/assets.py` — transactions CRUD + filters (optional `created_at` to backdate; every create/edit/delete
+    replays the symbol's ledger and returns 409 if history would oversell), holdings, dashboard, price/portfolio
+    history, stock/crypto search (results carry `name`; query ≤ 20 chars; LRU caches; 20 new searches/min/user),
+    user info/email, `DELETE /user` (account deletion: transactions + OAuth links + user, required by the
     app stores). `routes/oauth.py` — Google sign-in. `routes/analyst.py` — `GET /analyst`.
   - `services/asset_services.py` — pricing (yfinance), FX conversion (open.er-api, 1 h cache; the last good rates are served if a refresh fails, 503 only with none), holdings math,
     `rebuild_symbol_ledger` (replays a symbol's buys/sells; used by PUT/DELETE to keep history valid).
@@ -31,7 +43,9 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
   it checks `isNative` first, so the website is unaffected (`test/native.test.js` guards this): Keychain copy of the
   token (cleared on a fresh install), Face ID lock (decisions in `lockRules.js`: only a quick return to an app that
   was *unlocked* skips Face ID), haptics, share sheet, pull to refresh (`useRefreshKey`), offline cache of the
-  portfolio screens (`offlineCache.js`, used by `api.js`), offline banner, labelled tab bar without log out
+  portfolio screens (`offlineCache.js`, used by `api.js`; keyed by user + currency, LRU 40), 12 s request timeout
+  falling back to saved data (`connectivity.js`), native app-switcher cover in `SceneDelegate.swift` (when the lock
+  is on), `@capacitor/keyboard`, offline banner, labelled tab bar without log out
   (`html.native` CSS in `Native.css`), splash/status bar, no pinch zoom. In the app `/` skips the marketing page and
   Google sign-in is hidden (web views can't use it; would also need Sign in with Apple). Backend CORS always allows
   `capacitor://localhost`.
@@ -41,6 +55,8 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
     keep it, the App Privacy answers and `/privacy` in step. Icons/splash come from `frontend/assets/`
     (`npx @capacitor/assets@3.0.5 generate --ios ...`, not installed: it pulls vulnerable deps).
 - Fonts: Lato is bundled (`@fontsource/lato`, imported in `main.jsx`); no Google Fonts requests.
+- Data credits: `components/DataCredits.jsx` under every signed-in page and "Powered by CoinGecko" on crypto search
+  results are required by CoinGecko's and ExchangeRate-API's free plans; keep them.
 - `tests/` — pytest (offline: network blocked, prices/FX/yfinance/HTTP stubbed, temp SQLite DB).
   `frontend/test/` — Vitest for pure utils.
 - `scripts/dev.mjs`, `scripts/test-backend.mjs` — used by the root `package.json`.
@@ -56,7 +72,10 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
 ## Data & money conventions
 - Transactions store prices in **CAD**; API responses convert to the user's currency (`get_conversion_factor`).
   Prices typed by the user are converted to CAD on create/update.
-- Quantities/prices are `Numeric(20, 10)`; compare quantities as `Decimal` (see `current_quantity`).
+- Quantities/prices are `Numeric(20, 10)` (SQLite hands them back as floats): compare with `as_quantity` /
+  `sell_tolerance`, never raw floats. Quantity max is 1e9.
+- Trades also keep `price_entered` + `currency_entered` (as typed). `price_in_currency` / `profit_in_currency` use
+  them when the user's currency matches, so amounts never drift with FX; use these helpers for any new money sum.
 - Timestamps are stored as naive UTC; filters convert offset-aware input to UTC first.
 - Crypto `api_id` is the lowercase CoinGecko symbol (e.g. `btc`); search results also carry `coin_id` (`bitcoin`).
 - Stock prices come in the listing currency (Yahoo `info.currency`, e.g. USD, CAD, EUR, `GBp` = pence) and are
@@ -101,7 +120,8 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
 ## Deploying (server: `~/walletapp` as user `deploy`)
 `git pull` → `uv sync` (or `.venv/bin/pip install -r requirements.txt`) → `cd frontend && npm ci && npm run build`
 (copy `dist` if nginx serves `/var/www/html`) → **restart the backend: `sudo systemctl restart walletapp-backend`** (a pull alone doesn't reload Python;
-this was missed before, leaving the old API running). Check: `curl https://api.zenithwalletracker.ca/auth/providers`.
+this was missed before, leaving the old API running). Check: `curl https://api.zenithwalletracker.ca/auth/providers`. nginx rate limits and security headers:
+`docs/nginx-hardening.md` (nginx must proxy from 127.0.0.1 so the backend sees real client IPs).
 
 ## Working notes
 - Keep changes in the existing style (JSX with 4-space indent, plain CSS files per area, small comments explaining
