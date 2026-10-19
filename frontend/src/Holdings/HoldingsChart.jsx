@@ -5,8 +5,8 @@ import {useUser} from "../context/UserContext.jsx";
 import useRefreshKey from "../native/useRefreshKey.js";
 import {formatMoney, formatPrice} from "../utils/format.js";
 import {
-    CHART_DOWN, CHART_UP, INITIAL_DIMENSION, TOOLTIP_STYLE, axisMoneyOptions, axisTicks, formatAxisTick, tickUnit,
-    tooltipDate,
+    CHART_DOWN, CHART_UP, INITIAL_DIMENSION, TOOLTIP_STYLE, axisMoneyOptions, axisTicks, formatAxisTick,
+    priceChartSummary, tickUnit, tooltipDate,
 } from "../utils/chart.js";
 
 const RANGES = ["1D", "1W", "1M", "1Y", "5Y"];
@@ -18,6 +18,8 @@ function HoldingChart({symbol, type, coinId = null, initialRange = "1M", compact
     // the chart on screen and the range it belongs to; while another range loads it stays visible, dimmed
     const [shown, setShown] = useState(null);
     const [error, setError] = useState(null);
+    // set once a "5Y" answer turned out shorter (CoinGecko stops at a year), so the 5Y button can say so
+    const [fiveYearNote, setFiveYearNote] = useState(null);
     const refreshKey = useRefreshKey(); // app only: pull to refresh reloads in place
 
     useEffect(() => {
@@ -26,7 +28,14 @@ function HoldingChart({symbol, type, coinId = null, initialRange = "1M", compact
         getPriceHistory(symbol, type, range, coinId)
             .then((res) => {
                 if (ignore) return;
-                setShown({range, data: res.data.map(p => ({time: p.time, price: p.price}))});
+                setShown({
+                    range,
+                    data: res.data.map(p => ({time: p.time, price: p.price})),
+                    // the range the prices really cover and why, when less than asked for
+                    covered: res.covered_range ?? null,
+                    note: res.note ?? null,
+                });
+                if (range === "5Y") setFiveYearNote(res.covered_range && res.note ? res.note : null);
                 setError(null);
             })
             .catch((err) => {
@@ -48,10 +57,13 @@ function HoldingChart({symbol, type, coinId = null, initialRange = "1M", compact
     const priceOptions = axisMoneyOptions(data.map((d) => d.price));
     const label = String(symbol).toUpperCase();
 
+    const failed = error && (!shown || shown.range !== range);
+    const charted = Boolean(shown) && !failed && data.length > 0;
+
     let body;
     if (!shown && !error) {
         body = <div className="state-message"><div className="spinner"/></div>;
-    } else if (error && (!shown || shown.range !== range)) {
+    } else if (failed) {
         body = <div className="state-message"><p className="alert-error">{error}</p></div>;
     } else if (data.length === 0) {
         body = <div className="state-message">No price data available for this range.</div>;
@@ -115,6 +127,7 @@ function HoldingChart({symbol, type, coinId = null, initialRange = "1M", compact
                             onClick={() => setRange(r)}
                             className={range === r ? "active" : ""}
                             aria-pressed={range === r}
+                            title={r === "5Y" && fiveYearNote ? fiveYearNote : undefined}
                         >
                             {r}
                         </button>
@@ -122,7 +135,15 @@ function HoldingChart({symbol, type, coinId = null, initialRange = "1M", compact
                 </div>
             </div>
 
+            {/* the chart is a picture to a screen reader, so it gets the numbers as text */}
+            {charted && (
+                <p className="chart-sr-summary">
+                    {priceChartSummary(label, shown.range, shown.covered, data, (v) => formatPrice(v, currency))}
+                </p>
+            )}
             <div className={`chart-body${pending && shown ? " is-updating" : ""}`} aria-busy={pending}>{body}</div>
+            {/* e.g. CoinGecko's "5Y" only goes back a year: say so instead of letting the axis imply 5 years */}
+            {charted && shown.note && <p className="chart-range-note">{shown.note}</p>}
         </div>
     );
 }
