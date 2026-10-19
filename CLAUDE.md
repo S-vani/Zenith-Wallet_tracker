@@ -11,7 +11,7 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
   - `routes/assets.py` — transactions CRUD + filters, holdings, dashboard, price/portfolio history, stock/crypto
     search, user info/email, `DELETE /user` (account deletion: transactions + OAuth links + user, required by the
     app stores). `routes/oauth.py` — Google sign-in. `routes/analyst.py` — `GET /analyst`.
-  - `services/asset_services.py` — pricing (yfinance), FX conversion (open.er-api, 60 s cache), holdings math,
+  - `services/asset_services.py` — pricing (yfinance), FX conversion (open.er-api, 1 h cache; the last good rates are served if a refresh fails, 503 only with none), holdings math,
     `rebuild_symbol_ledger` (replays a symbol's buys/sells; used by PUT/DELETE to keep history valid).
   - `analyst/` — market analyst: `data.py` (collects data), `indicators.py` (pure maths), `engine.py` (rules →
     report), `gemini.py` (optional rewording), `service.py` (DB cache, rate limits), `schema.py` (response model).
@@ -61,11 +61,19 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
 - Crypto `api_id` is the lowercase CoinGecko symbol (e.g. `btc`); search results also carry `coin_id` (`bitcoin`).
 - Stock prices come in the listing currency (Yahoo `info.currency`, e.g. USD, CAD, EUR, `GBp` = pence) and are
   converted to CAD with `get_native_to_cad_factor` (USD cross rates, cached 1 h), then to the user's currency.
-  Rows with a missing (NaN) close are skipped.
+  Rows with a missing (NaN) close are skipped. An unknown listing currency is logged and the price is unavailable
+  (never silently USD); with no currency from Yahoo it's guessed from the ticker suffix.
+- Every price (value card, holdings, past values, portfolio chart) is "the latest close known at that time" from one
+  cached history per asset (`_series_cache`): a bar counts from start + bar length (or its fetch time while live),
+  never the nearest label, which could be a future close. Crypto: Yahoo `SYMBOL-CAD`, then `SYMBOL-USD`, then
+  CoinGecko, everywhere. No price at all → `null` ("—" in the UI), left out of value and returns, never 0.
+- `/dashboard` returns `value`, `curr_timeperiod`, `basis` (start value + buys in the period; all time = cost of
+  every buy; the UI's return % = curr_timeperiod / basis) and `unpriced`.
 - Stock search uses TwelveData only for `symbol_search` (1 credit; free plan = 8 credits/min) with matches cached
   10 min per query; prices come from Yahoo (`get_latest_stock_quotes`). Don't reintroduce TwelveData `/quote`
   (1 credit per symbol): it used up the limit and errors showed as "no results". Provider errors → 503 with a message.
-- `/prices/history` falls back to CoinGecko for coins Yahoo doesn't list as `SYMBOL-USD` (e.g. PEPE).
+- `/prices/history` falls back to CoinGecko for coins Yahoo doesn't list (e.g. PEPE), cached; it returns `source`,
+  and `covered_range: "1Y"` + `note` for a CoinGecko "5Y" (its free plan stops at 365 days).
 
 ## Market analyst (`GET /analyst?symbol=&type=stock|crypto[&coin_id=][&refresh=true]`)
 - Free: no paid AI. A rules engine scores trend (50/200-day averages), momentum (30/90-day returns), RSI, volume
