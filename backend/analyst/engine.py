@@ -670,30 +670,35 @@ def _swing_risk(f: Facts) -> Optional[Risk]:
                        "asset, which is enough to change the short-term picture.")
 
 
-def build_risk(f: Facts, data: AssetData, sentiment: str, signals: list[Signal]) -> Risk:
+def build_risk(f: Facts, data: AssetData, sentiment: str, signals: list[Signal]) -> tuple[Risk, Optional[str]]:
+    """
+    The main risk, plus a short phrase naming it for the bottom line ("its rich valuation"). The phrase is None when
+    the risk is only the asset's ordinary volatility: the scenario ranges already show that.
+    """
     earnings = _future_date(data.calendar.get("Earnings Date"))
     if earnings and earnings - datetime.now(timezone.utc) < timedelta(days=21):
         return Risk(title="Upcoming earnings",
                     detail=f"The earnings report on {fmt_date(earnings)} could move the price sharply in either "
-                           "direction and reset the outlook.")
+                           "direction and reset the outlook."), "the upcoming earnings report"
 
     pe = data.fundamentals.get("trailingPE")
     if _ok(pe) and pe > 50 and sentiment != "bearish":
         return Risk(title="Rich valuation",
                     detail=f"At {pe:.1f}x earnings, the price assumes strong growth continues; any slowdown could "
-                           "lead to a sharp re-rating.")
+                           "lead to a sharp re-rating."), "its rich valuation"
 
     high_vol = 0.8 if data.type == "crypto" else 0.45
     if f.vol is not None and f.vol > high_vol:
         monthly = f.vol * math.sqrt(points(30, f.ppy) / f.ppy)
         return Risk(title="High volatility",
                     detail=f"With {fmt_pct(f.vol, signed=False)} annualized volatility, a typical month can swing "
-                           f"about ±{fmt_pct(monthly, signed=False)}, enough to erase the current trend quickly.")
+                           f"about ±{fmt_pct(monthly, signed=False)}, enough to erase the current trend quickly."), \
+            "its high volatility, which can erase a trend quickly"
 
     if data.type == "crypto" and _ok(f.btc_corr) and f.btc_corr > 0.6 and sentiment != "bearish":
         return Risk(title="Bitcoin dependence",
                     detail=f"Its {fmt_num(f.btc_corr)} correlation with Bitcoin means a broad crypto sell-off would "
-                           "likely override its own story.")
+                           "likely override its own story."), "a broad crypto sell-off led by Bitcoin"
 
     # the strongest real counter-signal: for a bullish/neutral view a negative one, for a bearish view an upside one
     if sentiment == "bearish":
@@ -705,17 +710,22 @@ def build_risk(f: Facts, data: AssetData, sentiment: str, signals: list[Signal])
         if top.insight:
             if sentiment == "bearish":
                 return Risk(title=f"Upside risk: {top.insight.title[0].lower() + top.insight.title[1:]}",
-                            detail=top.insight.detail + " That could support a rebound against the bearish view.")
+                            detail=top.insight.detail + " That could support a rebound against the bearish view."), \
+                    f"a rebound, given {top.phrase}"
             return Risk(title=top.insight.title,
-                        detail=top.insight.detail + " This is the main factor working against the outlook.")
+                        detail=top.insight.detail + " This is the main factor working against the outlook."), \
+                top.phrase
 
     if data.type == "crypto" and _ok(f.btc_corr) and f.btc_corr > 0.6:
         return Risk(title="Bitcoin dependence",
                     detail=f"Its {fmt_num(f.btc_corr)} correlation with Bitcoin means a broad crypto rally or "
-                           "sell-off would likely override its own story.")
-    return _swing_risk(f) or Risk(
-        title="Trend reversal",
-        detail="The signals point the same way for now; a sudden change in market sentiment would challenge them.")
+                           "sell-off would likely override its own story."), "a big move in Bitcoin"
+    swings = _swing_risk(f)
+    if swings:
+        return swings, None
+    return Risk(title="Trend reversal",
+                detail="The signals point the same way for now; a sudden change in market sentiment would challenge "
+                       "them."), "a sudden change in market sentiment"
 
 
 def build_scenarios(f: Facts, data: AssetData, sentiment: str) -> tuple[list[Scenario], Optional[str]]:
@@ -761,15 +771,16 @@ def build_scenarios(f: Facts, data: AssetData, sentiment: str) -> tuple[list[Sce
             bull_conditions.append("Volume rises on up days")
             bear_conditions.append("Volume rises on down days")
 
-    lean = {"bullish": "leans higher", "bearish": "leans lower", "neutral": "is balanced"}[sentiment]
     if data.is_stablecoin:
         base_summary = (f"The peg holds and the price in {cur} follows the exchange rate within the small range below."
                         if cur != "USD" else "The peg holds and the price stays within the small range below.")
         bull_summary = "The peg holds and exchange-rate moves lift the price to the top of its small range."
         bear_summary = "Pressure on the peg or the exchange rate pushes the price to the bottom of its range."
     else:
-        base_summary = (f"The evidence {lean}, so the most likely path is a continuation of recent behaviour within "
-                        "the typical range below.")
+        # the base range is symmetric around the current price (no built-in trend), so it isn't described as leaning
+        # either way, whatever the overall outlook
+        base_summary = ("No major surprise: the price keeps swinging the way it has recently and ends up in the middle "
+                        "of its typical range, a little above or below where it is now.")
         bull_summary = ("Buyers stay in control and the price pushes toward the top of its range."
                         if sentiment == "bullish" else
                         "Buyers regain control and the price rallies toward the top of its typical range.")
@@ -804,9 +815,16 @@ def _confidence(signals: list[Signal], score: float, f: Facts) -> str:
     direction = 1 if score > 0 else -1
     agreeing = sum(s.weight for s in signals if s.score * direction > 0.05)
     agreement = agreeing / total_weight if total_weight else 0
+    # disagreement caps confidence at medium: a split trend (the price and its averages pointing different ways)
+    # or a real counter-signal carrying a meaningful share of the weight. Otherwise "high confidence" could sit
+    # next to "Mixed trend signals" in the same report.
+    opposing = sum(s.weight for s in signals if s.score * direction < -0.15)
+    split_trend = any(s.key == "trend" and abs(s.score) < 0.99 for s in signals)
+    disagreement = split_trend or (total_weight and opposing / total_weight >= 0.15)
     if f.short_history:
         return "low"
-    if agreement >= 0.7 and ((len(signals) >= 4 and abs(score) > 0.35) or (len(signals) >= 3 and abs(score) > 0.6)):
+    if (agreement >= 0.7 and not disagreement
+            and ((len(signals) >= 4 and abs(score) > 0.35) or (len(signals) >= 3 and abs(score) > 0.6))):
         return "high"
     if abs(score) < 0.1 or agreement < 0.5 or len(signals) < 3:
         return "low"
@@ -896,7 +914,7 @@ def build_report(data: AssetData) -> AnalystReport:
             sentences.append(f"The main counterpoint is {opposing[0].phrase}.")
         summary = " ".join(sentences[:4])
 
-        risk = build_risk(f, data, sentiment, signals)
+        risk, risk_phrase = build_risk(f, data, sentiment, signals)
 
         level = f.sma200 or f.sma50
         level_name = "200-day average" if f.sma200 else "50-day average"
@@ -914,8 +932,9 @@ def build_report(data: AssetData) -> AnalystReport:
                       f"A drop below the {level_name} ({fmt_money(level, cur)}) would confirm it.")
         lean_word = {"bullish": "favourable", "bearish": "unfavourable", "neutral": "mixed"}[sentiment]
         driver = supporting[0].phrase if supporting else "the recent price action"
-        bottom_line = (f"On balance the evidence is {lean_word}, driven mainly by {driver}. {change} "
-                       f"Main risk to watch: {risk.title}.")
+        bottom_line = f"On balance the evidence is {lean_word}, driven mainly by {driver}. {change}"
+        if risk_phrase:  # ordinary volatility is already covered by the scenario ranges, so it isn't repeated here
+            bottom_line += f" The main risk to watch is {risk_phrase}."
 
     scenarios, range_method = build_scenarios(f, data, sentiment)
 

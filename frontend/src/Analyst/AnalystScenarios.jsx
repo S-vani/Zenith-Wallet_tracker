@@ -19,7 +19,11 @@ function AnalystScenarios({report, headingId}) {
             <div className="analyst-section-head">
                 <h3 id={headingId} className="analyst-section-title">Scenarios</h3>
                 {hasRanges && Number(price) > 0 && (
-                    <span className="analyst-section-note">From {formatPrice(price, currency)}</span>
+                    // the analysis works on daily candles, so this can differ a little from the live price above
+                    <span className="analyst-section-note"
+                          title="Ranges start from the last daily closing price, which can differ slightly from the live price.">
+                        From last daily close, {formatPrice(price, currency)}
+                    </span>
                 )}
             </div>
 
