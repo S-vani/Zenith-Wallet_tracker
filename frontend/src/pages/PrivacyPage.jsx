@@ -7,7 +7,7 @@ import "../css/Home.css";
 import "../css/Legal.css";
 
 // Shown publicly and required by the app stores. Keep it in step with what the app actually collects and sends.
-const EFFECTIVE_DATE = "October 16, 2026";
+const EFFECTIVE_DATE = "October 19, 2026";
 const CONTACT_EMAIL = "shayan.vanishoja86@gmail.com";
 
 const SECTIONS = [
@@ -49,7 +49,7 @@ function PrivacyPage() {
                 </nav>
             </header>
 
-            <main className="legal-layout">
+            <main className="legal-layout" id="main-content" tabIndex={-1}>
                 <aside className="legal-toc" aria-label="On this page">
                     <span className="legal-toc-title">On this page</span>
                     {SECTIONS.map(([id, label]) => <a key={id} href={`#${id}`}>{label}</a>)}
@@ -147,12 +147,23 @@ function PrivacyPage() {
                             without a connection, it keeps a copy of your most recently loaded screens on your phone;
                             signing out or deleting your account removes it.
                         </p>
+                        <p>
+                            In the app, links to other websites (such as a Market Analyst source or our data
+                            providers) open in an in-app browser (Apple's Safari View Controller) without leaving
+                            Zenith. That website receives your visit like any other browser visit (including your IP
+                            address), its own privacy policy applies there, and we can't see what you do on it.
+                        </p>
                     </section>
 
                     <section id="use" className="legal-section">
                         <h2>How we use it</h2>
                         <ul>
-                            <li>To create your account, sign you in and verify your email address.</li>
+                            <li>To create your account, sign you in, verify your email address and reset your password when you ask.</li>
+                            <li>
+                                To send security notices: if your email address is changed we tell the old address, and
+                                if your password is changed on the Account page we email the address on your account,
+                                so you would notice a change you didn't make.
+                            </li>
                             <li>To show your holdings, returns, charts and transaction history in your chosen currency.</li>
                             <li>To generate Market Analyst reports and limit how often they can be refreshed.</li>
                             <li>To keep the service secure, fix problems and prevent abuse.</li>
@@ -186,8 +197,9 @@ function PrivacyPage() {
                                 policy applies to your Google account.
                             </li>
                             <li>
-                                <strong>Gmail</strong>: verification emails are sent through Google's email service,
-                                so your email address passes through it.
+                                <strong>Gmail</strong>: verification, password reset and security notice emails are sent
+                                through Google's email service, so your email address (and, for an email change, your
+                                old and new addresses) passes through it.
                             </li>
                             <li>
                                 <strong>Vultr</strong>: our servers and database run on Vultr, a cloud hosting
