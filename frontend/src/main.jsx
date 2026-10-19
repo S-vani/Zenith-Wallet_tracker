@@ -15,7 +15,9 @@ import './css/Native.css'
 
 // In the iOS app this first restores the login from the Keychain and reads the Face ID setting;
 // on the website it resolves immediately. If anything native is slow or fails, the app still starts after 3 s
-// instead of staying on the splash screen. The Face ID setting is then unknown (null), so the lock starts on.
+// instead of staying on the splash screen. The Face ID setting is then unknown (null): the app starts covered by
+// the lock screen whatever the token says, and AppLock waits for the Keychain and the setting before opening it
+// (and moves a signed-in person off the login page the 3 s limit may have shown).
 const nativeStartup = Promise.race([
     initNative(),
     new Promise((resolve) => setTimeout(() => resolve({lockEnabled: null}), 3000)),
