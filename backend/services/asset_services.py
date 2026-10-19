@@ -78,6 +78,56 @@ def get_conversion_factor(rates: dict, currency: str) -> float:
     return 1.0
 
 
+QTY_STEP = Decimal("1e-10")  # the database keeps 10 decimal places
+# Selling up to this fraction more than is owned still counts as "sell everything": quantities arrive as floats,
+# and at a billion units a float can't hold all 10 decimals anyway. Far too small to matter as a real amount.
+SELL_ALL_TOLERANCE = Decimal("1e-12")
+
+
+def as_quantity(value) -> Decimal:
+    """
+    A quantity as an exact Decimal at the database's 10 decimal places. SQLite stores Numeric as a float and hands
+    1234567.89 back as 1234567.8899999999, so go through the float's shortest form ("1234567.89", what the user
+    typed) instead of using its long binary expansion.
+    """
+    if value is None:
+        return Decimal(0)
+    return Decimal(repr(float(value))).quantize(QTY_STEP)
+
+
+def sell_tolerance(owned: Decimal) -> Decimal:
+    return max(QTY_STEP, abs(owned) * SELL_ALL_TOLERANCE)
+
+
+def _typed_currency(t) -> str | None:
+    """The currency a trade's price was typed in, or None for older trades that only have the CAD price."""
+    if getattr(t, "price_entered", None) is None or not getattr(t, "currency_entered", None):
+        return None
+    return str(t.currency_entered).upper()
+
+
+def price_in_currency(t, currency: str | None, conversion: float) -> float:
+    """
+    One trade's price in the user's currency: the price exactly as typed when it was typed in that currency
+    (so it never drifts with exchange rates), otherwise the CAD price converted at today's rate.
+    """
+    if currency and _typed_currency(t) == str(currency).upper():
+        return float(t.price_entered)
+    return float(t.price_of_one) * conversion
+
+
+def profit_in_currency(t, currency: str | None, conversion: float) -> float:
+    """
+    A sell's realized profit in the user's currency. Profit is stored in CAD; for a sell typed in the user's
+    currency it was worked out in that currency (see _replay_ledger), so convert it back at the rate of the
+    sale itself rather than today's rate.
+    """
+    profit = float(getattr(t, "profit", None) or 0)
+    if currency and _typed_currency(t) == str(currency).upper() and float(t.price_of_one) > 0:
+        return profit * float(t.price_entered) / float(t.price_of_one)
+    return profit * conversion
+
+
 async def get_holdings_from_symbol(db: AsyncSession, user_id: UUID, symbol: str):
     """
     Return a list of Transactions objects of that specific symbol
@@ -176,7 +226,8 @@ async def get_holdings_at_time(
 ):
     """
     Return a dictionary mapping an api id to another dictionary with average price, quantity  and type meant to be a dictionary
-    of all the holdings at a certain time
+    of all the holdings at a certain time. The average price is in the user's currency, using each buy's price as
+    typed when it was typed in that currency (so cost basis doesn't move with exchange rates).
     """
     holdings_at_timestamp = {}
 
@@ -189,38 +240,36 @@ async def get_holdings_at_time(
             Transaction.user_id == user_id,
             Transaction.created_at <= timestamp
         )
-        .order_by(Transaction.created_at.asc())
+        .order_by(Transaction.created_at.asc(), Transaction.id.asc())
     )
 
     transactions = result.scalars().all()  # all transactions from timestamp and before
 
     for t in transactions:
         api_id = str(t.api_id)
+        qty = as_quantity(t.quantity)  # exact sums, so "Sell all" offers exactly what is owned
 
         if str(t.action) == "BUY":
+            price = price_in_currency(t, currency, conversion)
             if api_id in holdings_at_timestamp:  # if the api_id is already in the dictionary recalculate its values
-                holdings_at_timestamp[api_id]["avg_price"] = get_holdings_helper(
-                    holdings_at_timestamp[api_id]["avg_price"],
-                    (float(t.price_of_one) * conversion),
-                    holdings_at_timestamp[api_id]["quantity"],
-                    t.quantity
-                )
-                holdings_at_timestamp[api_id]["quantity"] += float(t.quantity)
+                holding = holdings_at_timestamp[api_id]
+                holding["avg_price"] = get_holdings_helper(holding["avg_price"], price, holding["qty"], qty)
+                holding["qty"] += qty
             else:
-                holdings_at_timestamp[api_id] = {
-                    "avg_price": float(t.price_of_one) * conversion,
-                    "quantity": float(t.quantity),
-                    "type": t.asset_type
-                }
+                holdings_at_timestamp[api_id] = {"avg_price": price, "qty": qty, "type": t.asset_type}
 
         else:  # SELL
             if api_id in holdings_at_timestamp:
-                holdings_at_timestamp[api_id]["quantity"] -= float(t.quantity)
+                holding = holdings_at_timestamp[api_id]
+                if qty >= holding["qty"] - sell_tolerance(holding["qty"]):
+                    del holdings_at_timestamp[api_id]  # fully sold, so it's no longer a holding
+                else:
+                    holding["qty"] -= qty
 
-                if holdings_at_timestamp[api_id]["quantity"] <= 1e-9:  # fully sold, so it's no longer a holding
-                    del holdings_at_timestamp[api_id]
-
-    return holdings_at_timestamp
+    return {
+        api_id: {"avg_price": h["avg_price"], "quantity": float(h["qty"]), "type": h["type"]}
+        for api_id, h in holdings_at_timestamp.items()
+    }
 
 
 async def get_holdings_at_time_list(
@@ -495,45 +544,17 @@ async def get_latest_stock_quotes(symbols: list[str]) -> dict[str, dict[str, flo
 
 async def calculate_profit_for_one_transaction(db: AsyncSession, user_id: UUID, data: CreateTransaction, currency: str):
     """
-    Calculate the amount a user profited from a certain sell transaction
+    Calculate the amount (in CAD) a user would profit from selling `data` (price in CAD) after their logged trades
+    of that symbol, from the average cost at that point (or at data.created_at for a backdated sell).
+    The routes use rebuild_symbol_ledger, which also handles prices typed in USD/EUR; this is the plain CAD version.
     """
-    result = await db.execute(
-        select(Transaction).where(
-            Transaction.user_id == user_id,
-            Transaction.symbol == data.symbol
-        )
-        .order_by(Transaction.created_at.asc())
-    )
+    query = select(Transaction).where(Transaction.user_id == user_id, Transaction.symbol == data.symbol)
+    if data.created_at is not None:
+        query = query.where(Transaction.created_at <= data.created_at)
+    result = await db.execute(query.order_by(Transaction.created_at.asc(), Transaction.id.asc()))
 
-    transactions = result.scalars().all()
-
-    quantity = 0.0
-    avg_cost = 0.0
-
-    for t in transactions:
-        if str(t.action) == "BUY":
-            qty = float(t.quantity)
-            price = float(t.price_of_one)
-
-            new_qty = quantity + qty
-
-            avg_cost = (  # recalculate the average price paid for that symbol
-                (quantity * avg_cost + qty * price) / new_qty
-                if new_qty > 0 else 0.0
-            )
-
-            quantity = new_qty
-
-        elif str(t.action) == "SELL":
-            qty = float(t.quantity)
-            quantity -= qty
-
-    sell_qty = float(data.quantity)
-    sell_price = float(data.price_of_one)
-
-    profit = (sell_price - avg_cost) * sell_qty
-
-    return profit
+    replay = _replay_ledger(result.scalars().all(), set_profits=False)
+    return float((Decimal(str(data.price_of_one)) - replay.avg_cad) * as_quantity(data.quantity))
 
 
 def create_holding_filter(
@@ -574,55 +595,103 @@ def create_holding_filter(
     return query
 
 
+class _Replay:
+    """Running state while replaying one symbol's trades in date order (average cost method)."""
+
+    def __init__(self):
+        self.quantity = Decimal(0)
+        self.avg_cad = Decimal(0)
+        # Average cost in a currency C, written as a + b * rate: `a` comes from buys typed in C (their typed price)
+        # and `b` from every other buy (CAD price, converted at the rate of whichever sale asks). Both follow the
+        # same weighted average as avg_cad, so they're kept per currency seen; a missing C means (0, avg_cad).
+        self.in_currency: dict[str, tuple[Decimal, Decimal]] = {}
+        self.oversold = False
+
+
+def _replay_ledger(transactions, set_profits: bool = True) -> _Replay:
+    """
+    Replay trades (already sorted oldest first): track quantity and average cost, set each sell's profit (in CAD)
+    and flag the history as oversold if a sell ever takes more than was owned at that moment.
+
+    A sell typed in some currency gets its profit worked out in that currency (a USD sale at $110 of a USD buy at
+    $100 is +$10, whatever USD/CAD did in between) and stored in CAD at the sale's own rate. Older trades with no
+    typed price keep the plain CAD maths.
+    """
+    state = _Replay()
+    for t in transactions:
+        qty = as_quantity(t.quantity)
+        price_cad = Decimal(str(t.price_of_one))
+        typed_in = _typed_currency(t)
+
+        if str(t.action) == "BUY":
+            total = state.quantity + qty
+            if typed_in and typed_in not in state.in_currency:
+                state.in_currency[typed_in] = (Decimal(0), state.avg_cad)
+            for code, (a, b) in state.in_currency.items():
+                own = Decimal(str(t.price_entered)) if code == typed_in else Decimal(0)
+                other = Decimal(0) if code == typed_in else price_cad
+                state.in_currency[code] = ((state.quantity * a + qty * own) / total,
+                                           (state.quantity * b + qty * other) / total)
+            state.avg_cad = (state.quantity * state.avg_cad + qty * price_cad) / total
+            state.quantity = total
+            continue
+
+        # SELL
+        if qty > state.quantity + sell_tolerance(state.quantity):
+            state.oversold = True
+            return state
+
+        if set_profits:
+            if typed_in and price_cad > 0:
+                typed_price = Decimal(str(t.price_entered))
+                rate = typed_price / price_cad  # units of the typed currency per CAD on the day of the sale
+                a, b = state.in_currency.get(typed_in, (Decimal(0), state.avg_cad))
+                t.profit = (typed_price - (a + b * rate)) * qty / rate
+            else:
+                t.profit = (price_cad - state.avg_cad) * qty
+
+        # within the tolerance this is "sell everything", so the position ends at exactly 0
+        state.quantity = max(Decimal(0), state.quantity - qty)
+
+    return state
+
+
 async def rebuild_symbol_ledger(db: AsyncSession, user_id: UUID, symbol: str) -> bool:
     """
     Replay every transaction of one symbol in date order, recompute the profit of each sell from the average cost
-    at that moment, and return False if the history ever sells more than was owned (e.g. after an edit or delete).
+    at that moment, and return False if the history ever sells more than was owned (e.g. after an edit, a delete
+    or a backdated trade).
     """
     result = await db.execute(
         select(Transaction)
         .where(Transaction.user_id == user_id, Transaction.symbol == symbol)
-        .order_by(Transaction.created_at.asc())
+        .order_by(Transaction.created_at.asc(), Transaction.id.asc())
     )
 
-    quantity = Decimal(0)
-    avg_cost = Decimal(0)
-    for t in result.scalars().all():
-        qty = Decimal(str(t.quantity))
-        price = Decimal(str(t.price_of_one))
-        if str(t.action) == "BUY":
-            avg_cost = (quantity * avg_cost + qty * price) / (quantity + qty)
-            quantity += qty
-        else:
-            if qty > quantity:
-                return False
-            t.profit = (price - avg_cost) * qty
-            quantity -= qty
-
-    return True
+    return not _replay_ledger(result.scalars().all()).oversold
 
 
 async def current_quantity(db: AsyncSession, user_id: UUID, symbol: str) -> Decimal:
     """
     Calculate how much of a specific symbol a user has, for example how much BTC is currently in their account.
-    Quantities are summed as Decimals (how the database stores them) so 0.3 - 0.1 is exactly 0.2
+    Quantities are summed as exact Decimals (see as_quantity) so 0.3 - 0.1 is exactly 0.2
     """
     lst = await get_holdings_from_symbol(db, user_id, symbol)
     selling = Decimal(0)
     buying = Decimal(0)
     for trans in lst:
         if str(trans.action) == "SELL":
-            selling += trans.quantity
+            selling += as_quantity(trans.quantity)
         else:
-            buying += trans.quantity
+            buying += as_quantity(trans.quantity)
 
     return buying - selling
 
 
-def turn_list_to_dict(lst, conversion: float = 1.0):
+def turn_list_to_dict(lst, conversion: float = 1.0, currency: str | None = None):
     """
     loop through a list of transactions and turn it into a list of dictionaries that are easier to use,
-    with prices converted from CAD into the users currency
+    with prices converted from CAD into the users currency (or shown as typed, when typed in `currency`)
     """
     transactions_data = []
     for trans in lst:
@@ -631,12 +700,12 @@ def turn_list_to_dict(lst, conversion: float = 1.0):
                 "id": str(trans.id),
                 "user_id": str(trans.user_id),
                 "action": str(trans.action),
-                "profit": float(trans.profit or 0) * conversion,
+                "profit": profit_in_currency(trans, currency, conversion),
                 "asset_type": str(trans.asset_type),
                 "symbol": str(trans.symbol),
                 "api_ids": str(trans.api_id),
-                "price_of_one": float(trans.price_of_one) * conversion,
-                "quantity": float(trans.quantity),
+                "price_of_one": price_in_currency(trans, currency, conversion),
+                "quantity": float(as_quantity(trans.quantity)),
                 "created_at": trans.created_at.replace(tzinfo=timezone.utc).isoformat()
             }
         )

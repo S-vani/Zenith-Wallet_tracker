@@ -4,7 +4,7 @@ from pathlib import Path
 
 from fastapi import Depends
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
-from sqlalchemy import update
+from sqlalchemy import inspect, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 from backend.db_models.assets import Base, User, OAuthAccount
@@ -29,9 +29,33 @@ engine = create_async_engine(
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
 
+# Columns added to existing tables after the first release. create_all() only creates missing *tables*, so the
+# production database (made before these columns existed) gets them here, once, with ALTER TABLE ADD COLUMN.
+# Add new columns as {table: {column: "SQL type and default"}}; keep the model and this list in step.
+ADDED_COLUMNS: dict[str, dict[str, str]] = {
+    # the price and currency a trade was typed in (nullable: older trades only have the CAD price)
+    "transactions": {
+        "price_entered": "NUMERIC(20, 10)",
+        "currency_entered": "VARCHAR",
+    },
+}
+
+
+def _add_missing_columns(sync_conn):
+    inspector = inspect(sync_conn)
+    for table, columns in ADDED_COLUMNS.items():
+        if not inspector.has_table(table):
+            continue  # brand new database: create_all just made it with every column
+        existing = {col["name"] for col in inspector.get_columns(table)}
+        for name, ddl in columns.items():
+            if name not in existing:
+                sync_conn.execute(text(f'ALTER TABLE "{table}" ADD COLUMN "{name}" {ddl}'))
+
+
 async def create_db_and_tables():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(_add_missing_columns)
         # Google tokens used to be saved with linked accounts but were never used again; blank any left over
         await conn.execute(update(OAuthAccount).where(OAuthAccount.access_token != "")
                            .values(access_token="", refresh_token=None, expires_at=None))

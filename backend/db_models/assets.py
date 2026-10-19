@@ -109,8 +109,12 @@ class Transaction(Base):
     asset_type = Column(String, nullable=False)  # type of purchase (stock, crypto, currency, etc.)
     symbol = Column(String, nullable=False)  # symbol or purchase (BTC, SMP500, AAPL, USD, etc.)
     api_id = Column(String, nullable=False)
-    price_of_one = Column(Numeric(20, 10), nullable=False)
+    price_of_one = Column(Numeric(20, 10), nullable=False)  # in CAD, used for maths across currencies
     quantity = Column(Numeric(20, 10), nullable=False)
+    # The price exactly as typed and the currency it was typed in, so a USD buy at $100 still shows $100 after
+    # USD/CAD moves (converting the CAD price back would drift). Empty on trades logged before these existed.
+    price_entered = Column(Numeric(20, 10), nullable=True)
+    currency_entered = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="transactions")
