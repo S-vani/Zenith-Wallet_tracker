@@ -38,7 +38,35 @@ def test_register_rejects_passwords_under_8_characters(client, password):
 
 
 def test_register_accepts_exactly_8_characters(client):
-    assert register(client, password="12345678").status_code == 201
+    assert register(client, password="k3v!n9pq").status_code == 201
+
+
+@pytest.mark.parametrize("password", ["password", "12345678", "Password1", "QWERTYUIOP", "iloveyou", "1q2w3e4r5t"])
+def test_register_rejects_very_common_passwords(client, password):
+    res = register(client, password=password)
+    assert res.status_code == 400
+    assert res.json()["detail"] == {"code": "REGISTER_INVALID_PASSWORD",
+                                    "reason": "That password is too common and easy to guess. Please choose another."}
+
+
+@pytest.mark.parametrize("password", ["aaaaaaaa", "zzzzzzzzzzzz", "!!!!!!!!!", "1" * 20])
+def test_register_rejects_one_repeated_character(client, password):
+    res = register(client, password=password)
+    assert res.status_code == 400
+    assert res.json()["detail"]["reason"] == "Password can't be one character repeated."
+
+
+def test_common_password_list_is_small_and_only_lists_long_enough_ones():
+    from backend.db_models.common_passwords import COMMON_PASSWORDS
+    assert 100 <= len(COMMON_PASSWORDS) <= 500
+    assert all(p == p.lower() for p in COMMON_PASSWORDS)  # compared in lowercase
+    assert all(len(p) >= 8 for p in COMMON_PASSWORDS)  # shorter ones are refused by the length rule already
+    assert "correct-horse-battery" not in COMMON_PASSWORDS
+
+
+@pytest.mark.parametrize("password", ["aaaaaaab", "password-for-zenith", "Tr0ub4dor&3x"])
+def test_register_still_accepts_uncommon_passwords(client, password):
+    assert register(client, password=password).status_code == 201
 
 
 @pytest.mark.parametrize("name", ["", "   ", "x" * 101])

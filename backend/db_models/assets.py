@@ -14,6 +14,8 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, relationship
 from starlette.requests import Request
 
+from backend.db_models.common_passwords import COMMON_PASSWORDS
+
 load_dotenv()
 
 
@@ -64,6 +66,11 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
             raise exceptions.InvalidPasswordException(reason="Password must be 128 characters or fewer.")
         if not password.strip():
             raise exceptions.InvalidPasswordException(reason="Password can't be only spaces.")
+        if len(set(password)) == 1:
+            raise exceptions.InvalidPasswordException(reason="Password can't be one character repeated.")
+        if password.lower() in COMMON_PASSWORDS:  # the first ones anyone would guess
+            raise exceptions.InvalidPasswordException(
+                reason="That password is too common and easy to guess. Please choose another.")
         if user is not None and getattr(user, "email", None) and password.lower() == str(user.email).lower():
             raise exceptions.InvalidPasswordException(reason="Password can't be your email address.")
 

@@ -51,9 +51,16 @@ describe("error messages", () => {
     });
 
     it("maps fastapi-users error objects", async () => {
-        fetchMock.mockResolvedValue(respond(400, {detail: {code: "REGISTER_INVALID_PASSWORD", reason: "short"}}));
+        fetchMock.mockResolvedValue(respond(400, {detail: {code: "REGISTER_INVALID_PASSWORD"}}));
         await expect(api.signupAuthentication({email: "a@b.co", password: "x", name: "A", currency: "CAD"}))
             .rejects.toThrow("That password isn't allowed. Try a longer one.");
+    });
+
+    it("says which password rule failed when the backend gives a reason", async () => {
+        const reason = "That password is too common and easy to guess. Please choose another.";
+        fetchMock.mockResolvedValue(respond(400, {detail: {code: "REGISTER_INVALID_PASSWORD", reason}}));
+        await expect(api.signupAuthentication({email: "a@b.co", password: "password1", name: "A", currency: "CAD"}))
+            .rejects.toThrow(reason);
     });
 
     it("uses the reason of unknown error codes", async () => {

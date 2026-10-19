@@ -78,6 +78,9 @@ async function errorMessage(res, fallback) {
             return ERROR_MESSAGES[detail] ?? detail;
         }
         if (detail?.code) {
+            // the backend says which password rule failed ("too common", "one character repeated", ...); a fixed
+            // "try a longer one" would be wrong for most of them
+            if (detail.code === "REGISTER_INVALID_PASSWORD" && detail.reason) return detail.reason;
             return ERROR_MESSAGES[detail.code] ?? detail.reason ?? fallback;
         }
         if (Array.isArray(detail) && detail[0]?.msg) {

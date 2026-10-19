@@ -49,3 +49,7 @@ def test_reset_rejects_bad_tokens_and_weak_passwords(client, user, caplog):
     weak = client.post("/auth/reset-password", json={"token": token, "password": "short"})
     assert weak.status_code == 400
     assert weak.json()["detail"]["code"] == "RESET_PASSWORD_INVALID_PASSWORD"
+
+    common = client.post("/auth/reset-password", json={"token": token, "password": "iloveyou123"})
+    assert common.status_code == 400
+    assert "too common" in common.json()["detail"]["reason"]

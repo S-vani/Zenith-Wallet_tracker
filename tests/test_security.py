@@ -343,6 +343,8 @@ def test_change_password(client, user):
 @pytest.mark.parametrize("new, message", [
     ("short", "Password must be at least 8 characters."),
     (PASSWORD, "Choose a new password that's different from your current one."),
+    ("password123", "That password is too common and easy to guess. Please choose another."),
+    ("xxxxxxxxxx", "Password can't be one character repeated."),
 ])
 def test_change_password_rejects_bad_new_passwords(client, user, new, message):
     res = change_password(client, user, new=new)
