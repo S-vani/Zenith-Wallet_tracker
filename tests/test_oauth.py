@@ -157,8 +157,11 @@ def test_google_links_to_existing_password_account_and_keeps_its_data(client, go
     assert me["id"] == existing.id
     assert me["name"] == "Password Person"  # not overwritten by the Google name
     assert me["currency"] == "USD"
-    # the password still works too
-    assert login(client, existing.email).status_code == 200
+    # Changed with the security hardening: the old password used to keep working. It could belong to someone who
+    # registered the address before its owner, so the first Google link replaces it and tells the user why.
+    assert data["notice"] == "password_replaced"
+    assert login(client, existing.email).json()["detail"] == "LOGIN_BAD_CREDENTIALS"
+    assert me["hasPassword"] is False
 
 
 def test_google_verifies_an_unverified_password_account(client, google, db):
