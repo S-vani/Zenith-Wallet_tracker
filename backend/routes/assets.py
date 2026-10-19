@@ -66,6 +66,28 @@ async def return_transaction_with_id(
 OVERSOLD = "Insufficient holdings"
 OVERSOLD_AFTER_DELETE = "Deleting this would leave you selling more than you owned"
 
+# Every holdings / dashboard / chart request prices each distinct asset (up to 2 Yahoo calls each for a coin), so
+# one account with hundreds of symbols could make a single request fan out to hundreds of Yahoo calls.
+MAX_SYMBOLS_PER_USER = 200
+TOO_MANY_SYMBOLS = (f"You can track up to {MAX_SYMBOLS_PER_USER} different assets. "
+                    "Delete the trades of one you no longer follow to add a new one.")
+
+
+async def check_symbol_limit(session: AsyncSession, user_id, api_id: str, ignore_trade: str | None = None) -> None:
+    """
+    422 when `api_id` would be one asset too many for the user. Assets they already trade are always fine.
+    `ignore_trade` leaves out the trade being edited, so moving a trade to a new asset frees its old one.
+    """
+    trades = select(Transaction.api_id).where(Transaction.user_id == user_id)
+    if ignore_trade is not None:
+        trades = trades.where(Transaction.id != ignore_trade)
+    known = await session.execute(trades.where(Transaction.api_id == api_id).limit(1))
+    if known.first() is not None:
+        return
+    count = await session.execute(select(func.count()).select_from(trades.distinct().subquery()))
+    if count.scalar_one() >= MAX_SYMBOLS_PER_USER:
+        raise HTTPException(status_code=422, detail=TOO_MANY_SYMBOLS)
+
 
 @router.delete("/transactions/{trans_id}")
 async def delete_transaction_with_id(
@@ -121,6 +143,8 @@ async def update_transaction_with_id(
     transaction = await return_transaction_with_id(trans_id, session, current_user)
     old_symbol = transaction.symbol
     old_api_id = transaction.api_id
+    if updates.api_id and updates.api_id != old_api_id:
+        await check_symbol_limit(session, current_user.id, updates.api_id, ignore_trade=transaction.id)
 
     # Check exactly what was sent in
     if updates.symbol:
@@ -207,10 +231,13 @@ async def make_transaction(
     The route used to make a transaction where the user enters the data manually. The trade is dated now unless
     `created_at` says otherwise (backdated trades). The symbol's history is then replayed in date order: that sets
     the profit of every sell (used later to add up realized profit) and rejects the trade with a 409 if any point
-    of the history would sell more than was owned, e.g. a backdated sell before the buy it needs.
+    of the history would sell more than was owned, e.g. a backdated sell before the buy it needs. A new asset past
+    MAX_SYMBOLS_PER_USER different ones is a 422.
     """
     # Prices are stored in CAD and converted on the way out, so convert what the user typed (in their currency) to CAD.
     # The typed price and currency are kept too, so the trade keeps showing exactly what was typed.
+    await check_symbol_limit(session, current_user.id, data.api_id)
+
     rates = await get_all_conversion_rates()
     conversion = get_conversion_factor(rates, current_user.currency)
 
