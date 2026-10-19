@@ -51,6 +51,13 @@ describe("payloads", () => {
         expect(createPayload({...form, created_at: ""}, "2026-10-18T09:00")).not.toHaveProperty("created_at");
     });
 
+    it("sends a coin's CoinGecko id, and none for stocks or when search had none", () => {
+        const coin = {...form, symbol: "pepe", api_id: "pepe", asset_type: "crypto", coin_id: "pepe-impostor"};
+        expect(createPayload(coin, "2026-10-18T09:00").coin_id).toBe("pepe-impostor");
+        expect(createPayload({...coin, coin_id: null}, "2026-10-18T09:00")).not.toHaveProperty("coin_id");
+        expect(createPayload({...form, coin_id: "apple"}, "2026-10-18T09:00")).not.toHaveProperty("coin_id");
+    });
+
     it("sends a changed date as UTC", () => {
         const body = createPayload({...form, created_at: "2026-01-02T10:00"}, "2026-10-18T09:00");
         expect(body.created_at).toBe("2026-01-02T15:00:00.000Z");

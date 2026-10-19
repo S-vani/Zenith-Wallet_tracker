@@ -235,8 +235,12 @@ export async function getHoldings() {
     return request("/holdings", {fallbackError: "Failed to load your holdings."});
 }
 
-export async function getPriceHistory(symbol, type, range) {
+// `coinId` (crypto) is the exact CoinGecko coin, for tickers that several coins share
+export async function getPriceHistory(symbol, type, range, coinId) {
     const params = new URLSearchParams({symbol, type, range});
+    if (coinId && type === "crypto") {
+        params.append("coin_id", coinId);
+    }
 
     return request(`/prices/history?${params.toString()}`, {fallbackError: "Failed to load chart data."});
 }

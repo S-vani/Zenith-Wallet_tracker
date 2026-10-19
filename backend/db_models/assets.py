@@ -186,6 +186,9 @@ class Transaction(Base):
     # USD/CAD moves (converting the CAD price back would drift). Empty on trades logged before these existed.
     price_entered = Column(Numeric(20, 10), nullable=True)
     currency_entered = Column(String, nullable=True)
+    # Crypto only: the CoinGecko id picked in search (e.g. "bitcoin"). Different coins can share a ticker, so this
+    # asks CoinGecko for exactly that coin instead of the most popular one with the symbol. Empty on older trades.
+    coin_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="transactions")

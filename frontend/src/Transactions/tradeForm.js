@@ -24,9 +24,11 @@ export function isFutureInput(value, now = new Date()) {
 }
 
 // Body for POST /transactions. The date is only sent when the user changed it, so an untouched form is dated
-// "now" by the server at the moment it's saved.
+// "now" by the server at the moment it's saved. A coin also sends its CoinGecko id from search, since several
+// coins can share a ticker and the server would otherwise price the most popular one.
 export function createPayload(form, initialDate) {
     const changedDate = form.created_at && form.created_at !== initialDate;
+    const coinId = form.asset_type === "crypto" && form.coin_id ? form.coin_id : null;
     return {
         symbol: form.symbol,
         api_id: form.api_id,
@@ -34,6 +36,7 @@ export function createPayload(form, initialDate) {
         action: form.action,
         quantity: Number(form.quantity),
         price_of_one: Number(form.price_of_one),
+        ...(coinId ? {coin_id: coinId} : {}),
         ...(changedDate ? {created_at: localInputToIso(form.created_at)} : {}),
     };
 }

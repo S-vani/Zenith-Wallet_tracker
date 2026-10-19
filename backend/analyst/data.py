@@ -249,13 +249,15 @@ async def _crypto(data: AssetData, coin_id: Optional[str]) -> None:
 CHART_DAYS = {"1D": 1, "1W": 7, "1M": 30, "1Y": 365, "5Y": 365}  # CoinGecko's free plan only goes back 365 days
 
 
-async def coingecko_chart(symbol: str, range_code: str, currency: str) -> list[dict]:
+async def coingecko_chart(symbol: str, range_code: str, currency: str, coin_id: Optional[str] = None) -> list[dict]:
     """
     Price history for the charts when Yahoo has nothing for a coin (Yahoo's "SYMBOL-USD" naming misses coins like
     PEPE). Same shape as get_history_of_prices: [{"time": iso string, "price": float in `currency`}].
+    A known `coin_id` (saved with the trade or from search) skips the ticker lookup, which picks the most popular
+    coin with that symbol and could be a different coin.
     """
     async with httpx.AsyncClient(timeout=12, headers=_coingecko_headers()) as client:
-        coin_id = await resolve_coin_id(client, symbol)
+        coin_id = coin_id or await resolve_coin_id(client, symbol)
         if not coin_id:
             return []
         res = await client.get(f"{COINGECKO}/coins/{coin_id}/market_chart",

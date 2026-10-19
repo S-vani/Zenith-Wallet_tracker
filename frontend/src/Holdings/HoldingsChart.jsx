@@ -11,7 +11,8 @@ import {
 
 const RANGES = ["1D", "1W", "1M", "1Y", "5Y"];
 
-function HoldingChart({symbol, type, initialRange = "1M", compact = false}) {
+// `coinId`: the exact CoinGecko coin (from search or the trades), for tickers that several coins share
+function HoldingChart({symbol, type, coinId = null, initialRange = "1M", compact = false}) {
     const {currency} = useUser();
     const [range, setRange] = useState(initialRange);
     // the chart on screen and the range it belongs to; while another range loads it stays visible, dimmed
@@ -22,7 +23,7 @@ function HoldingChart({symbol, type, initialRange = "1M", compact = false}) {
     useEffect(() => {
         let ignore = false;
 
-        getPriceHistory(symbol, type, range)
+        getPriceHistory(symbol, type, range, coinId)
             .then((res) => {
                 if (ignore) return;
                 setShown({range, data: res.data.map(p => ({time: p.time, price: p.price}))});
@@ -35,7 +36,7 @@ function HoldingChart({symbol, type, initialRange = "1M", compact = false}) {
         return () => {
             ignore = true;
         };
-    }, [symbol, range, type, refreshKey]);
+    }, [symbol, range, type, coinId, refreshKey]);
 
     const data = shown?.data ?? [];
     const pending = !error && shown?.range !== range; // a new range is loading

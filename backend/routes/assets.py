@@ -120,6 +120,7 @@ async def update_transaction_with_id(
     """
     transaction = await return_transaction_with_id(trans_id, session, current_user)
     old_symbol = transaction.symbol
+    old_api_id = transaction.api_id
 
     # Check exactly what was sent in
     if updates.symbol:
@@ -138,6 +139,12 @@ async def update_transaction_with_id(
         transaction.quantity = updates.quantity
     if updates.api_id:
         transaction.api_id = updates.api_id
+    if "coin_id" in updates.model_fields_set:
+        transaction.coin_id = updates.coin_id
+    elif transaction.api_id != old_api_id:
+        transaction.coin_id = None  # now a different asset, so the old coin no longer applies
+    if transaction.asset_type != "crypto":
+        transaction.coin_id = None  # only coins have a CoinGecko id
     if updates.created_at:
         transaction.created_at = updates.created_at  # already naive UTC and not in the future (schema)
 
@@ -213,6 +220,7 @@ async def make_transaction(
         asset_type=data.asset_type,
         symbol=data.symbol,
         api_id=data.api_id,
+        coin_id=data.coin_id if data.asset_type == "crypto" else None,
         price_of_one=data.price_of_one / conversion,
         price_entered=data.price_of_one,
         currency_entered=current_user.currency.upper(),
@@ -341,6 +349,8 @@ async def get_price_history(
         symbol: Annotated[str, Query(min_length=1, max_length=64)],
         type: Annotated[Literal["stock", "crypto"], Query()],
         range: Literal["1D", "1W", "1M", "1Y", "5Y"],
+        # crypto: the CoinGecko id (from search or the trades), so CoinGecko charts that exact coin
+        coin_id: Annotated[Optional[str], Query(max_length=80, pattern=r"^[a-z0-9-]+$")] = None,
 
         current_user: User = Depends(current_active_user)
 ):
@@ -361,7 +371,7 @@ async def get_price_history(
     if not data and type == "crypto":
         # Yahoo doesn't list every coin (e.g. PEPE), so fall back to CoinGecko (cached: its demo key is rate limited)
         try:
-            data, covered = await get_coingecko_history(symbol, range, current_user.currency)
+            data, covered = await get_coingecko_history(symbol, range, current_user.currency, coin_id)
         except Exception:
             data, covered = [], range
         source = "CoinGecko" if data else None

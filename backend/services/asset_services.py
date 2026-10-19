@@ -189,7 +189,12 @@ async def get_curr_holdings_prices(holdings: dict[str, dict[str, float | str]], 
     Return a dictionary in the form {api_id: curr_price}, with None for a holding no source has a price for
     """
     assets = {str(api_id): str(data["type"]) for api_id, data in holdings.items()}
-    return await get_prices_at(assets, datetime.now(timezone.utc), currency)
+    return await get_prices_at(assets, datetime.now(timezone.utc), currency, coin_ids=holding_coin_ids(holdings))
+
+
+def holding_coin_ids(holdings: dict) -> dict[str, str]:
+    """{api_id: CoinGecko id} for the holdings whose trades name the exact coin (see Transaction.coin_id)."""
+    return {str(api_id): data["coin_id"] for api_id, data in holdings.items() if data.get("coin_id")}
 
 
 def _naive_utc(value: datetime) -> datetime:
@@ -287,31 +292,43 @@ async def get_holdings_at_time(
 
     transactions = result.scalars().all()  # all transactions from timestamp and before
 
+    coin_ids = {}
     for t in transactions:
-        api_id = str(t.api_id)
-        qty = as_quantity(t.quantity)  # exact sums, so "Sell all" offers exactly what is owned
-
-        if str(t.action) == "BUY":
-            price = price_in_currency(t, currency, conversion)
-            if api_id in holdings_at_timestamp:  # if the api_id is already in the dictionary recalculate its values
-                holding = holdings_at_timestamp[api_id]
-                holding["avg_price"] = get_holdings_helper(holding["avg_price"], price, holding["qty"], qty)
-                holding["qty"] += qty
-            else:
-                holdings_at_timestamp[api_id] = {"avg_price": price, "qty": qty, "type": t.asset_type}
-
-        else:  # SELL
-            if api_id in holdings_at_timestamp:
-                holding = holdings_at_timestamp[api_id]
-                if qty >= holding["qty"] - sell_tolerance(holding["qty"]):
-                    del holdings_at_timestamp[api_id]  # fully sold, so it's no longer a holding
-                else:
-                    holding["qty"] -= qty
+        apply_trade(holdings_at_timestamp, t, currency, conversion)
+        if getattr(t, "coin_id", None):
+            coin_ids[str(t.api_id)] = t.coin_id  # the newest trade that names the exact coin wins
 
     return {
-        api_id: {"avg_price": h["avg_price"], "quantity": float(h["qty"]), "type": h["type"]}
+        api_id: {"avg_price": h["avg_price"], "quantity": float(h["qty"]), "type": h["type"],
+                 "coin_id": coin_ids.get(api_id)}
         for api_id, h in holdings_at_timestamp.items()
     }
+
+
+def apply_trade(positions: dict, t, currency: str, conversion: float) -> None:
+    """
+    Add one trade (oldest first) to `positions` ({api_id: {"avg_price", "qty", "type"}}), average cost method:
+    a buy moves the average price, a sell only lowers the quantity, and selling everything removes the position.
+    Shared by the holdings and the portfolio chart, so the chart's "invested" line matches the holdings' cost.
+    """
+    api_id = str(t.api_id)
+    qty = as_quantity(t.quantity)  # exact sums, so "Sell all" offers exactly what is owned
+
+    if str(t.action) == "BUY":
+        price = price_in_currency(t, currency, conversion)
+        if api_id in positions:  # if the api_id is already in the dictionary recalculate its values
+            holding = positions[api_id]
+            holding["avg_price"] = get_holdings_helper(holding["avg_price"], price, holding["qty"], qty)
+            holding["qty"] += qty
+        else:
+            positions[api_id] = {"avg_price": price, "qty": qty, "type": t.asset_type}
+
+    elif api_id in positions:  # SELL
+        holding = positions[api_id]
+        if qty >= holding["qty"] - sell_tolerance(holding["qty"]):
+            del positions[api_id]  # fully sold, so it's no longer a holding
+        else:
+            holding["qty"] -= qty
 
 
 async def get_holdings_at_time_list(
@@ -336,6 +353,7 @@ async def get_holdings_at_time_list(
             "price_paid": float(value["avg_price"]) * float(value["quantity"]),
             "quantity": float(value["quantity"]),
             "type": value["type"],
+            "coin_id": value.get("coin_id"),  # CoinGecko id when the trades name the exact coin (for its chart)
             # None = "price unavailable" (no source has one), so it isn't shown as worth $0 / -100%
             "current_price": float(price) * float(value["quantity"]) if price is not None else None
         })
@@ -577,16 +595,17 @@ async def _yahoo_series(ticker: str, period: str, interval: str) -> PriceSeries 
     return await _cached_series(("yahoo", ticker.upper(), period, interval), SERIES_CACHE_SECONDS[interval], fetch)
 
 
-async def _coingecko_series(symbol: str, range_code: str) -> PriceSeries | None:
+async def _coingecko_series(symbol: str, range_code: str, coin_id: str | None = None) -> PriceSeries | None:
     """
     CoinGecko prices in CAD for coins Yahoo doesn't list (e.g. PEPE), same fallback as the /prices/history chart.
+    With a `coin_id` (saved with the trade) that exact coin is used, otherwise the most popular coin with the ticker.
     Its demo key is rate limited, so answers (empty ones too, briefly) are cached.
     """
     range_code = "1Y" if range_code in ("5Y", "MAX") else range_code  # its free plan stops at 365 days either way
 
     async def fetch():
         from backend.analyst import data as market_data  # imported here: analyst.data imports this module
-        points = await market_data.coingecko_chart(symbol, range_code, "CAD")
+        points = await market_data.coingecko_chart(symbol, range_code, "CAD", coin_id=coin_id)
         series = PriceSeries()
         for point in sorted(points, key=lambda p: _as_utc(p["time"])):
             price = float(point["price"])
@@ -600,16 +619,18 @@ async def _coingecko_series(symbol: str, range_code: str) -> PriceSeries | None:
             series.volumes.append(None)
         return series if series.closes else None
 
-    return await _cached_series(("coingecko", symbol.lower(), range_code),
+    ident = f"id:{coin_id}" if coin_id else symbol.lower()  # a coin id and a ticker can be spelled the same
+    return await _cached_series(("coingecko", ident, range_code),
                                 COINGECKO_CACHE_SECONDS.get(range_code, 1800), fetch,
                                 empty_ttl=COINGECKO_EMPTY_SECONDS)
 
 
-async def _asset_series(api_id: str, asset_type: str, period: str, interval: str, coingecko: bool = True):
+async def _asset_series(api_id: str, asset_type: str, period: str, interval: str, coingecko: bool = True,
+                        coin_id: str | None = None):
     """
     Price history of one asset as (series, to_cad, source), where close * to_cad is the price in CAD, or
     (None, None, source) when no source has prices. Crypto tries Yahoo's SYMBOL-CAD pair, then SYMBOL-USD, then
-    CoinGecko, in that order everywhere, so the value card, holdings and charts all agree.
+    CoinGecko (by `coin_id` when known), in that order everywhere, so the value card, holdings and charts all agree.
     """
     if asset_type == "crypto":
         base = str(api_id).upper()
@@ -626,7 +647,7 @@ async def _asset_series(api_id: str, asset_type: str, period: str, interval: str
                 return series, to_cad, ticker
         if coingecko:
             try:
-                series = await _coingecko_series(base, COINGECKO_RANGE.get(period, "1Y"))
+                series = await _coingecko_series(base, COINGECKO_RANGE.get(period, "1Y"), coin_id)
             except Exception as exc:
                 error, series = exc, None
             if series:
@@ -642,10 +663,12 @@ async def _asset_series(api_id: str, asset_type: str, period: str, interval: str
     return (series, to_cad, api_id) if series else (None, None, api_id)
 
 
-async def get_prices_at(assets: dict[str, str], timestamp: datetime, currency: str) -> dict[str, float | None]:
+async def get_prices_at(assets: dict[str, str], timestamp: datetime, currency: str,
+                        coin_ids: dict[str, str] | None = None) -> dict[str, float | None]:
     """
     Price of each asset ({api_id: "stock" | "crypto"}) at `timestamp` in the user's currency, as {api_id: price}.
     None means no source has a price for it then: callers leave it out instead of counting it as worth 0.
+    `coin_ids` ({api_id: CoinGecko id}) makes the CoinGecko fallback ask for that exact coin.
     """
     if not assets:
         return {}
@@ -656,7 +679,8 @@ async def get_prices_at(assets: dict[str, str], timestamp: datetime, currency: s
 
     async def fetch_one(api_id, asset_type):
         try:
-            series, to_cad, _ = await _asset_series(api_id, asset_type, period, interval)
+            series, to_cad, _ = await _asset_series(api_id, asset_type, period, interval,
+                                                    coin_id=(coin_ids or {}).get(api_id))
         except Exception as exc:  # the price source is down and nothing is cached
             log.warning("No price for %s: %s", api_id, exc)
             return api_id, None
@@ -870,6 +894,7 @@ def turn_list_to_dict(lst, conversion: float = 1.0, currency: str | None = None)
                 "asset_type": str(trans.asset_type),
                 "symbol": str(trans.symbol),
                 "api_ids": str(trans.api_id),
+                "coin_id": getattr(trans, "coin_id", None),
                 "price_of_one": price_in_currency(trans, currency, conversion),
                 "quantity": float(as_quantity(trans.quantity)),
                 "created_at": trans.created_at.replace(tzinfo=timezone.utc).isoformat()
@@ -889,7 +914,8 @@ async def get_position_values_at(
     has no price at that time.
     """
     holdings = await get_holdings_at_time(db, user_id, timestamp, currency)
-    prices = await get_prices_at({api_id: str(data["type"]) for api_id, data in holdings.items()}, timestamp, currency)
+    prices = await get_prices_at({api_id: str(data["type"]) for api_id, data in holdings.items()}, timestamp, currency,
+                                 coin_ids=holding_coin_ids(holdings))
 
     return {
         api_id: float(prices[api_id]) * float(data["quantity"]) if prices.get(api_id) is not None else None
@@ -941,13 +967,15 @@ async def get_history_of_prices(
     return data, s
 
 
-async def get_coingecko_history(symbol: str, range: str, currency: str) -> tuple[list[dict], str]:
+async def get_coingecko_history(symbol: str, range: str, currency: str,
+                                coin_id: str | None = None) -> tuple[list[dict], str]:
     """
     Chart prices from CoinGecko for coins Yahoo doesn't list, in the user's currency, plus the range they really
-    cover: CoinGecko's free plan stops at 365 days, so a "5Y" request only covers "1Y".
+    cover: CoinGecko's free plan stops at 365 days, so a "5Y" request only covers "1Y". `coin_id` picks the exact
+    coin when several share the ticker.
     """
     covered = "1Y" if range in ("5Y", "MAX") else range
-    series = await _coingecko_series(symbol, covered)
+    series = await _coingecko_series(symbol, covered, coin_id)
     if not series:
         return [], covered
 
@@ -1010,13 +1038,15 @@ async def get_portfolio_value_history(
     data = []
     if transactions:
         types = {str(t.api_id): str(t.asset_type) for t in transactions}
+        coin_ids = {str(t.api_id): t.coin_id for t in transactions if t.coin_id}  # the newest one wins
         rates = await get_all_conversion_rates()
         conversion = get_conversion_factor(rates, currency)
         period, interval = lookup_spec(now - timestamps[0])  # one history per holding that reaches the first point
 
         async def load(api_id):
             try:
-                series, to_cad, _ = await _asset_series(api_id, types[api_id], period, interval)
+                series, to_cad, _ = await _asset_series(api_id, types[api_id], period, interval,
+                                                        coin_id=coin_ids.get(api_id))
             except Exception:  # price source down with nothing cached: chart it without this holding
                 series, to_cad = None, None
             return api_id, series, to_cad
