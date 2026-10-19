@@ -5,6 +5,7 @@ import "../css/User.css"
 import {putUserInfo, putUserEmail, changePassword, logoutAllDevices, deleteAccount, logout} from "../services/api.js"
 import {isNative} from "../native/platform.js";
 import {biometricInfo, isLockEnabled, setLockEnabled, verifyIdentity} from "../native/biometric.js";
+import {lockWording} from "../native/lockRules.js";
 import {useUser} from "../context/UserContext.jsx";
 import usePageTitle from "../utils/usePageTitle.js";
 import {showToast} from "../utils/toast.js";
@@ -122,8 +123,7 @@ function UserSettings({user, setUser}) {
         setDeleteError(null);
         try {
             await deleteAccount(deletePassword);
-            if (isNative) await setLockEnabled(false).catch(() => null); // app: no Face ID lock left behind
-            logout();
+            logout(); // also turns the app's Face ID lock off (resetLockOnSignOut)
             navigate("/", {replace: true});
             showToast("Your account and all of its data have been deleted.");
         } catch (err) {
@@ -441,6 +441,7 @@ function SecurityCard() {
     const [enabled, setEnabled] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState(null);
+    const words = lockWording(info.label);
 
     useEffect(() => {
         biometricInfo().then(setInfo);
@@ -452,12 +453,12 @@ function SecurityCard() {
         setError(null);
         try {
             // both ways: someone holding an unlocked phone shouldn't be able to switch the lock off
-            await verifyIdentity(enabled ? `Turn off the ${info.label} lock` : `Turn on ${info.label} for Zenith`);
+            await verifyIdentity(enabled ? words.turnOffReason : words.turnOnReason);
             await setLockEnabled(!enabled);
             setEnabled(!enabled);
-            showToast(enabled ? `${info.label} lock turned off` : `${info.label} lock turned on`);
+            showToast(enabled ? words.turnedOff : words.turnedOn);
         } catch {
-            setError(`${info.label} wasn't confirmed, so nothing changed.`);
+            setError(words.notConfirmed);
         } finally {
             setBusy(false);
         }
@@ -470,14 +471,14 @@ function SecurityCard() {
             </div>
             <div className="user-toggle-row">
                 <div>
-                    <span className="user-field-label">Require {info.label}</span>
+                    <span className="user-field-label">{words.title}</span>
                     <p className="user-field-hint">
                         {info.available
-                            ? `Lock Zenith whenever you leave the app. Open it again with ${info.label} or your passcode.`
+                            ? words.hint
                             : `Set up ${info.label} or a passcode in your iPhone's Settings to use this.`}
                     </p>
                 </div>
-                <button type="button" role="switch" aria-checked={enabled} aria-label={`Require ${info.label}`}
+                <button type="button" role="switch" aria-checked={enabled} aria-label={words.title}
                         className="user-toggle" onClick={toggle} disabled={busy || !info.available}/>
             </div>
             {error && <p className="alert-error" role="alert">{error}</p>}

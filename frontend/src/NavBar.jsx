@@ -3,6 +3,7 @@ import {NavLink, useNavigate} from "react-router-dom";
 import {logout} from "./services/api.js";
 import {showToast} from "./utils/toast.js";
 import ConfirmDialog from "./components/ConfirmDialog.jsx";
+import {tabOrder} from "./native/tabOrder.js";
 import {HoldingsIcon, HomeIcon, LogoutIcon, ProfileIcon, SearchIcon, TransactionsIcon} from "./components/NavIcons.jsx";
 
 import './css/Navbar.css'
@@ -14,6 +15,9 @@ const LINKS = [
     {to: "/holdings", label: "Holdings", Icon: HoldingsIcon},
     {to: "/user", label: "Account", Icon: ProfileIcon},
 ];
+
+// the app's tab bar starts with Dashboard, the screen it opens on; the website keeps this order
+const TABS = tabOrder(LINKS);
 
 // same breakpoint as the bottom tab bar in Navbar.css
 const PHONE_LAYOUT = "(max-width: 768px)";
@@ -39,7 +43,7 @@ function NavBar() {
     return (
         <nav className="navbar" aria-label="Main">
             <div className="navbar-links">
-                {LINKS.map(({to, label, Icon}) => (
+                {TABS.map(({to, label, Icon}) => (
                     <NavLink
                         key={to}
                         to={to}

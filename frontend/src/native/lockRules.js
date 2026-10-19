@@ -44,3 +44,28 @@ export function biometryLabel({isAvailable, strongBiometryIsAvailable, biometryT
     if (isAvailable && !strongBiometryIsAvailable) return "Passcode";
     return biometryType === TOUCH_ID ? "Touch ID" : "Face ID";
 }
+
+// The Account page's wording for the lock. "Passcode" can't simply be dropped into the Face ID sentences
+// ("Open it again with Passcode or your passcode", "Passcode lock turned on"), so it gets its own.
+export function lockWording(label = "Face ID") {
+    if (label === "Passcode") {
+        return {
+            title: "Require passcode",
+            hint: "Lock Zenith whenever you leave the app. Open it again with your iPhone passcode.",
+            turnOnReason: "Turn on the passcode lock for Zenith",
+            turnOffReason: "Turn off the passcode lock",
+            turnedOn: "Zenith will now ask for your passcode",
+            turnedOff: "Zenith will no longer ask for your passcode",
+            notConfirmed: "Your passcode wasn't confirmed, so nothing changed.",
+        };
+    }
+    return {
+        title: `Require ${label}`,
+        hint: `Lock Zenith whenever you leave the app. Open it again with ${label}, or with your iPhone passcode if ${label} doesn't recognize you.`,
+        turnOnReason: `Turn on ${label} for Zenith`,
+        turnOffReason: `Turn off the ${label} lock`,
+        turnedOn: `${label} lock turned on`,
+        turnedOff: `${label} lock turned off`,
+        notConfirmed: `${label} wasn't confirmed, so nothing changed.`,
+    };
+}
