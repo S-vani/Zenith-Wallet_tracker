@@ -127,6 +127,138 @@ describe("native helpers on the website", () => {
         expect(fetchMock.mock.calls[0][1].signal).toBeUndefined();
         expect(store.size).toBe(0); // nothing cached
     });
+
+    it("leaves text size and outside links to the browser", async () => {
+        const {applyPreferredTextSize} = await import("../src/native/textZoom.js");
+        const {openLinksInAppBrowser} = await import("../src/native/externalLinks.js");
+        await expect(applyPreferredTextSize()).resolves.toBeUndefined();
+        // the document stub has no addEventListener: a click listener would throw
+        expect(openLinksInAppBrowser()).toBeUndefined();
+        expect(events).toEqual([]);
+    });
+
+    it("never loads the text size or browser plugins", async () => {
+        const loaders = [];
+        vi.doMock("../src/native/platform.js", () => ({
+            isNative: false,
+            loadPlugin: (importer) => {
+                const load = vi.fn(importer);
+                loaders.push(load);
+                return load;
+            },
+        }));
+        const {applyPreferredTextSize} = await import("../src/native/textZoom.js");
+        const {openLinksInAppBrowser} = await import("../src/native/externalLinks.js");
+        await applyPreferredTextSize();
+        openLinksInAppBrowser();
+        expect(loaders).toHaveLength(2);
+        for (const load of loaders) expect(load).not.toHaveBeenCalled();
+    });
+
+    it("keeps the website's tab order (Search first)", async () => {
+        const {tabOrder} = await import("../src/native/tabOrder.js");
+        const links = [{to: "/search"}, {to: "/dashboard"}, {to: "/transactions"}];
+        expect(tabOrder(links)).toBe(links);
+        expect(tabOrder(links, false)).toBe(links);
+    });
+});
+
+describe("text size in the app", () => {
+    it("follows the iPhone's setting, capped so layouts still fit", async () => {
+        const {textZoomFor, MAX_TEXT_ZOOM, MIN_TEXT_ZOOM} = await import("../src/native/textZoom.js");
+        expect(textZoomFor(1)).toBe(1); // the iOS default
+        expect(textZoomFor(19 / 17)).toBeCloseTo(1.118); // one step larger
+        expect(textZoomFor(3.12)).toBe(MAX_TEXT_ZOOM); // the largest accessibility size
+        expect(MAX_TEXT_ZOOM).toBe(1.3);
+        expect(textZoomFor(14 / 17)).toBe(MIN_TEXT_ZOOM);
+        expect(textZoomFor(undefined)).toBe(1);
+        expect(textZoomFor(Number.NaN)).toBe(1);
+        expect(textZoomFor(0)).toBe(1);
+    });
+
+    it("applies the preferred size through the plugin", async () => {
+        const set = vi.fn(async () => undefined);
+        vi.doMock("../src/native/platform.js", () => ({
+            isNative: true,
+            loadPlugin: (importer) => () => (String(importer).includes("text-zoom")
+                ? Promise.resolve({TextZoom: {getPreferred: async () => ({value: 2.35}), set}})
+                : Promise.reject(new Error("no plugin"))),
+        }));
+        const {applyPreferredTextSize} = await import("../src/native/textZoom.js");
+        await applyPreferredTextSize();
+        expect(set).toHaveBeenCalledWith({value: 1.3});
+    });
+
+    it("keeps the current size if the plugin fails", async () => {
+        inApp();
+        const {applyPreferredTextSize} = await import("../src/native/textZoom.js");
+        await expect(applyPreferredTextSize()).resolves.toBeUndefined();
+    });
+});
+
+describe("outside links in the app", () => {
+    it("opens only other websites in the in-app browser", async () => {
+        const {externalUrl} = await import("../src/native/externalLinks.js");
+        const app = "capacitor://localhost";
+        expect(externalUrl("https://www.coingecko.com/", app)).toBe("https://www.coingecko.com/");
+        expect(externalUrl("http://example.com/a?b=1#c", app)).toBe("http://example.com/a?b=1#c");
+        expect(externalUrl("capacitor://localhost/privacy", app)).toBeNull(); // a page of the app
+        expect(externalUrl("http://192.168.1.5:5173/privacy", "http://192.168.1.5:5173")).toBeNull(); // live reload
+        expect(externalUrl("mailto:someone@example.com", app)).toBeNull(); // Mail, as before
+        expect(externalUrl("tel:+15555555555", app)).toBeNull();
+        expect(externalUrl("javascript:alert(1)", app)).toBeNull();
+        expect(externalUrl("", app)).toBeNull();
+        expect(externalUrl(undefined, app)).toBeNull();
+    });
+
+    function linkClick(href) {
+        const link = {href};
+        return {
+            target: {closest: (selector) => (selector === "a[href]" ? link : null)},
+            defaultPrevented: false,
+            preventDefault: vi.fn(),
+            stopPropagation: vi.fn(),
+        };
+    }
+
+    it("catches clicks on outside links before React, and leaves mailto: alone", async () => {
+        const open = vi.fn(async () => undefined);
+        const listeners = [];
+        vi.doMock("../src/native/platform.js", () => ({
+            isNative: true,
+            loadPlugin: (importer) => () => (String(importer).includes("browser")
+                ? Promise.resolve({Browser: {open}})
+                : Promise.reject(new Error("no plugin"))),
+        }));
+        vi.stubGlobal("document", {addEventListener: (type, fn, capture) => listeners.push({type, fn, capture})});
+        vi.stubGlobal("window", {location: {origin: "capacitor://localhost"}, open: vi.fn()});
+        const {openLinksInAppBrowser} = await import("../src/native/externalLinks.js");
+        openLinksInAppBrowser();
+        expect(listeners).toHaveLength(1);
+        expect(listeners[0]).toMatchObject({type: "click", capture: true});
+
+        const outside = linkClick("https://www.exchangerate-api.com/");
+        listeners[0].fn(outside);
+        expect(outside.preventDefault).toHaveBeenCalled();
+        await vi.waitFor(() => expect(open).toHaveBeenCalledWith(expect.objectContaining({url: "https://www.exchangerate-api.com/"})));
+
+        const mail = linkClick("mailto:someone@example.com");
+        listeners[0].fn(mail);
+        const inside = linkClick("capacitor://localhost/dashboard");
+        listeners[0].fn(inside);
+        expect(mail.preventDefault).not.toHaveBeenCalled();
+        expect(inside.preventDefault).not.toHaveBeenCalled();
+        expect(open).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe("tab bar in the app", () => {
+    it("starts with Dashboard, the screen the app opens on", async () => {
+        const {tabOrder} = await import("../src/native/tabOrder.js");
+        const links = ["/search", "/dashboard", "/transactions", "/holdings", "/user"].map((to) => ({to}));
+        expect(tabOrder(links, true).map((link) => link.to))
+            .toEqual(["/dashboard", "/search", "/transactions", "/holdings", "/user"]);
+    });
 });
 
 describe("loadPlugin", () => {
@@ -210,6 +342,22 @@ describe("Face ID lock rules", () => {
         expect(biometryLabel({isAvailable: true, strongBiometryIsAvailable: false, biometryType: 2})).toBe("Passcode");
         expect(biometryLabel({isAvailable: false, strongBiometryIsAvailable: false, biometryType: 0})).toBe("Face ID");
         expect(biometryLabel()).toBe("Face ID");
+    });
+
+    it("words the Account page naturally for Face ID, Touch ID and the passcode", async () => {
+        const {lockWording} = await import("../src/native/lockRules.js");
+        const face = lockWording("Face ID");
+        expect(face.title).toBe("Require Face ID");
+        expect(face.turnedOn).toBe("Face ID lock turned on");
+        expect(face.hint).toContain("Face ID");
+        expect(lockWording("Touch ID").turnedOff).toBe("Touch ID lock turned off");
+
+        const passcode = lockWording("Passcode");
+        const all = Object.values(passcode).join(" ");
+        expect(all).not.toMatch(/Passcode or your passcode|Passcode lock|with Passcode/);
+        expect(passcode.hint).toBe("Lock Zenith whenever you leave the app. Open it again with your iPhone passcode.");
+        expect(passcode.turnedOn).toBe("Zenith will now ask for your passcode");
+        expect(lockWording()).toEqual(face);
     });
 });
 

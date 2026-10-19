@@ -11,6 +11,7 @@ import NotFoundPage from "./pages/NotFoundPage.jsx";
 import OAuthCallbackPage from "./pages/OAuthCallbackPage.jsx";
 import Toaster from "./components/Toaster.jsx";
 import DataCredits from "./components/DataCredits.jsx";
+import SkipLink from "./components/SkipLink.jsx";
 import {UserProvider} from "./context/UserContext.jsx";
 import {getToken} from "./services/api.js";
 import {isNative} from "./native/platform.js";
@@ -46,7 +47,7 @@ function ProtectedLayout() {
         <UserProvider>
             {isNative && <PullToRefresh/>}
             <NavBar/>
-            <main className="main-content">
+            <main className="main-content" id="main-content" tabIndex={-1}>
                 <Suspense fallback={<div className="state-message"><div className="spinner"/></div>}>
                     <Outlet/>
                 </Suspense>
@@ -59,6 +60,7 @@ function ProtectedLayout() {
 function App({lockEnabled = false}) {
     return (
         <>
+        <SkipLink/>
         <Toaster/>
         {isNative && <OfflineBanner/>}
         {isNative && <AppLock initiallyEnabled={lockEnabled}/>}

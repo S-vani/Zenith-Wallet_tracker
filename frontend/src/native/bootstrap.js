@@ -4,6 +4,8 @@ import {isLockEnabled} from "./biometric.js";
 import {haptic} from "./haptics.js";
 import {setOnline} from "./connectivity.js";
 import {watchNumbers} from "./fitNumbers.js";
+import {applyPreferredTextSize} from "./textZoom.js";
+import {openLinksInAppBrowser} from "./externalLinks.js";
 
 const appPlugin = loadPlugin(() => import("@capacitor/app"));
 const networkPlugin = loadPlugin(() => import("@capacitor/network"));
@@ -33,6 +35,8 @@ export async function initNative() {
     addHaptics();
     watchNumbers();
     privacyBackGoesBack();
+    openLinksInAppBrowser();
+    applyPreferredTextSize(); // the iPhone's Text Size setting, capped so layouts still fit
 
     await restoreToken(); // must finish before the first render, which checks for a token
     const lockEnabled = await isLockEnabled();
@@ -65,6 +69,8 @@ function watchAppState() {
         // "pause" only comes when the app has really left the screen (home swipe, another app), never for the
         // Face ID sheet, so the lock can tell the two apart
         App.addListener("pause", () => window.dispatchEvent(new Event("app:pause")));
+        // Text Size may have been changed in Settings while the app was away
+        App.addListener("resume", () => applyPreferredTextSize());
     }).catch(() => null);
 }
 

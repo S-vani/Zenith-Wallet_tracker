@@ -43,10 +43,10 @@ function OAuthCallbackPage() {
     }, [navigate]);
 
     return (
-        <div className="not-found-page">
+        <main className="not-found-page" id="main-content" tabIndex={-1}>
             <div className="spinner"/>
             <p>Signing you in…</p>
-        </div>
+        </main>
     );
 }
 

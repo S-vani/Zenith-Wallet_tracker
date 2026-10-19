@@ -73,7 +73,7 @@ function LoginForm({onSubmit}) {
     };
 
     return (
-        <div className="login-form-side">
+        <main className="login-form-side" id="main-content" tabIndex={-1}>
             <div className="login-form-card">
                 <div className="login-form-header">
                     <span className="preview-label">Welcome back</span>
@@ -112,10 +112,7 @@ function LoginForm({onSubmit}) {
                     </div>
 
                     <div className="login-field">
-                        <div className="login-label-row">
-                            <label htmlFor="password">Password</label>
-                            <Link to="/forgot-password" className="forgot-link">Forgot password?</Link>
-                        </div>
+                        <label htmlFor="password">Password</label>
                         <PasswordInput
                             id="password"
                             name="password"
@@ -125,6 +122,8 @@ function LoginForm({onSubmit}) {
                             autoComplete="current-password"
                             required
                         />
+                        {/* below the field, so Tab goes from email straight to the password */}
+                        <Link to="/forgot-password" className="forgot-link">Forgot password?</Link>
                     </div>
 
                     <button type="submit" className="auth-btn signup-btn large login-submit-btn" disabled={submitting}>
@@ -138,7 +137,7 @@ function LoginForm({onSubmit}) {
                 </div>
                 <Link to="/privacy" className="auth-legal-link">Privacy policy &amp; disclaimer</Link>
             </div>
-        </div>
+        </main>
     )
 
 }

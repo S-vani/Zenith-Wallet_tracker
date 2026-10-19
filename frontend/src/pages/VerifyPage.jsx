@@ -34,7 +34,7 @@ function VerifyPage() {
     };
 
     return (
-        <div className="verify-page">
+        <main className="verify-page" id="main-content" tabIndex={-1}>
             <div className="login-form-card verify-card">
                 {status === "ready" && (
                     <>
@@ -74,7 +74,7 @@ function VerifyPage() {
                     </>
                 )}
             </div>
-        </div>
+        </main>
     )
 }
 

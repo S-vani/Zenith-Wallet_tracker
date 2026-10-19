@@ -1,7 +1,8 @@
-import {useState} from "react";
+import {useEffect, useState} from "react";
 import {Link, useSearchParams} from "react-router-dom";
 import {resetPassword} from "../services/api.js";
 import usePageTitle from "../utils/usePageTitle.js";
+import {readSavedToken, removeTokenFromAddressBar, saveToken} from "../Authentication/resetToken.js";
 import PasswordInput from "../Authentication/PasswordInput.jsx";
 
 import "../css/Home.css"
@@ -14,7 +15,8 @@ function ResetPasswordPage() {
     usePageTitle("Choose a new password");
 
     const [params] = useSearchParams();
-    const token = params.get("token");
+    // read once, then taken out of the address bar (see resetToken.js)
+    const [token] = useState(() => params.get("token") || readSavedToken());
     const [password, setPassword] = useState("");
     const [confirm, setConfirm] = useState("");
     const [done, setDone] = useState(false);
@@ -22,6 +24,12 @@ function ResetPasswordPage() {
     const [error, setError] = useState(
         token ? null : "This reset link is missing its token. Use the link from your email again."
     );
+
+    useEffect(() => {
+        if (!token) return;
+        saveToken(token);
+        removeTokenFromAddressBar();
+    }, [token]);
 
     const mismatch = confirm !== "" && confirm !== password;
 
@@ -32,6 +40,8 @@ function ResetPasswordPage() {
         setError(null);
         try {
             await resetPassword(token, password);
+            saveToken(null); // used up
+            removeTokenFromAddressBar();
             setDone(true);
         } catch (err) {
             setError(err.message);
@@ -41,7 +51,7 @@ function ResetPasswordPage() {
     };
 
     return (
-        <div className="verify-page">
+        <main className="verify-page" id="main-content" tabIndex={-1}>
             <div className="login-form-card verify-card">
                 {done ? (
                     <>
@@ -83,7 +93,7 @@ function ResetPasswordPage() {
                     </>
                 )}
             </div>
-        </div>
+        </main>
     );
 }
 

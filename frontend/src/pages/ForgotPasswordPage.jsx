@@ -32,7 +32,7 @@ function ForgotPasswordPage() {
     };
 
     return (
-        <div className="verify-page">
+        <main className="verify-page" id="main-content" tabIndex={-1}>
             <div className="login-form-card verify-card">
                 {sent ? (
                     <>
@@ -64,7 +64,7 @@ function ForgotPasswordPage() {
                     </>
                 )}
             </div>
-        </div>
+        </main>
     );
 }
 

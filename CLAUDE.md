@@ -29,7 +29,8 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
     report), `gemini.py` (optional rewording), `service.py` (DB cache, rate limits), `schema.py` (response model).
   - `db_models/assets.py` — `User`, `Transaction`, `OAuthAccount`, `UserManager` (password rules) and
     `send_link_email` (verification + password-reset emails; logs the link when GMAIL_* is empty). Reset flow:
-    `/auth/forgot-password` (always 202) → email → `/reset-password?token=` page → `/auth/reset-password`.
+    `/auth/forgot-password` (always 202) → email → `/reset-password?token=` page (moves the token out of the address
+    bar into sessionStorage, `Authentication/resetToken.js`) → `/auth/reset-password`.
 - `frontend/` — React 19 + Vite + recharts. `src/services/api.js` is the only place that calls the backend
   (`request()` adds the token, maps errors to readable messages, logs out on 401/403).
   - `pages/` (one per route), `Dashboard/`, `Holdings/`, `Transactions/`, `Search/`, `Analyst/`, `Authentication/`.
@@ -38,6 +39,9 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
   - `context/UserContext.jsx` (current user + currency), `utils/format.js` (money/price/percent formatting — use
     `formatPrice` for asset prices so tiny coins never show $0.00), `utils/chart.js`, `utils/toast.js` (`showToast`).
   - CSS in `src/css/` with design tokens in `Global.css` (navy theme). Phones get a bottom tab bar (≤768px).
+  - Accessibility: `components/SkipLink.jsx` ("Skip to main content") is the first Tab stop on every page; each page
+    renders one `<main id="main-content" tabIndex={-1}>` as its target. On login, "Forgot password?" sits after the
+    password field so Tab goes email → password.
 - iOS app — Capacitor 8 wraps the same frontend (`frontend/capacitor.config.json`, Xcode project in `frontend/ios/`,
   Swift Package Manager, app id `ca.zenithwalletracker.app`). App-only code lives in `src/native/` and every part of
   it checks `isNative` first, so the website is unaffected (`test/native.test.js` guards this): Keychain copy of the
@@ -45,13 +49,17 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
   was *unlocked* skips Face ID), haptics, share sheet, pull to refresh (`useRefreshKey`), offline cache of the
   portfolio screens (`offlineCache.js`, used by `api.js`; keyed by user + currency, LRU 40), 12 s request timeout
   falling back to saved data (`connectivity.js`), native app-switcher cover in `SceneDelegate.swift` (when the lock
-  is on), `@capacitor/keyboard`, offline banner, labelled tab bar without log out
-  (`html.native` CSS in `Native.css`), splash/status bar, no pinch zoom. In the app `/` skips the marketing page and
+  is on), `@capacitor/keyboard`, offline banner, labelled tab bar without log out and with Dashboard first
+  (`tabOrder.js`; the website keeps Search first) (`html.native` CSS in `Native.css`), splash/status bar, no pinch
+  zoom, iOS Text Size via `@capacitor/text-zoom` (`textZoom.js`, capped at 130%, re-read on resume; tab labels stay
+  fixed like a native tab bar), outside `http(s)` links opened in an in-app Safari sheet via `@capacitor/browser`
+  (`externalLinks.js`, one capture-phase click listener; `mailto:` untouched). In the app `/` skips the marketing page and
   Google sign-in is hidden (web views can't use it; would also need Sign in with Apple). Backend CORS always allows
   `capacitor://localhost`.
   - Build the app with `npm run build:ios` (Vite into `dist-ios/`, drops website-only files like the demo video,
     then `cap sync ios`); the website's `dist/` is separate. Cloud builds: `codemagic.yaml` (no Mac needed).
-  - `ios/App/App/PrivacyInfo.xcprivacy` is Apple's privacy manifest (UserDefaults reason CA92.1, collected data);
+  - `ios/App/App/PrivacyInfo.xcprivacy` is Apple's privacy manifest (UserDefaults reason CA92.1, collected data
+    incl. search history: not linked, 14-day server logs; check new plugins for required-reason APIs);
     keep it, the App Privacy answers and `/privacy` in step. Icons/splash come from `frontend/assets/`
     (`npx @capacitor/assets@3.0.5 generate --ios ...`, not installed: it pulls vulnerable deps).
 - Fonts: Lato is bundled (`@fontsource/lato`, imported in `main.jsx`); no Google Fonts requests.
