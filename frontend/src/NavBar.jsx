@@ -1,5 +1,8 @@
+import {useState} from "react";
 import {NavLink, useNavigate} from "react-router-dom";
 import {logout} from "./services/api.js";
+import {showToast} from "./utils/toast.js";
+import ConfirmDialog from "./components/ConfirmDialog.jsx";
 import {HoldingsIcon, HomeIcon, LogoutIcon, ProfileIcon, SearchIcon, TransactionsIcon} from "./components/NavIcons.jsx";
 
 import './css/Navbar.css'
@@ -12,12 +15,25 @@ const LINKS = [
     {to: "/user", label: "Account", Icon: ProfileIcon},
 ];
 
+// same breakpoint as the bottom tab bar in Navbar.css
+const PHONE_LAYOUT = "(max-width: 768px)";
+
 function NavBar() {
     const navigate = useNavigate();
+    const [confirming, setConfirming] = useState(false);
 
     const handleLogout = () => {
+        setConfirming(false);
         logout();
+        window.dispatchEvent(new Event("app:toast-clear")); // e.g. a "Logged in" toast from a moment ago
+        showToast("Logged out");
         navigate("/login", {replace: true});
+    };
+
+    // on the phone tab bar Log out sits right next to Account, so one stray tap shouldn't sign you out
+    const onLogoutClick = () => {
+        if (window.matchMedia?.(PHONE_LAYOUT).matches) setConfirming(true);
+        else handleLogout();
     };
 
     return (
@@ -37,11 +53,20 @@ function NavBar() {
 
                 <div className="nav-divider" aria-hidden="true"/>
 
-                <button className="nav-link nav-logout" onClick={handleLogout} aria-label="Log out">
+                <button className="nav-link nav-logout" onClick={onLogoutClick} aria-label="Log out">
                     <LogoutIcon/>
                     <span className="nav-tooltip">Log out</span>
                 </button>
             </div>
+
+            <ConfirmDialog
+                open={confirming}
+                title="Log out?"
+                message="You'll need to sign in again to see your portfolio."
+                confirmLabel="Log out"
+                onConfirm={handleLogout}
+                onCancel={() => setConfirming(false)}
+            />
         </nav>
     )
 }
