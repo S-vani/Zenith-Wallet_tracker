@@ -55,7 +55,8 @@ function SearchResults({ results }) {
                         {isExpanded && (
                             <div className="search-result-chart-box">
                                 {/* same chart as holdings: axes, range buttons and tooltips */}
-                                <HoldingsChart symbol={result.api_id} type={result.type} initialRange="1D" compact/>
+                                <HoldingsChart symbol={result.api_id} type={result.type} coinId={result.coin_id}
+                                               initialRange="1D" compact/>
                                 {/* research report for this asset; loads on its own so the chart isn't held up */}
                                 <AnalystPanel key={`${result.type}-${result.api_id}`} symbol={result.api_id}
                                               type={result.type} coinId={result.coin_id} label={result.symbol}/>

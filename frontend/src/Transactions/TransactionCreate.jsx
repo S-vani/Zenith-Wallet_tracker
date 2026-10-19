@@ -16,6 +16,7 @@ function TransactionCreate({onClose, onCreated, data}) {
     const [form, setForm] = useState({
         symbol: data.symbol,
         api_id: data.api_id,
+        coin_id: data.coin_id ?? null, // crypto search results carry the exact CoinGecko coin
         asset_type: data.type,
         quantity: "",
         // start from the current market price, the user can change it to what they actually paid
@@ -69,7 +70,8 @@ function TransactionCreate({onClose, onCreated, data}) {
             {form.action === "BUY" && (
                 <div className="create-chart">
                     <span className="create-chart-label">{data.symbol.toUpperCase()} price</span>
-                    <HoldingsChart symbol={data.api_id} type={data.type} initialRange="1D" compact/>
+                    <HoldingsChart symbol={data.api_id} type={data.type} coinId={data.coin_id} initialRange="1D"
+                                   compact/>
                 </div>
             )}
 

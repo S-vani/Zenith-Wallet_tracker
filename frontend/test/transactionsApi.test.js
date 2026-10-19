@@ -70,3 +70,31 @@ describe("deleteTransaction", () => {
         await expect(api.deleteTransaction("t1")).rejects.toThrow("Couldn't delete this trade. Please try again.");
     });
 });
+
+describe("getPriceHistory", () => {
+    it("asks for the exact coin when its CoinGecko id is known", async () => {
+        fetchMock.mockResolvedValue(respond(200, {data: []}));
+        await api.getPriceHistory("pepe", "crypto", "5Y", "pepe-impostor");
+        expect(fetchMock.mock.calls[0][0])
+            .toBe(`${BASE}/prices/history?symbol=pepe&type=crypto&range=5Y&coin_id=pepe-impostor`);
+    });
+
+    it("leaves coin_id out for stocks and for coins without one", async () => {
+        fetchMock.mockResolvedValue(respond(200, {data: []}));
+        await api.getPriceHistory("AAPL", "stock", "1M", "apple");
+        await api.getPriceHistory("btc", "crypto", "1M", null);
+        expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+            `${BASE}/prices/history?symbol=AAPL&type=stock&range=1M`,
+            `${BASE}/prices/history?symbol=btc&type=crypto&range=1M`,
+        ]);
+    });
+});
+
+describe("createTransaction", () => {
+    it("shows the symbol limit's message as is (it's not a ledger conflict)", async () => {
+        fetchMock.mockResolvedValue(respond(422, {detail: "You can track up to 200 different assets."}));
+        await expect(api.createTransaction({symbol: "X"})).rejects.toMatchObject({
+            status: 422, message: "You can track up to 200 different assets.",
+        });
+    });
+});

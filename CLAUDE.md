@@ -27,7 +27,8 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
     `rebuild_symbol_ledger` (replays a symbol's buys/sells; used by PUT/DELETE to keep history valid).
   - `analyst/` — market analyst: `data.py` (collects data), `indicators.py` (pure maths), `engine.py` (rules →
     report), `gemini.py` (optional rewording), `service.py` (DB cache, rate limits), `schema.py` (response model).
-  - `db_models/assets.py` — `User`, `Transaction`, `OAuthAccount`, `UserManager` (password rules) and
+  - `db_models/assets.py` — `User`, `Transaction`, `OAuthAccount`, `UserManager` (password rules: 8–128 chars, not
+    the email, not one repeated character, not in `common_passwords.py`) and
     `send_link_email` (verification + password-reset emails; logs the link when GMAIL_* is empty). Reset flow:
     `/auth/forgot-password` (always 202) → email → `/reset-password?token=` page (moves the token out of the address
     bar into sessionStorage, `Authentication/resetToken.js`) → `/auth/reset-password`.
@@ -86,6 +87,11 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
   them when the user's currency matches, so amounts never drift with FX; use these helpers for any new money sum.
 - Timestamps are stored as naive UTC; filters convert offset-aware input to UTC first.
 - Crypto `api_id` is the lowercase CoinGecko symbol (e.g. `btc`); search results also carry `coin_id` (`bitcoin`).
+  Trades keep it too (nullable `coin_id`, sent by the add-trade form; several coins share tickers): every CoinGecko
+  lookup for that holding (price fallback, portfolio chart, `/prices/history?coin_id=`) uses that exact coin, and
+  holdings return it for their chart. Trades without one keep the ticker lookup (most popular coin).
+- At most 200 different `api_id`s per user (`MAX_SYMBOLS_PER_USER`, 422 on create / editing onto a new asset):
+  every holdings/dashboard/chart request prices each one, so this caps the Yahoo calls per request.
 - Stock prices come in the listing currency (Yahoo `info.currency`, e.g. USD, CAD, EUR, `GBp` = pence) and are
   converted to CAD with `get_native_to_cad_factor` (USD cross rates, cached 1 h), then to the user's currency.
   Rows with a missing (NaN) close are skipped. An unknown listing currency is logged and the price is unavailable
@@ -95,12 +101,16 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
   never the nearest label, which could be a future close. Crypto: Yahoo `SYMBOL-CAD`, then `SYMBOL-USD`, then
   CoinGecko, everywhere. No price at all → `null` ("—" in the UI), left out of value and returns, never 0.
 - `/dashboard` returns `value`, `curr_timeperiod`, `basis` (start value + buys in the period; all time = cost of
-  every buy; the UI's return % = curr_timeperiod / basis) and `unpriced`.
+  every buy; the UI's return % = curr_timeperiod / basis) and `unpriced` (named in a note under the cards).
+- `/portfolio/history` points are `{time, value, invested}`: `invested` = cost basis of what was held then (average
+  cost via `apply_trade`, the same replay as the holdings, prices via `price_in_currency`), over the same priced
+  holdings as `value`; the dashboard draws it as the dashed "Invested" line. Charts get a visually hidden text
+  summary (`chartSummary` in `utils/chart.js`).
 - Stock search uses TwelveData only for `symbol_search` (1 credit; free plan = 8 credits/min) with matches cached
   10 min per query; prices come from Yahoo (`get_latest_stock_quotes`). Don't reintroduce TwelveData `/quote`
   (1 credit per symbol): it used up the limit and errors showed as "no results". Provider errors → 503 with a message.
 - `/prices/history` falls back to CoinGecko for coins Yahoo doesn't list (e.g. PEPE), cached; it returns `source`,
-  and `covered_range: "1Y"` + `note` for a CoinGecko "5Y" (its free plan stops at 365 days).
+  and `covered_range: "1Y"` + `note` for a CoinGecko "5Y" (its free plan stops at 365 days), shown under the chart.
 
 ## Market analyst (`GET /analyst?symbol=&type=stock|crypto[&coin_id=][&refresh=true]`)
 - Free: no paid AI. A rules engine scores trend (50/200-day averages), momentum (30/90-day returns), RSI, volume
@@ -116,7 +126,9 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
 - Wording rules: no buy/sell advice (analyst consensus is shown as words + 1–5 score), conditions and price-level
   advice are written from where the price actually is, numbers use a real minus sign.
 - Cached in table `analyst_reports` (1 h stocks / 30 min crypto, per asset + currency). Manual refresh after 5 min;
-  30 fresh reports per user per hour. No news feed is connected (stated in `limitations`).
+  30 fresh reports per user per hour and 120 across all users (`GLOBAL_GENERATIONS_PER_HOUR`, in memory; 429 with
+  Retry-After, or the older cached report). Per-asset locks are dropped once unused. No news feed is connected
+  (stated in `limitations`).
 
 ## Environment (`.env` in project root; never commit it)
 `SECRET`, `DATABASE_URL` (default `sqlite+aiosqlite:///./walletdatabase.db`, anchored to project root),

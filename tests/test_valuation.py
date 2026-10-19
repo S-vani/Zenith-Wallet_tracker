@@ -30,14 +30,20 @@ def naive(value):
 
 @pytest.fixture
 def coingecko(monkeypatch):
-    """Stub CoinGecko's chart: `prices[symbol]` is a CAD price (or a list of points), calls are recorded."""
+    """
+    Stub CoinGecko's chart: `prices[symbol]` is a CAD price (or a list of points), calls are recorded. A request
+    with a coin id is answered from `prices_by_id[coin_id]` instead, and the ids asked for go to `coin_ids`.
+    """
     state = type("CoinGecko", (), {})()
     state.prices = {}
+    state.prices_by_id = {}
     state.calls = []
+    state.coin_ids = []
 
-    async def fake_chart(symbol, range_code, currency):
+    async def fake_chart(symbol, range_code, currency, coin_id=None):
         state.calls.append((symbol.lower(), range_code, currency))
-        price = state.prices.get(symbol.lower())
+        state.coin_ids.append(coin_id)
+        price = state.prices_by_id.get(coin_id) if coin_id else state.prices.get(symbol.lower())
         if price is None:
             return []
         if isinstance(price, list):

@@ -14,6 +14,8 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, relationship
 from starlette.requests import Request
 
+from backend.db_models.common_passwords import COMMON_PASSWORDS
+
 load_dotenv()
 
 
@@ -64,6 +66,11 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
             raise exceptions.InvalidPasswordException(reason="Password must be 128 characters or fewer.")
         if not password.strip():
             raise exceptions.InvalidPasswordException(reason="Password can't be only spaces.")
+        if len(set(password)) == 1:
+            raise exceptions.InvalidPasswordException(reason="Password can't be one character repeated.")
+        if password.lower() in COMMON_PASSWORDS:  # the first ones anyone would guess
+            raise exceptions.InvalidPasswordException(
+                reason="That password is too common and easy to guess. Please choose another.")
         if user is not None and getattr(user, "email", None) and password.lower() == str(user.email).lower():
             raise exceptions.InvalidPasswordException(reason="Password can't be your email address.")
 
@@ -186,6 +193,9 @@ class Transaction(Base):
     # USD/CAD moves (converting the CAD price back would drift). Empty on trades logged before these existed.
     price_entered = Column(Numeric(20, 10), nullable=True)
     currency_entered = Column(String, nullable=True)
+    # Crypto only: the CoinGecko id picked in search (e.g. "bitcoin"). Different coins can share a ticker, so this
+    # asks CoinGecko for exactly that coin instead of the most popular one with the symbol. Empty on older trades.
+    coin_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="transactions")

@@ -50,6 +50,8 @@ ADDED_COLUMNS = {
     "transactions": [
         ("price_entered", "NUMERIC(20, 10)", None),
         ("currency_entered", "VARCHAR", None),
+        # the CoinGecko id of a crypto trade (nullable: older trades only have the ticker)
+        ("coin_id", "VARCHAR", None),
     ],
     "user": [
         # bumped to sign out every device (password reset/change, email change, "log out of all devices")

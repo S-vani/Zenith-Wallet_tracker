@@ -66,6 +66,28 @@ async def return_transaction_with_id(
 OVERSOLD = "Insufficient holdings"
 OVERSOLD_AFTER_DELETE = "Deleting this would leave you selling more than you owned"
 
+# Every holdings / dashboard / chart request prices each distinct asset (up to 2 Yahoo calls each for a coin), so
+# one account with hundreds of symbols could make a single request fan out to hundreds of Yahoo calls.
+MAX_SYMBOLS_PER_USER = 200
+TOO_MANY_SYMBOLS = (f"You can track up to {MAX_SYMBOLS_PER_USER} different assets. "
+                    "Delete the trades of one you no longer follow to add a new one.")
+
+
+async def check_symbol_limit(session: AsyncSession, user_id, api_id: str, ignore_trade: str | None = None) -> None:
+    """
+    422 when `api_id` would be one asset too many for the user. Assets they already trade are always fine.
+    `ignore_trade` leaves out the trade being edited, so moving a trade to a new asset frees its old one.
+    """
+    trades = select(Transaction.api_id).where(Transaction.user_id == user_id)
+    if ignore_trade is not None:
+        trades = trades.where(Transaction.id != ignore_trade)
+    known = await session.execute(trades.where(Transaction.api_id == api_id).limit(1))
+    if known.first() is not None:
+        return
+    count = await session.execute(select(func.count()).select_from(trades.distinct().subquery()))
+    if count.scalar_one() >= MAX_SYMBOLS_PER_USER:
+        raise HTTPException(status_code=422, detail=TOO_MANY_SYMBOLS)
+
 
 @router.delete("/transactions/{trans_id}")
 async def delete_transaction_with_id(
@@ -120,6 +142,9 @@ async def update_transaction_with_id(
     """
     transaction = await return_transaction_with_id(trans_id, session, current_user)
     old_symbol = transaction.symbol
+    old_api_id = transaction.api_id
+    if updates.api_id and updates.api_id != old_api_id:
+        await check_symbol_limit(session, current_user.id, updates.api_id, ignore_trade=transaction.id)
 
     # Check exactly what was sent in
     if updates.symbol:
@@ -138,6 +163,12 @@ async def update_transaction_with_id(
         transaction.quantity = updates.quantity
     if updates.api_id:
         transaction.api_id = updates.api_id
+    if "coin_id" in updates.model_fields_set:
+        transaction.coin_id = updates.coin_id
+    elif transaction.api_id != old_api_id:
+        transaction.coin_id = None  # now a different asset, so the old coin no longer applies
+    if transaction.asset_type != "crypto":
+        transaction.coin_id = None  # only coins have a CoinGecko id
     if updates.created_at:
         transaction.created_at = updates.created_at  # already naive UTC and not in the future (schema)
 
@@ -200,10 +231,13 @@ async def make_transaction(
     The route used to make a transaction where the user enters the data manually. The trade is dated now unless
     `created_at` says otherwise (backdated trades). The symbol's history is then replayed in date order: that sets
     the profit of every sell (used later to add up realized profit) and rejects the trade with a 409 if any point
-    of the history would sell more than was owned, e.g. a backdated sell before the buy it needs.
+    of the history would sell more than was owned, e.g. a backdated sell before the buy it needs. A new asset past
+    MAX_SYMBOLS_PER_USER different ones is a 422.
     """
     # Prices are stored in CAD and converted on the way out, so convert what the user typed (in their currency) to CAD.
     # The typed price and currency are kept too, so the trade keeps showing exactly what was typed.
+    await check_symbol_limit(session, current_user.id, data.api_id)
+
     rates = await get_all_conversion_rates()
     conversion = get_conversion_factor(rates, current_user.currency)
 
@@ -213,6 +247,7 @@ async def make_transaction(
         asset_type=data.asset_type,
         symbol=data.symbol,
         api_id=data.api_id,
+        coin_id=data.coin_id if data.asset_type == "crypto" else None,
         price_of_one=data.price_of_one / conversion,
         price_entered=data.price_of_one,
         currency_entered=current_user.currency.upper(),
@@ -341,6 +376,8 @@ async def get_price_history(
         symbol: Annotated[str, Query(min_length=1, max_length=64)],
         type: Annotated[Literal["stock", "crypto"], Query()],
         range: Literal["1D", "1W", "1M", "1Y", "5Y"],
+        # crypto: the CoinGecko id (from search or the trades), so CoinGecko charts that exact coin
+        coin_id: Annotated[Optional[str], Query(max_length=80, pattern=r"^[a-z0-9-]+$")] = None,
 
         current_user: User = Depends(current_active_user)
 ):
@@ -361,7 +398,7 @@ async def get_price_history(
     if not data and type == "crypto":
         # Yahoo doesn't list every coin (e.g. PEPE), so fall back to CoinGecko (cached: its demo key is rate limited)
         try:
-            data, covered = await get_coingecko_history(symbol, range, current_user.currency)
+            data, covered = await get_coingecko_history(symbol, range, current_user.currency, coin_id)
         except Exception:
             data, covered = [], range
         source = "CoinGecko" if data else None

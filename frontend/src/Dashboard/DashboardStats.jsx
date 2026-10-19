@@ -1,4 +1,5 @@
 import {changeClass, formatMoney, formatPercent, formatSignedMoney} from "../utils/format.js";
+import {unpricedNote} from "./dashboardText.js";
 
 const RANGE_LABELS = {
     day: "Today's return",
@@ -16,32 +17,39 @@ function DashboardStats({stats, loading, valueLoading = loading, currency, range
     // value − change was wrong once anything had been sold (e.g. +1300% for a +13% gain)
     const basis = Number(stats.basis);
     const changePct = basis > 0 ? (change / basis) * 100 : null;
+    // holdings with no price anywhere are left out of both numbers; the list is about now, so it's the same for
+    // every range and can stay while another range loads
+    const missing = valueLoading ? null : unpricedNote(stats.unpriced);
 
     return (
-        <div className="dashboard-stats">
-            <div className="stat-card">
-                <div className="stat-label">Portfolio value</div>
-                {valueLoading ? (
-                    <span className="skeleton stat-skeleton"/>
-                ) : (
-                    <div className="stat-value">{formatMoney(stats.value, currency)}</div>
-                )}
+        <>
+            <div className="dashboard-stats">
+                <div className="stat-card">
+                    <div className="stat-label">Portfolio value</div>
+                    {valueLoading ? (
+                        <span className="skeleton stat-skeleton"/>
+                    ) : (
+                        <div className="stat-value">{formatMoney(stats.value, currency)}</div>
+                    )}
+                </div>
+
+                <div className="stat-card">
+                    <div className="stat-label">{RANGE_LABELS[range] ?? "Period return"}</div>
+                    {loading ? (
+                        <span className="skeleton stat-skeleton"/>
+                    ) : (
+                        <div className={`stat-value ${changeClass(change)}`}>
+                            {formatSignedMoney(change, currency)}
+                            {changePct !== null && (
+                                <span className="stat-pct">{formatPercent(changePct)}</span>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
 
-            <div className="stat-card">
-                <div className="stat-label">{RANGE_LABELS[range] ?? "Period return"}</div>
-                {loading ? (
-                    <span className="skeleton stat-skeleton"/>
-                ) : (
-                    <div className={`stat-value ${changeClass(change)}`}>
-                        {formatSignedMoney(change, currency)}
-                        {changePct !== null && (
-                            <span className="stat-pct">{formatPercent(changePct)}</span>
-                        )}
-                    </div>
-                )}
-            </div>
-        </div>
+            {missing && <p className="unpriced-note">{missing}</p>}
+        </>
     );
 }
 

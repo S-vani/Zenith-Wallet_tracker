@@ -32,7 +32,7 @@ function HoldingsItem({holding, index}) {
 
             {isOpen && (
                 <div className="holding-chart-panel">
-                    <HoldingsChart symbol={holding.symbol} type={holding.type}/>
+                    <HoldingsChart symbol={holding.symbol} type={holding.type} coinId={holding.coin_id}/>
                 </div>
             )}
         </div>

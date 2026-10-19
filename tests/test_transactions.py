@@ -155,8 +155,8 @@ def test_list_only_returns_your_own_transactions(client, make_user, buy):
 def test_list_shape(client, user, buy):
     buy(user, "btc", 0.5, 40000, asset_type="crypto")
     [row] = client.get("/transactions", headers=user.headers).json()
-    assert set(row) == {"id", "user_id", "action", "profit", "asset_type", "symbol", "api_ids", "price_of_one",
-                        "quantity", "created_at"}
+    assert set(row) == {"id", "user_id", "action", "profit", "asset_type", "symbol", "api_ids", "coin_id",
+                        "price_of_one", "quantity", "created_at"}
     assert datetime.fromisoformat(row["created_at"]).tzinfo is not None
 
 
