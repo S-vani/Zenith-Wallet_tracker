@@ -8,4 +8,8 @@ const out = join(dirname(fileURLToPath(import.meta.url)), "..", "dist-ios");
 
 // the landing page's demo video (8.8 MB): the app skips the landing page
 rmSync(join(out, "demo"), {recursive: true, force: true});
+// search-engine and link-preview files only matter on the website
+for (const file of ["robots.txt", "sitemap.xml", "og-image.png"]) {
+    rmSync(join(out, file), {force: true});
+}
 console.log("Removed website-only files from dist-ios");

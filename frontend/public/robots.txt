@@ -1,0 +1,14 @@
+# Public pages can be indexed; the signed-in app and one-time links can't (they only show a login page to crawlers)
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /holdings
+Disallow: /transactions
+Disallow: /search
+Disallow: /user
+Disallow: /verify
+Disallow: /reset-password
+Disallow: /forgot-password
+Disallow: /auth/
+
+Sitemap: https://zenithwalletracker.ca/sitemap.xml

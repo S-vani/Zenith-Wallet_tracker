@@ -8,13 +8,60 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="description" content="Zenith Wallet Tracker: track your stocks and crypto, log transactions, and watch your portfolio's performance in one dashboard." />
     <meta name="theme-color" content="#060a12" />
     <meta name="color-scheme" content="dark" />
-    <title>Zenith Wallet Tracker</title>
+
+    <!-- Search engines and link previews. These are what Google, iMessage, Slack, etc. read before any JavaScript
+         runs; usePageTitle() updates the title/description/canonical per page once the app has loaded. -->
+    <title>Zenith Wallet Tracker – Free Stock &amp; Crypto Portfolio Tracker</title>
+    <meta name="description" content="Zenith Wallet Tracker is a free stock and crypto portfolio tracker. Log your trades, follow your holdings and returns in CAD, USD or EUR, and get a rules-based market outlook." />
+    <link rel="canonical" href="https://zenithwalletracker.ca/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Zenith Wallet Tracker" />
+    <meta property="og:title" content="Zenith Wallet Tracker – Free Stock & Crypto Portfolio Tracker" />
+    <meta property="og:description" content="Log your stock and crypto trades and see your holdings, returns and portfolio value over time in one clean dashboard. Free." />
+    <meta property="og:url" content="https://zenithwalletracker.ca/" />
+    <meta property="og:image" content="https://zenithwalletracker.ca/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Zenith Wallet Tracker dashboard showing a portfolio value chart" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Zenith Wallet Tracker – Free Stock & Crypto Portfolio Tracker" />
+    <meta name="twitter:description" content="Log your stock and crypto trades and see your holdings, returns and portfolio value over time. Free." />
+    <meta name="twitter:image" content="https://zenithwalletracker.ca/og-image.png" />
+    <!-- Structured data: tells Google the site's name (for searches like "zenith wallet tracker") and what it is -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "name": "Zenith Wallet Tracker",
+            "alternateName": ["Zenith", "Zenith Wallet", "ZenithWalletTracker"],
+            "url": "https://zenithwalletracker.ca/"
+          },
+          {
+            "@type": "WebApplication",
+            "name": "Zenith Wallet Tracker",
+            "url": "https://zenithwalletracker.ca/",
+            "applicationCategory": "FinanceApplication",
+            "operatingSystem": "Web",
+            "description": "A free stock and crypto portfolio tracker: log buys and sells, follow holdings and returns in CAD, USD or EUR, and read a rules-based market outlook for any stock or coin.",
+            "offers": {"@type": "Offer", "price": "0", "priceCurrency": "CAD"},
+            "image": "https://zenithwalletracker.ca/og-image.png"
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <h1>Zenith Wallet Tracker</h1>
+      <p>A free stock and crypto portfolio tracker. Log your trades and see your holdings, returns and portfolio value
+        over time in CAD, USD or EUR. Zenith needs JavaScript to run.</p>
+      <p><a href="/signup">Create a free account</a> · <a href="/login">Log in</a> · <a href="/privacy">Privacy policy</a></p>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
