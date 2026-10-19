@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 import httpx
 import yfinance as yf
 from fastapi import HTTPException
-from sqlalchemy import select, func, case
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -197,23 +197,31 @@ def _naive_utc(value: datetime) -> datetime:
     return value.astimezone(timezone.utc).replace(tzinfo=None) if value.tzinfo else value
 
 
-async def get_total_realized_profit(db: AsyncSession, user_id: UUID, currency: str, exclude=()):
-    """
-    Query the database with all the sell transactions and add up all the profit parameters in those sell transactions.
-    `exclude` lists api_ids to leave out (holdings without a price are left out of the return maths entirely).
-    """
-    rates = await get_all_conversion_rates()
-    conversion = get_conversion_factor(rates, currency)
-
-    query = select(func.coalesce(func.sum(Transaction.profit), 0.0)).where(
-        Transaction.user_id == user_id,
-        Transaction.action == "SELL"
-    )
+async def _trades(db: AsyncSession, user_id: UUID, exclude=(), action: str | None = None,
+                  start: datetime | None = None, end: datetime | None = None):
+    query = select(Transaction).where(Transaction.user_id == user_id)
+    if action:
+        query = query.where(Transaction.action == action)
+    if start is not None:
+        query = query.where(Transaction.created_at > _naive_utc(start))
+    if end is not None:
+        query = query.where(Transaction.created_at <= _naive_utc(end))
     if exclude:
         query = query.where(Transaction.api_id.notin_(list(exclude)))
+    return (await db.execute(query)).scalars().all()
 
-    result = await db.execute(query)
-    return float(result.scalar_one()) * conversion
+
+# The three sums below add trade by trade (not one SQL SUM of CAD amounts) so trades typed in the user's currency
+# use the amount as typed and never drift with today's exchange rate; older CAD-only trades convert as before.
+
+async def get_total_realized_profit(db: AsyncSession, user_id: UUID, currency: str, exclude=()):
+    """
+    Add up the profit of every sell. `exclude` lists api_ids to leave out (holdings without a price are left out
+    of the return maths entirely).
+    """
+    conversion = get_conversion_factor(await get_all_conversion_rates(), currency)
+    sells = await _trades(db, user_id, exclude, action="SELL")
+    return sum(profit_in_currency(t, currency, conversion) for t in sells)
 
 
 async def get_cash_flow_between(
@@ -225,35 +233,14 @@ async def get_cash_flow_between(
         exclude=()
 ):
     """
-    Meant to calculate cash flow into the account, to be more specific imagine with 1 week ago someone portfolio value is 1000$,
-    and now its 2000$, but they did not actually profit 1000$ but rather profited 100$ and then deposited another 900$, this function is
-    meant to calculate that 900$ cash flow into the account so it's not accounted for in the profit
+    Money moved into the account between start and end: buys count positive, sells negative. Imagine someone's
+    portfolio was $1000 a week ago and is $2000 now, but they profited $100 and bought another $900: this returns
+    the $900 so it isn't counted as profit.
     """
-    rates = await get_all_conversion_rates()
-    conversion = get_conversion_factor(rates, currency)
-
-    query = select(
-        func.coalesce(  # if there's no rows with these props return 0.0 instead of null
-            func.sum(
-                (Transaction.price_of_one * Transaction.quantity) *
-                case(
-                    # if the transaction is buy then we multiply the transactions value by 1, if its sell multiply by -1 then sum it together
-                    (Transaction.action == "BUY", 1),
-                    else_=-1
-                )
-            ),
-            0.0
-        )
-    ).where(
-        Transaction.user_id == user_id,
-        Transaction.created_at > _naive_utc(start),
-        Transaction.created_at <= _naive_utc(end)
-    )
-    if exclude:
-        query = query.where(Transaction.api_id.notin_(list(exclude)))
-
-    result = await db.execute(query)
-    return float(result.scalar_one()) * conversion  # return 1 scalar float value
+    conversion = get_conversion_factor(await get_all_conversion_rates(), currency)
+    trades = await _trades(db, user_id, exclude, start=start, end=end)
+    return sum(price_in_currency(t, currency, conversion) * float(t.quantity) * (1 if t.action == "BUY" else -1)
+               for t in trades)
 
 
 async def get_buys_between(
@@ -268,21 +255,9 @@ async def get_buys_between(
     Money put in by buying between start (exclusive, None = since the first trade) and end: the cost of every buy.
     Used as the base of the return % together with the value at the start of the period.
     """
-    rates = await get_all_conversion_rates()
-    conversion = get_conversion_factor(rates, currency)
-
-    query = select(func.coalesce(func.sum(Transaction.price_of_one * Transaction.quantity), 0.0)).where(
-        Transaction.user_id == user_id,
-        Transaction.action == "BUY",
-        Transaction.created_at <= _naive_utc(end)
-    )
-    if start is not None:
-        query = query.where(Transaction.created_at > _naive_utc(start))
-    if exclude:
-        query = query.where(Transaction.api_id.notin_(list(exclude)))
-
-    result = await db.execute(query)
-    return float(result.scalar_one()) * conversion
+    conversion = get_conversion_factor(await get_all_conversion_rates(), currency)
+    buys = await _trades(db, user_id, exclude, action="BUY", start=start, end=end)
+    return sum(price_in_currency(t, currency, conversion) * float(t.quantity) for t in buys)
 
 
 async def get_holdings_at_time(

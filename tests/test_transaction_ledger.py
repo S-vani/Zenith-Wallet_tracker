@@ -291,3 +291,19 @@ def test_new_columns_are_added_to_an_existing_table(tmp_path):
         row = conn.execute(text("SELECT price_entered, currency_entered FROM transactions")).one()
         assert tuple(row) == (None, None)  # old rows keep the CAD-only behaviour
     engine.dispose()
+
+
+def test_usd_dashboard_realized_profit_does_not_drift_with_fx(client, make_user, monkeypatch, market):
+    # the dashboard's realized total (and cash flow) add up trade by trade, so typed USD amounts stay put
+    usd_user = make_user(currency="USD")
+    post(client, usd_user, quantity=2, price_of_one=100)
+    post(client, usd_user, action="SELL", quantity=2, price_of_one=110)  # +$20 realized, all sold
+
+    def all_time_return():
+        return client.get("/dashboard", params={"current_timeperiod": "all"}, headers=usd_user.headers).json()
+
+    before = all_time_return()
+    set_rates(monkeypatch, usd_to_cad=1.6, usd=0.625, eur=0.5)  # CAD weakens a lot
+    after = all_time_return()
+    assert before["curr_timeperiod"] == pytest.approx(20)
+    assert after["curr_timeperiod"] == pytest.approx(20)
