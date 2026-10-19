@@ -66,8 +66,13 @@ function SignupForm({onSubmit}) {
                             className="hero-link-btn"
                             disabled={resent}
                             onClick={async () => {
-                                await requestVerification(registeredEmail).catch(() => null);
-                                setResent(true);
+                                try {
+                                    await requestVerification(registeredEmail);
+                                    setResent(true);
+                                } catch (err) {
+                                    // e.g. the one-email-a-minute limit: say so instead of claiming it was sent
+                                    showToast(err.message, {type: "error"});
+                                }
                             }}
                         >
                             {resent ? "Sent again" : "Resend email"}

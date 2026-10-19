@@ -203,15 +203,23 @@ describe("getAnalystReport", () => {
 });
 
 describe("deleteAccount", () => {
-    it("sends an authenticated DELETE to /user", async () => {
+    it("sends an authenticated DELETE to /user with the current password", async () => {
         store.set("token", "abc");
         fetchMock.mockResolvedValue(respond(200, {message: "Account deleted"}));
 
-        await expect(api.deleteAccount()).resolves.toEqual({message: "Account deleted"});
+        await expect(api.deleteAccount("my-password")).resolves.toEqual({message: "Account deleted"});
         const [url, options] = fetchMock.mock.calls[0];
         expect(url).toBe(`${BASE}/user`);
         expect(options.method).toBe("DELETE");
         expect(options.headers.Authorization).toBe("Bearer abc");
+        expect(JSON.parse(options.body)).toEqual({current_password: "my-password"});
+    });
+
+    it("shows a wrong password without signing the user out", async () => {
+        store.set("token", "abc");
+        fetchMock.mockResolvedValue(respond(400, {detail: "Your current password is incorrect."}));
+        await expect(api.deleteAccount("nope")).rejects.toThrow("Your current password is incorrect.");
+        expect(store.get("token")).toBe("abc");
     });
 
     it("shows a readable error when the server fails", async () => {
@@ -241,5 +249,94 @@ describe("password reset", () => {
             detail: {code: "RESET_PASSWORD_INVALID_PASSWORD", reason: "Password must be at least 8 characters."},
         }));
         await expect(api.resetPassword("tok", "short")).rejects.toThrow("Password must be at least 8 characters.");
+    });
+});
+
+describe("account security", () => {
+    it("sends the current password with an email change", async () => {
+        store.set("token", "abc");
+        fetchMock.mockResolvedValue(respond(200, {message: "Verification email sent"}));
+        await api.putUserEmail("  new@b.co ", "pw");
+        const [url, options] = fetchMock.mock.calls[0];
+        expect(url).toBe(`${BASE}/user/email`);
+        expect(options.method).toBe("PUT");
+        expect(JSON.parse(options.body)).toEqual({email: "new@b.co", current_password: "pw"});
+    });
+
+    it("changes the password and keeps this device signed in with the new token", async () => {
+        store.set("token", "old");
+        fetchMock.mockResolvedValue(respond(200, {message: "Password changed", access_token: "fresh"}));
+        await api.changePassword("current-pw", "new-password-1");
+        const [url, options] = fetchMock.mock.calls[0];
+        expect(url).toBe(`${BASE}/user/password`);
+        expect(options.method).toBe("POST");
+        expect(options.headers.Authorization).toBe("Bearer old");
+        expect(options.headers["X-Zenith-Client"]).toBeUndefined(); // website: normal one-hour token
+        expect(JSON.parse(options.body)).toEqual({current_password: "current-pw", new_password: "new-password-1"});
+        expect(store.get("token")).toBe("fresh");
+    });
+
+    it("logs out of all devices", async () => {
+        store.set("token", "abc");
+        fetchMock.mockResolvedValue(respond(200, {message: "Signed out of all devices"}));
+        await api.logoutAllDevices();
+        const [url, options] = fetchMock.mock.calls[0];
+        expect(url).toBe(`${BASE}/user/logout-all`);
+        expect(options.method).toBe("POST");
+        expect(options.headers.Authorization).toBe("Bearer abc");
+    });
+
+    it.each([
+        ["login", () => api.loginAuthentication({email: "a@b.co", password: "x"})],
+        ["forgot password", () => api.forgotPassword("a@b.co")],
+        ["resend verification", () => api.requestVerification("a@b.co")],
+    ])("shows the rate limit message on %s", async (_, call) => {
+        const detail = "Too many failed sign-in attempts for this account. Please wait 15 minutes or use Forgot password.";
+        fetchMock.mockResolvedValue(respond(429, {detail}));
+        await expect(call()).rejects.toThrow(detail);
+    });
+
+    it("has a readable 429 message even without a body (e.g. nginx's own limit)", async () => {
+        fetchMock.mockResolvedValue(respond(429, new SyntaxError("not json")));
+        await expect(api.forgotPassword("a@b.co")).rejects.toThrow("Too many attempts. Please wait a few minutes");
+    });
+
+    it("doesn't ask for a long-lived token on the website", async () => {
+        fetchMock.mockResolvedValue(respond(200, {access_token: "abc"}));
+        await api.loginAuthentication({email: "a@b.co", password: "x"});
+        expect(fetchMock.mock.calls[0][1].headers["X-Zenith-Client"]).toBeUndefined();
+    });
+});
+
+describe("in the iPhone app", () => {
+    beforeEach(async () => {
+        vi.resetModules();
+        vi.doMock("../src/native/platform.js", () => ({isNative: true, loadPlugin: () => async () => ({})}));
+        vi.doMock("../src/native/secureToken.js", () => ({saveToken: () => {}}));
+        vi.doMock("../src/native/offlineCache.js", () => ({
+            forgetAll: () => {}, recall: () => undefined, remember: () => {},
+        }));
+        api = await import("../src/services/api.js");
+    });
+
+    afterEach(() => {
+        vi.doUnmock("../src/native/platform.js");
+        vi.doUnmock("../src/native/secureToken.js");
+        vi.doUnmock("../src/native/offlineCache.js");
+    });
+
+    it("asks for the app's long-lived token when logging in", async () => {
+        fetchMock.mockResolvedValue(respond(200, {access_token: "abc"}));
+        await api.loginAuthentication({email: "a@b.co", password: "x"});
+        expect(fetchMock.mock.calls[0][1].headers["X-Zenith-Client"]).toBe("ios-app");
+    });
+
+    it("keeps the long-lived token after changing the password", async () => {
+        store.set("token", "old");
+        fetchMock.mockResolvedValue(respond(200, {access_token: "fresh"}));
+        await api.changePassword("a", "b");
+        const {headers} = fetchMock.mock.calls[0][1];
+        expect(headers["X-Zenith-Client"]).toBe("ios-app");
+        expect(headers.Authorization).toBe("Bearer old");
     });
 });

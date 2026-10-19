@@ -30,7 +30,13 @@ function OAuthCallbackPage() {
         }
 
         saveToken(token);
-        showToast(params.get("new") === "1" ? "Account created with Google. Welcome!" : "Signed in with Google");
+        if (params.get("notice") === "password_replaced") {
+            // the first Google link replaces the account's old password (it may not have been the owner's)
+            showToast("For your security, sign in with Google or use Forgot password to set a new password.",
+                {duration: 10000});
+        } else {
+            showToast(params.get("new") === "1" ? "Account created with Google. Welcome!" : "Signed in with Google");
+        }
 
         const next = params.get("next");
         navigate(next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard", {replace: true});
