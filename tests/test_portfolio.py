@@ -59,10 +59,10 @@ def test_holdings_in_usd(client, make_user, buy):
     assert h["current_price"] == pytest.approx(AAPL_CAD * RATES["usd"])
 
 
-def test_holdings_with_unknown_price_are_worth_zero(client, user, buy):
+def test_holdings_with_unknown_price_are_unavailable(client, user, buy):
     buy(user, "DELISTED", 1, 100)
     [h] = client.get("/holdings", headers=user.headers).json()
-    assert h["current_price"] == 0
+    assert h["current_price"] is None  # "price unavailable", not worth $0
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -71,7 +71,7 @@ def test_holdings_with_unknown_price_are_worth_zero(client, user, buy):
 @pytest.mark.parametrize("period", ["day", "week", "month", "year", "all"])
 def test_dashboard_empty(client, user, period):
     res = client.get(f"/dashboard?current_timeperiod={period}", headers=user.headers)
-    assert res.json() == {"value": 0.0, "curr_timeperiod": 0.0}
+    assert res.json() == {"value": 0.0, "curr_timeperiod": 0.0, "basis": 0.0, "unpriced": []}
 
 
 def test_dashboard_all_time_includes_realized_and_unrealized_profit(client, user, buy, sell):
@@ -206,8 +206,8 @@ def test_price_history_rejects_unknown_range(client, user):
 def test_price_history_end_to_end_with_fake_market(client, make_user):
     usd_user = make_user(currency="USD")
     body = client.get("/prices/history?symbol=BTC&type=crypto&range=1W", headers=usd_user.headers).json()
-    assert body["symbol"] == "BTC-USD"
-    assert body["data"][0]["price"] == pytest.approx(40000 * RATES["usd_to_cad"] * RATES["usd"])
+    assert body["symbol"] == "BTC-CAD"  # the same pair as the holdings value
+    assert body["data"][0]["price"] == pytest.approx(BTC_CAD * RATES["usd"])
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -231,8 +231,8 @@ def test_portfolio_history_values(client, user, buy, db):
     assert len(data) == 169
 
     assert data[0]["value"] == 0  # before anything was bought
-    # history uses the BTC-USD pair (40000 USD) converted to CAD
-    assert data[-1]["value"] == pytest.approx(2 * AAPL_CAD + 0.1 * 40000 * RATES["usd_to_cad"])
+    # history uses the same BTC-CAD pair as the value card
+    assert data[-1]["value"] == pytest.approx(2 * AAPL_CAD + 0.1 * BTC_CAD)
     assert data[-2]["value"] == pytest.approx(2 * AAPL_CAD)
 
 

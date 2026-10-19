@@ -10,8 +10,10 @@ const RANGE_LABELS = {
 
 function DashboardStats({stats, loading, currency, range}) {
     const change = stats.curr_timeperiod;
-    const startValue = stats.value - change;
-    const changePct = startValue > 0 ? (change / startValue) * 100 : null;
+    // the backend's base: value at the start of the period + money put in (all time: cost of every buy).
+    // value − change was wrong once anything had been sold (e.g. +1300% for a +13% gain)
+    const basis = Number(stats.basis);
+    const changePct = basis > 0 ? (change / basis) * 100 : null;
 
     return (
         <div className="dashboard-stats">

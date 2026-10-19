@@ -1,4 +1,3 @@
-import asyncio
 import os
 import time
 from datetime import datetime, timedelta, timezone
@@ -12,7 +11,6 @@ from fastapi_users import exceptions
 from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.analyst.data import coingecko_chart
 from backend.analyst.service import forget_user
 from backend.authentication.authentication import current_active_user, get_user_manager
 from backend.db.database import get_async_session
@@ -21,12 +19,13 @@ from backend.schemas.assets import CreateTransaction, UpdateTransaction, UpdateU
 from backend.services.asset_services import (current_quantity, create_holding_filter, \
                                              turn_list_to_dict, calculate_profit_for_one_transaction,
                                              get_curr_holdings_prices, \
-                                             get_holdings_at_time, get_portfolio_value_at, get_cash_flow_between,
+                                             get_holdings_at_time, get_cash_flow_between,
                                              get_total_realized_profit, \
                                              get_holdings_at_time_list, get_history_of_prices,
                                              get_portfolio_value_history, \
                                              get_all_conversion_rates, get_conversion_factor,
-                                             rebuild_symbol_ledger, get_latest_stock_quotes)
+                                             rebuild_symbol_ledger, get_latest_stock_quotes,
+                                             get_position_values_at, get_buys_between, get_coingecko_history)
 
 load_dotenv()
 router = APIRouter()
@@ -235,7 +234,7 @@ async def get_current_holdings(
     "price_paid": float(avg_price * quantity),
     "quantity": float(quantity),
     "type": str,
-    "current_price": float(current_price_of_holding * quantity)
+    "current_price": float(current_price_of_holding * quantity), or None when no source has a price for it
     }
 
     this is a dictionary with all the current holdings that the user has
@@ -251,44 +250,46 @@ async def portfolio_stats(
         current_user: User = Depends(current_active_user)
 ):
     """
-    Return a simple dictionary with 2 key value pairs, total portfolio value and the profit in the time period sent in,
-    either daily, weekly, monthly, yearly or all time profit.
+    Return the total portfolio value, the profit in the time period sent in (daily, weekly, monthly, yearly or all
+    time) and `basis`, what that profit is measured against for the return %: the value at the start of the period
+    plus the money put in (buys) during it, which for all time is the cost of every buy.
+    Holdings that no source has a price for are left out of all three and listed in `unpriced`.
     """
     now = datetime.now(timezone.utc)
+    currency = current_user.currency
 
     holdings = await get_holdings_at_time(session,
                                           current_user.id,
                                           now,
-                                          current_user.currency)  # returns dict which maps api_id to avg_price, quantity and type
-
-    if holdings == {}:  # If we have no holdings
-        return {"value": 0.0, "curr_timeperiod": 0.0}
+                                          currency)  # returns dict which maps api_id to avg_price, quantity and type
 
     curr_prices = await get_curr_holdings_prices(
         holdings,
-        current_user.currency
-    )  # return dictionary mapping api_id to the current price of that holding
+        currency
+    ) if holdings else {}  # return dictionary mapping api_id to the current price of that holding (None = no price)
 
-    total_value = 0.0
-    unrealized_profit = 0.0
+    unpriced = {api_id for api_id in holdings if curr_prices.get(api_id) is None}
+    values_now = {  # Basically how much value of each holding the user owns
+        api_id: float(curr_prices[api_id]) * float(data["quantity"])
+        for api_id, data in holdings.items() if api_id not in unpriced
+    }
+    total_value = sum(values_now.values())
 
-    for api_id, data in holdings.items():
-        price = float(curr_prices.get(api_id) or 0.0)
-        qty = float(data["quantity"])
-        avg = float(data["avg_price"])
-
-        position_value = price * qty  # Basically how much value of that holding the user owns
-        total_value += position_value
-        unrealized_profit += (position_value - (avg * qty))  # Price right now minus the price paid
-
+    # no early return when nothing is held: a sold-out portfolio still has realized profit and a period cash flow
     if current_timeperiod == "all":  # If the timeperiod is all time profit
-        realized_profit = await get_total_realized_profit(session,
-                                                          current_user.id,
-                                                          current_user.currency)  # This function goes through all the users sell transactions and adds up the profit variable
+        unrealized_profit = sum(  # Price right now minus the price paid
+            value - float(holdings[api_id]["avg_price"]) * float(holdings[api_id]["quantity"])
+            for api_id, value in values_now.items()
+        )
+        # This function goes through all the users sell transactions and adds up the profit variable
+        realized_profit = await get_total_realized_profit(session, current_user.id, currency, exclude=unpriced)
+        invested = await get_buys_between(session, current_user.id, None, now, currency, exclude=unpriced)
 
         return {
             "value": total_value,
-            "curr_timeperiod": unrealized_profit + realized_profit
+            "curr_timeperiod": unrealized_profit + realized_profit,
+            "basis": invested,
+            "unpriced": sorted(unpriced),
         }
 
     time_map = {
@@ -301,22 +302,25 @@ async def portfolio_stats(
     past_time = now - timedelta(
         days=time_map[current_timeperiod])  # start date that where calculating profit from up to now
 
-    value_task = get_portfolio_value_at(session, current_user.id, past_time,
-                                        current_user.currency)  # portfolio value at that pastime
-    cash_task = get_cash_flow_between(session, current_user.id, past_time,
-                                      now,
-                                      current_user.currency)  # how much cash has flowed in from then to now (user buys new holdings)
+    # one after the other: an AsyncSession can't run two queries at once
+    past_values = await get_position_values_at(session, current_user.id, past_time, currency)
 
-    past_value, cash_flow = await asyncio.gather(
-        value_task,
-        cash_task
-    )  # asynchronously run both tasks together for efficiency and unpack the result
+    # a holding needs a price at both ends of the period to have a return for it
+    excluded = unpriced | {api_id for api_id, value in past_values.items() if value is None}
+    past_value = sum(value for api_id, value in past_values.items() if api_id not in excluded)
+    value_now = sum(value for api_id, value in values_now.items() if api_id not in excluded)
 
-    profit = (total_value - past_value) - cash_flow
+    # how much cash has flowed in from then to now (buys minus sells), and the money put in by buying
+    cash_flow = await get_cash_flow_between(session, current_user.id, past_time, now, currency, exclude=excluded)
+    inflows = await get_buys_between(session, current_user.id, past_time, now, currency, exclude=excluded)
+
+    profit = (value_now - past_value) - cash_flow
 
     return {
         "value": total_value,
-        "curr_timeperiod": profit
+        "curr_timeperiod": profit,
+        "basis": past_value + inflows,
+        "unpriced": sorted(unpriced),
     }
 
 
@@ -331,19 +335,26 @@ async def get_price_history(
     """
     Get historical prices of that specific symbol/holding on specific ranges, to make a graph. For example lets say
     I want to see how much BTC has changed in price over the past day, I call get_price_history("BTC", "1D") and it
-    returns all the data needed to generate a graph of its price
+    returns all the data needed to generate a graph of its price.
+    `source` says where the prices came from; when the data covers less than was asked for (CoinGecko's free plan
+    stops at one year, so "5Y" is really "1Y") `covered_range` and `note` say so.
     """
     try:
         data, s = await get_history_of_prices(symbol, type, range, current_user.currency)
     except Exception:  # unknown ticker or the price source is down
         data, s = [], symbol
 
+    source = "Yahoo Finance" if data else None
+    covered = range
     if not data and type == "crypto":
-        # Yahoo doesn't list every coin under "SYMBOL-USD" (e.g. PEPE), so fall back to CoinGecko
+        # Yahoo doesn't list every coin (e.g. PEPE), so fall back to CoinGecko (cached: its demo key is rate limited)
         try:
-            data = await coingecko_chart(symbol, range, current_user.currency)
+            data, covered = await get_coingecko_history(symbol, range, current_user.currency)
         except Exception:
-            data = []
+            data, covered = [], range
+        source = "CoinGecko" if data else None
+        if not data:
+            covered = range
 
     if range == "1D" and data:
         if type == "crypto":
@@ -355,11 +366,16 @@ async def get_price_history(
             last_day = datetime.fromisoformat(data[-1]["time"]).date()
             data = [p for p in data if datetime.fromisoformat(p["time"]).date() == last_day]
 
-    return {
+    body = {
         "symbol": s,
         "range": range,
-        "data": data
+        "data": data,
+        "source": source,
     }
+    if covered != range:
+        body["covered_range"] = covered
+        body["note"] = "Only the last year of prices is available for this coin."
+    return body
 
 
 @router.get("/portfolio/history")

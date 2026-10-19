@@ -3,8 +3,9 @@ import HoldingsItem from "./HoldingsItem.jsx";
 
 function HoldingsList({holdings}) {
 
-    // biggest positions first
-    const sorted = [...holdings].sort((a, b) => b.current_price - a.current_price);
+    // biggest positions first, ones with no price (null) last
+    const value = (h) => h.current_price ?? -Infinity;
+    const sorted = [...holdings].sort((a, b) => value(b) - value(a) || 0);
 
     return (
         <div className="holdings-list-items">
