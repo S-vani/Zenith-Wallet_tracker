@@ -8,7 +8,15 @@ const preferences = loadPlugin(() => import("@capacitor/preferences"));
 const SERVER = "ca.zenithwalletracker.app.token";
 const INSTALLED_KEY = "installed";
 
-export async function restoreToken() {
+// Started once by initNative(); later callers (the Face ID lock after a slow start) wait for the same restore
+let restoring = null;
+
+export function restoreToken() {
+    restoring ??= restore();
+    return restoring;
+}
+
+async function restore() {
     if (!isNative) return;
     try {
         const {NativeBiometric} = await biometric();

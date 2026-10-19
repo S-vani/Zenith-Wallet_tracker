@@ -1,17 +1,18 @@
 import {isNative, loadPlugin} from "./platform.js";
+import {biometryLabel} from "./lockRules.js";
 
 const biometricPlugin = loadPlugin(() => import("@capgo/capacitor-native-biometric"));
 const preferences = loadPlugin(() => import("@capacitor/preferences"));
 const LOCK_KEY = "biometricLock";
 
-// {available, label} where label is what the phone calls it ("Face ID", "Touch ID")
+// {available, label} where label is what the phone will actually ask for ("Face ID", "Touch ID", or "Passcode"
+// when no face / finger is enrolled)
 export async function biometricInfo() {
     if (!isNative) return {available: false, label: "Face ID"};
     try {
-        const {NativeBiometric, BiometryType} = await biometricPlugin();
+        const {NativeBiometric} = await biometricPlugin();
         const result = await NativeBiometric.isAvailable({useFallback: true});
-        const label = result.biometryType === BiometryType.TOUCH_ID ? "Touch ID" : "Face ID";
-        return {available: result.isAvailable, label};
+        return {available: result.isAvailable, label: biometryLabel(result)};
     } catch {
         return {available: false, label: "Face ID"};
     }
@@ -65,4 +66,12 @@ export async function setLockEnabled(enabled) {
     if (enabled) await Preferences.set({key: LOCK_KEY, value: "on"});
     else await Preferences.remove({key: LOCK_KEY});
     window.dispatchEvent(new CustomEvent("app:lock-setting", {detail: enabled}));
+}
+
+// Every sign out (Log out, "Sign out instead", an expired session, account deletion) turns the lock off: it belongs
+// to that session, and a fresh sign in starts without it (and without the native app switcher cover). No-op on the
+// website.
+export function resetLockOnSignOut() {
+    if (!isNative) return;
+    setLockEnabled(false).catch(() => null);
 }

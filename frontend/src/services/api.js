@@ -1,5 +1,7 @@
 import {saveToken as keepInKeychain} from "../native/secureToken.js";
-import {forgetAll, recall, remember} from "../native/offlineCache.js";
+import {cacheTicket, forgetAll, recall, remember} from "../native/offlineCache.js";
+import {markFresh, markStale, requestStarted, requestTimeout} from "../native/connectivity.js";
+import {resetLockOnSignOut} from "../native/biometric.js";
 
 const BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -22,6 +24,7 @@ export function logout() {
     localStorage.removeItem("token");
     keepInKeychain(null); // the iOS app also keeps the token in the Keychain; no-op on the website
     forgetAll(); // and the app's offline copy of the portfolio screens
+    resetLockOnSignOut(); // and the app's Face ID lock, which belongs to this sign in; no-op on the website
 }
 
 function getAuthHeaders() {
@@ -75,38 +78,79 @@ async function errorMessage(res, fallback) {
 }
 
 // Shared fetch wrapper: attaches the token, turns error responses into readable messages,
-// and signs the user out when their session is no longer valid
-async function request(path, {auth = true, fallbackError = "Something went wrong. Please try again.", ...options} = {}) {
-    let res;
-    try {
-        res = await fetch(`${BASE_URL}${path}`, {
-            ...options,
-            headers: auth ? getAuthHeaders() : {"Content-Type": "application/json", ...options.headers},
-        });
-    } catch (err) {
-        // a cancelled request (AbortController) isn't a connection problem, let the caller ignore it
-        if (err?.name === "AbortError") throw err;
-        // the iOS app shows what it last loaded when offline (always undefined on the website)
+// and signs the user out when their session is no longer valid.
+// In the iOS app a request also gives up after a while (requestTimeout; never on the website), and a portfolio
+// screen that can't be loaded (offline, timeout, server unreachable) shows its saved copy under the banner instead.
+async function request(path, {auth = true, fallbackError = "Something went wrong. Please try again.", signal, ...options} = {}) {
+    // On the website (no time limit) the caller's own signal goes to fetch untouched. In the app a second controller
+    // aborts on the time limit *or* when the caller's AbortController (e.g. switching analyst symbols) fires.
+    const timeoutMs = requestTimeout(path); // 0 on the website
+    const controller = timeoutMs ? new AbortController() : null;
+    let timedOut = false;
+    const timer = controller ? setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+    }, timeoutMs) : null;
+    const cancel = () => controller.abort();
+    if (controller && signal?.aborted) controller.abort();
+    else if (controller) signal?.addEventListener("abort", cancel, {once: true});
+    const ticket = cacheTicket(); // app only: a reply that lands after a sign out or currency change isn't saved
+    const finished = requestStarted(); // app only: pull to refresh spins until the reload is done
+
+    // no reply: a cancelled request (AbortController) isn't a connection problem, let the caller ignore it;
+    // otherwise the iOS app shows what it last loaded (recall is always undefined on the website)
+    const unreachable = (err) => {
+        if (err?.name === "AbortError" && !timedOut) throw err;
         const saved = isGet(options) ? recall(path) : undefined;
-        if (saved !== undefined) return saved;
-        throw new Error("Can't reach the server. Check your connection and try again.", {cause: err});
-    }
+        if (saved !== undefined) {
+            markStale(); // the banner says this is saved data
+            return saved;
+        }
+        throw new Error(timedOut
+            ? "The server is taking too long to answer. Please try again."
+            : "Can't reach the server. Check your connection and try again.", {cause: err});
+    };
 
-    if (auth && (res.status === 401 || res.status === 403)) {
-        logout();
-        window.dispatchEvent(new Event("auth:expired"));
-        throw new Error("Your session has expired. Please log in again.");
-    }
+    try {
+        let res;
+        try {
+            res = await fetch(`${BASE_URL}${path}`, {
+                ...options,
+                signal: controller ? controller.signal : signal,
+                headers: auth ? getAuthHeaders() : {"Content-Type": "application/json", ...options.headers},
+            });
+        } catch (err) {
+            return unreachable(err);
+        }
 
-    if (!res.ok) {
-        const error = new Error(await errorMessage(res, fallbackError));
-        error.status = res.status; // lets callers treat e.g. 429 differently
-        throw error;
-    }
+        if (auth && (res.status === 401 || res.status === 403)) {
+            logout();
+            window.dispatchEvent(new Event("auth:expired"));
+            throw new Error("Your session has expired. Please log in again.");
+        }
 
-    const data = await res.json();
-    if (isGet(options)) remember(path, data); // app only: keep a copy for offline use
-    return data;
+        if (!res.ok) {
+            const error = new Error(await errorMessage(res, fallbackError));
+            error.status = res.status; // lets callers treat e.g. 429 differently
+            throw error;
+        }
+
+        let data;
+        try {
+            data = await res.json();
+        } catch (err) {
+            // the timeout (or a cancel) can also land while the body is still arriving
+            if (err?.name === "AbortError") return unreachable(err);
+            throw err;
+        }
+        markFresh(); // app only: the server answered, so a "showing saved data" banner can go
+        remember(path, data, {get: isGet(options), ticket}); // app only: keep a copy for offline use
+        return data;
+    } finally {
+        if (timer) clearTimeout(timer);
+        if (controller) signal?.removeEventListener("abort", cancel);
+        finished();
+    }
 }
 
 function isGet(options) {

@@ -1,12 +1,73 @@
 /* Only used by the iOS app: <html> gets the "native" class at startup, so none of this applies to the website. */
 
+html.native {
+    --offline-banner-height: 2rem; /* the "You're offline" strip, one line (see .offline-banner) */
+    --top-inset: env(safe-area-inset-top);
+}
+
+/* while the offline strip shows, everything that sits at the top moves below it instead of under it */
+html.native.offline {
+    --top-inset: calc(env(safe-area-inset-top) + var(--offline-banner-height));
+}
+
 /* the status bar overlays the web view, keep content clear of the notch / Dynamic Island */
 html.native #root {
-    padding-top: env(safe-area-inset-top);
+    padding-top: var(--top-inset);
 }
 
 html.native .toaster {
-    top: calc(0.75rem + env(safe-area-inset-top));
+    top: calc(0.75rem + var(--top-inset));
+}
+
+/* a navy strip behind the clock and battery, so the page scrolling up never runs under them */
+html.native body::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1500; /* over pages and their pop-ups, under the offline strip and the lock screen */
+    height: env(safe-area-inset-top);
+    background: #060a12;
+    pointer-events: none;
+}
+
+/* sign in / sign up fit the screen below the status bar instead of scrolling by its height */
+html.native .login-page-wrapper,
+html.native .signup-page-wrapper,
+html.native .verify-page {
+    min-height: calc(100dvh - env(safe-area-inset-top));
+}
+
+/* room for the bottom tab bar (icon + label + padding + border) and the home indicator below it */
+@media (max-width: 768px) {
+    html.native .main-content {
+        padding-bottom: calc(3.9rem + 1px + 1.5rem + env(safe-area-inset-bottom));
+    }
+}
+
+/* big amounts shrink to fit (fitNumbers.js) instead of breaking between digits; only one that still doesn't fit
+   at the smallest size wraps */
+html.native .stat-value,
+html.native .holding-item > span,
+html.native .symbol-price,
+html.native .symbol-change,
+html.native .price-paid {
+    overflow-wrap: normal;
+}
+
+html.native .fit-wrap {
+    overflow-wrap: anywhere !important;
+}
+
+/* Face ID lock: while it's up, nothing behind it can be tapped, focused or read by VoiceOver
+   (visibility: hidden does all three, and also keeps the portfolio from painting at all) */
+html.native.app-locked body {
+    visibility: hidden;
+}
+
+html.native.app-locked .app-lock {
+    visibility: visible;
 }
 
 html.native .transaction-create-overlay,
@@ -126,10 +187,16 @@ html.native .nav-link:focus-visible .nav-tooltip {
     left: 0;
     right: 0;
     z-index: 2000;
-    padding: 0.45rem 1rem;
+    box-sizing: border-box;
+    height: var(--offline-banner-height);
+    padding: 0 1rem;
+    line-height: var(--offline-banner-height);
     font-size: 0.82rem;
     font-weight: 700;
     text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: #1f1300;
     background: #fbbf24;
 }
@@ -137,7 +204,7 @@ html.native .nav-link:focus-visible .nav-tooltip {
 /* ---------- pull to refresh ---------- */
 .ptr {
     position: fixed;
-    top: calc(env(safe-area-inset-top) - 2.4rem);
+    top: calc(var(--top-inset) - 2.4rem);
     left: 50%;
     z-index: 900;
     display: grid;
