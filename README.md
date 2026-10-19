@@ -46,6 +46,8 @@ landing page. It was recorded on a demo account with sample data, and the backgr
 Zenith Wallet Tracker is a full-stack web application for individual investors who hold both stocks and
 cryptocurrency. Users record their buy and sell transactions, and Zenith calculates current holdings, realized and
 unrealized returns, and the portfolio's value over any time range, priced in Canadian dollars, US dollars or euros.
+Prices come from free market-data sources and are refreshed when you open a page, so they can lag the market a
+little.
 
 A built-in **Market Analyst** summarises any stock or coin with an outlook, key insights and bull, base and bear
 price ranges. It is a transparent rules engine, not a paid AI service, so it is free to run and every sentence it
@@ -55,11 +57,11 @@ writes can be traced back to a number.
 
 | | |
 |---|---|
-| **Portfolio dashboard** | Total value, today's and all-time return, and a value chart for 1D / 1W / 1M / 1Y / All. |
+| **Portfolio dashboard** | Total value, the return for each range, and a value chart for 1D / 1W / 1M / 1Y / All. |
 | **Holdings** | Every open position with its value, quantity and return, each with its own price chart. |
 | **Transactions** | Log buys and sells with live symbol search and a pre-filled market price; filter by symbol, action and date; edit or delete past trades and the history stays consistent. |
-| **Search** | Live prices for US stocks, ETFs and thousands of cryptocurrencies, with interactive charts. |
-| **Market Analyst** | Bullish / neutral / bearish outlook with a confidence level, key insights, volatility-based scenarios, what to watch and the main risk. |
+| **Search** | Recent prices for US stocks, ETFs and thousands of cryptocurrencies, with company and coin names and interactive charts. Prices are fetched when you open a page and can be delayed. |
+| **Market Analyst** | Bullish / neutral / bearish outlook with a confidence level, key insights, volatility-based scenarios, what to watch and the main risk. Informational only, not financial advice. |
 | **Multi-currency** | View everything in CAD, USD or EUR; stocks listed in other currencies are converted automatically. |
 | **Accounts** | Email sign-up with verification, or one-click Google sign-in. |
 | **Responsive** | Works on desktop and phones, with a bottom tab bar on small screens. |
@@ -227,7 +229,7 @@ ledger check rejects any edit that would sell more than was owned.
    volatility from log returns, and correlation with Bitcoin. These are pure, unit-tested functions.
 3. **Scoring:** each signal is scored from −1 to +1 and weighted. A weighted average above +0.15 is bullish, below
    −0.15 is bearish, and anything in between is neutral. Confidence reflects how much data there is and how many of
-   the signals agree.
+   the signals agree; a split trend or a strong counter-signal keeps it at medium or below.
 4. **Scenarios:** 7- and 30-day price ranges use a zero-drift log-normal model of recent volatility. They describe
    how far the price typically moves and are not predictions.
 5. **Text:** sentences are built only from numbers that also appear in the report's metrics. If a Gemini key is
