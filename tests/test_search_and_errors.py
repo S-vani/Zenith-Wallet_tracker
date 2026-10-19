@@ -1,4 +1,7 @@
 """Asset search routes (TwelveData / CoinGecko are faked) and app-wide error handling."""
+import uuid
+from collections import deque
+
 import pytest
 
 import backend.routes.assets as routes_module
@@ -9,8 +12,15 @@ GECKO_SEARCH = "https://api.coingecko.com/api/v3/search"
 GECKO_MARKETS = "https://api.coingecko.com/api/v3/coins/markets"
 
 
-def stock(symbol, country="United States", kind="Common Stock"):
-    return {"symbol": symbol, "country": country, "instrument_type": kind}
+@pytest.fixture(autouse=True)
+def fresh_search_state(monkeypatch):
+    # conftest already resets the stock cache; the crypto cache and the per-user search counts live here
+    monkeypatch.setattr(routes_module, "_crypto_search_cache", {})
+    monkeypatch.setattr(routes_module, "_search_times", {})
+
+
+def stock(symbol, country="United States", kind="Common Stock", name=None):
+    return {"symbol": symbol, "country": country, "instrument_type": kind, "instrument_name": name or f"{symbol} Inc"}
 
 
 RATE_LIMITED = {"code": 429, "status": "error",
@@ -23,8 +33,8 @@ RATE_LIMITED = {"code": 429, "status": "error",
 # ---------------------------------------------------------------------------------------------------------------------
 def test_stock_search_filters_and_converts(client, user, search_http, market):
     search_http.responses[TWELVE_SEARCH] = {"data": [
-        stock("AAPL"),
-        stock("AAPL"),  # duplicate listing
+        stock("AAPL", name="Apple Inc."),
+        stock("AAPL", name="Apple Inc. (duplicate)"),  # duplicate listing
         stock("AAPL", country="Germany"),
         stock("AAPB", kind="Warrant"),
         stock("SPY", kind="ETF"),
@@ -38,7 +48,7 @@ def test_stock_search_filters_and_converts(client, user, search_http, market):
 
     assert [r["symbol"] for r in results] == ["AAPL", "SPY"]
     assert results[0] == {
-        "api_id": "AAPL", "symbol": "AAPL", "type": "stock", "image": "",
+        "api_id": "AAPL", "symbol": "AAPL", "name": "Apple Inc.", "type": "stock", "image": "",
         "price": pytest.approx(100 * RATES["usd_to_cad"]),
         "change": pytest.approx(2 * RATES["usd_to_cad"]),
         "change_pct": pytest.approx(2 / 98 * 100),
@@ -114,7 +124,7 @@ def test_stock_search_does_not_cache_errors(client, user, search_http):
 def test_stock_search_matches_expire(client, user, search_http):
     search_http.responses[TWELVE_SEARCH] = {"data": [stock("AAPL")]}
     client.get("/assets/search/stock?asset=aapl", headers=user.headers)
-    routes_module._stock_search_cache["AAPL"] = (-10 ** 6, ["AAPL"])  # pretend it was cached long ago
+    routes_module._stock_search_cache["AAPL"] = (-10 ** 6, [{"symbol": "AAPL", "name": ""}])  # cached long ago
     client.get("/assets/search/stock?asset=aapl", headers=user.headers)
     assert len(search_http.calls) == 2
 
@@ -167,6 +177,114 @@ def test_crypto_search_rate_limited_returns_503(client, user, search_http):
 def test_crypto_search_blank_query_skips_the_api(client, user, search_http):
     assert client.get("/assets/search/crypto?asset=%20", headers=user.headers).json() == []
     assert search_http.calls == []
+
+
+def test_crypto_search_returns_the_coin_name(client, user, search_http):
+    search_http.responses[GECKO_SEARCH] = {"coins": [{"api_symbol": "bitcoin"}]}
+    search_http.responses[GECKO_MARKETS] = [{**coin("btc"), "name": "Bitcoin", "id": "bitcoin"}]
+    [result] = client.get("/assets/search/crypto?asset=btc", headers=user.headers).json()
+    assert result["name"] == "Bitcoin" and result["coin_id"] == "bitcoin"
+
+
+def test_crypto_search_missing_image_is_an_empty_string(client, user, search_http):
+    search_http.responses[GECKO_SEARCH] = {"coins": [{"api_symbol": "x"}]}
+    search_http.responses[GECKO_MARKETS] = [coin("xyz", image=None)]
+    [result] = client.get("/assets/search/crypto?asset=xyz", headers=user.headers).json()
+    assert result["image"] == "" and result["name"] == ""
+
+
+def test_crypto_search_reuses_results_for_repeat_queries(client, user, make_user, search_http):
+    search_http.responses[GECKO_SEARCH] = {"coins": [{"api_symbol": "bitcoin"}]}
+    search_http.responses[GECKO_MARKETS] = [coin("btc", price=100)]
+    usd_user = make_user(currency="USD")
+    for query, who in (("btc", user), ("BTC ", user), ("btc", usd_user)):
+        [result] = client.get(f"/assets/search/crypto?asset={query}", headers=who.headers).json()
+        # cached in CAD, converted per user
+        assert result["price"] == pytest.approx(100 * (RATES["usd"] if who is usd_user else 1))
+    assert len(search_http.calls) == 2  # one search + one markets call for three searches
+
+
+def test_crypto_search_cache_expires(client, user, search_http):
+    search_http.responses[GECKO_SEARCH] = {"coins": [{"api_symbol": "bitcoin"}]}
+    search_http.responses[GECKO_MARKETS] = [coin("btc")]
+    client.get("/assets/search/crypto?asset=btc", headers=user.headers)
+    stored_at, value = routes_module._crypto_search_cache["btc"]
+    routes_module._crypto_search_cache["btc"] = (stored_at - routes_module.CRYPTO_SEARCH_TTL - 1, value)
+    client.get("/assets/search/crypto?asset=btc", headers=user.headers)
+    assert len(search_http.calls) == 4
+
+
+def test_crypto_search_does_not_cache_errors(client, user, search_http):
+    search_http.responses[GECKO_SEARCH] = {"coins": [{"api_symbol": "bitcoin"}]}
+    search_http.responses[GECKO_MARKETS] = {"status": {"error_code": 429}}
+    assert client.get("/assets/search/crypto?asset=btc", headers=user.headers).status_code == 503
+    search_http.responses[GECKO_MARKETS] = [coin("btc")]
+    assert client.get("/assets/search/crypto?asset=btc", headers=user.headers).json()[0]["symbol"] == "btc"
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# abuse limits: query length, bounded caches, per-user rate limit
+# ---------------------------------------------------------------------------------------------------------------------
+@pytest.mark.parametrize("kind", ["stock", "crypto"])
+def test_search_rejects_long_queries_without_calling_providers(client, user, search_http, kind):
+    res = client.get(f"/assets/search/{kind}?asset={'a' * 21}", headers=user.headers)
+    assert res.status_code == 422
+    assert "20 characters or fewer" in res.json()["detail"]
+    assert search_http.calls == []
+
+
+@pytest.mark.parametrize("kind", ["stock", "crypto"])
+def test_search_rejects_huge_queries(client, user, search_http, kind):
+    res = client.get(f"/assets/search/{kind}?asset={'a' * 5000}", headers=user.headers)
+    assert res.status_code == 422
+    assert "aaaa" not in res.text  # the 422 handler never echoes input
+    assert search_http.calls == []
+
+
+def test_search_allows_20_characters_and_surrounding_spaces(client, user, search_http):
+    search_http.responses[GECKO_SEARCH] = {"coins": []}
+    assert client.get(f"/assets/search/crypto?asset=%20%20{'a' * 20}%20%20", headers=user.headers).status_code == 200
+
+
+def test_search_caches_are_bounded_lru(monkeypatch):
+    monkeypatch.setattr(routes_module, "SEARCH_CACHE_SIZE", 3)
+    cache = {}
+    for key in "abc":
+        routes_module._cache_put(cache, key, key.upper())
+    assert routes_module._cache_get(cache, "a", 60) == "A"  # "a" is now the most recently used
+    routes_module._cache_put(cache, "d", "D")
+    assert list(cache) == ["c", "a", "d"]  # "b" was the least recently used
+    assert routes_module._cache_get(cache, "b", 60) is None
+
+
+def test_search_cache_entries_expire():
+    cache = {"old": (-10 ** 6, "value")}
+    assert routes_module._cache_get(cache, "old", 600) is None
+    assert cache == {}  # expired entries are removed, not kept around
+
+
+def test_new_searches_are_rate_limited_per_user(client, user, make_user, search_http):
+    search_http.responses[GECKO_SEARCH] = {"coins": []}
+    for i in range(routes_module.SEARCH_RATE_LIMIT):
+        assert client.get(f"/assets/search/crypto?asset=q{i}", headers=user.headers).status_code == 200
+
+    res = client.get("/assets/search/crypto?asset=another", headers=user.headers)
+    assert res.status_code == 429
+    assert "wait a minute" in res.json()["detail"]
+    # stock searches count towards the same limit
+    assert client.get("/assets/search/stock?asset=new", headers=user.headers).status_code == 429
+
+    # cached queries are still answered, and other users aren't affected
+    assert client.get("/assets/search/crypto?asset=q0", headers=user.headers).status_code == 200
+    other = make_user()
+    assert client.get("/assets/search/crypto?asset=another", headers=other.headers).status_code == 200
+
+
+def test_rate_limit_window_slides(client, user, search_http):
+    search_http.responses[GECKO_SEARCH] = {"coins": []}
+    # the limit is used up, but by searches made long ago
+    routes_module._search_times[uuid.UUID(user.id)] = deque([-10 ** 6] * routes_module.SEARCH_RATE_LIMIT)
+    assert client.get("/assets/search/crypto?asset=fresh", headers=user.headers).status_code == 200
 
 
 # ---------------------------------------------------------------------------------------------------------------------
