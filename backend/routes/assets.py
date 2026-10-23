@@ -640,30 +640,36 @@ async def find_coins(query: str, user_id) -> list[dict]:
         return cached
     _check_search_rate(user_id)
 
-    headers = {
-        "x-cg-demo-api-key": os.getenv("API_KEY_COINEGECKO")
-    }
+    # without a key the header is left out (httpx refuses a None header value, which used to crash with a 500)
+    key = os.getenv("API_KEY_COINEGECKO")
+    headers = {"x-cg-demo-api-key": key} if key else {}
+    unavailable = HTTPException(status_code=503, detail="Crypto prices are temporarily unavailable")
 
-    async with httpx.AsyncClient(timeout=10, headers=headers) as client:
-        res = await client.get("https://api.coingecko.com/api/v3/search", params={"query": query})
+    try:
+        async with httpx.AsyncClient(timeout=10, headers=headers) as client:
+            res = await client.get("https://api.coingecko.com/api/v3/search", params={"query": query})
+            if res.status_code != 200:  # rate limited or down: don't cache it as "no results"
+                raise unavailable
 
-        data = res.json().get("coins", [])[:6]  # top 6 results and luckily coingecko sorts by popularity
-        if not data:
-            _cache_put(_crypto_search_cache, query, [])
-            return []
+            data = res.json().get("coins", [])[:6]  # top 6 results and luckily coingecko sorts by popularity
+            if not data:
+                _cache_put(_crypto_search_cache, query, [])
+                return []
 
-        ids = ",".join(coin["api_symbol"] for coin in data)
+            ids = ",".join(coin["api_symbol"] for coin in data)
 
-        response = await client.get(
-            "https://api.coingecko.com/api/v3/coins/markets",
-            params={
-                "vs_currency": "cad",
-                "ids": ids,
-                "price_change_percentage": "24h",
-            }
-        )
+            response = await client.get(
+                "https://api.coingecko.com/api/v3/coins/markets",
+                params={
+                    "vs_currency": "cad",
+                    "ids": ids,
+                    "price_change_percentage": "24h",
+                }
+            )
+        coins = response.json()
+    except (httpx.HTTPError, ValueError):  # network errors, timeouts, a non-JSON body
+        raise unavailable
 
-    coins = response.json()
     if not isinstance(coins, list):  # coingecko returns an error dict when rate limited
         raise HTTPException(status_code=503, detail="Crypto prices are temporarily unavailable")
 

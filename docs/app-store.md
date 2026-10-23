@@ -14,7 +14,7 @@
 | Field | Value |
 |---|---|
 | Name | Zenith: Portfolio Tracker (avoid "Wallet": the app holds no funds, and reviewers apply stricter rules to wallets) |
-| Subtitle | Stock & crypto portfolio tracker |
+| Subtitle | Track stocks & crypto trades (28 characters; the limit is 30) |
 | Category | Finance |
 | Support URL | https://zenithwalletracker.ca/support |
 | Marketing URL | https://zenithwalletracker.ca |

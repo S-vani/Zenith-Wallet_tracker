@@ -120,7 +120,7 @@ button:disabled {
     z-index: 4000; /* over the nav bar, toasts and dialogs */
     padding: 0.6rem 1rem;
     border-radius: 0.5rem;
-    background: var(--accent);
+    background: #1d4ed8; /* darker than --accent: white on it is 6.7:1 (the accent was 3.7:1) */
     color: #fff;
     font-weight: 700;
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
@@ -198,6 +198,16 @@ button:disabled {
     font-size: 0.875rem;
     background: rgba(34, 197, 94, 0.08);
     border: 1px solid rgba(34, 197, 94, 0.25);
+    border-radius: 0.625rem;
+    padding: 0.65rem 1rem;
+}
+
+/* something the user should know that isn't an error, e.g. "Your session expired" */
+.alert-warning {
+    color: #fcd34d;
+    font-size: 0.875rem;
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.3);
     border-radius: 0.625rem;
     padding: 0.65rem 1rem;
 }

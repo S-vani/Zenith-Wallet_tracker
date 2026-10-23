@@ -25,11 +25,11 @@ function SearchPage() {
     function setType(type) {
         searchId.current += 1;
         setLoading(false);
-        setSearchSymbol({...searchSymbol, type});
+        // tickers rarely mean the same thing in both lists (AAPL isn't a coin), so start over instead of
+        // re-searching the old text, which also spent a rate-limited provider call on a likely error
+        setSearchSymbol({symbol: "", type});
         setSearchResults(null);
         setError(null);
-        // the typed text is kept, so search it again as the new type
-        if (searchSymbol.symbol.trim()) runSearch(searchSymbol.symbol.trim(), type);
     }
 
     async function searchBarSubmit(e) {
@@ -65,7 +65,7 @@ function SearchPage() {
         <div className="app-page search-page-wrapper">
             <header className="search-header">
                 <h1 className="page-headers">Search</h1>
-                <p className="page-subtitle">Look up recent prices for US stocks and crypto.</p>
+                <p className="page-subtitle">Look up recent prices for US and Canadian stocks, ETFs and crypto.</p>
             </header>
 
             <div className="search-area">

@@ -197,11 +197,15 @@ class FakeHttpx:
     def __init__(self):
         self.responses = {}
         self.calls = []
+        self.clients = []
+        # code under test catches httpx.HTTPError; a payload callable can raise it to fake a timeout
+        self.HTTPError = type("HTTPError", (Exception,), {})
         outer = self
 
         class AsyncClient:
             def __init__(self, *args, **kwargs):
                 self.kwargs = kwargs
+                outer.clients.append(kwargs)
 
             async def __aenter__(self):
                 return self

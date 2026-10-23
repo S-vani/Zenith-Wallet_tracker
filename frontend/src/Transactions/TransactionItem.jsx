@@ -142,8 +142,9 @@ function TransactionItem({transaction, index, onChanged}) {
                                 <button className="btn" onClick={() => showMode("view")} disabled={deleting} autoFocus>
                                     Keep it
                                 </button>
+                                {/* after a blocked delete, trying again can't work until the later trade changes */}
                                 <button className="btn transaction-delete-submit" onClick={handleDelete}
-                                        disabled={deleting}>
+                                        disabled={deleting || Boolean(deleteError)}>
                                     {deleting ? "Deleting…" : "Delete trade"}
                                 </button>
                             </div>

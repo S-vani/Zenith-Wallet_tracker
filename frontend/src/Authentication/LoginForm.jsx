@@ -82,7 +82,11 @@ function LoginForm({onSubmit}) {
                     <p>Enter your email and password to access your dashboard.</p>
                 </div>
 
-                {notice && <p className="alert-success" role="status">{notice}</p>}
+                {notice && (
+                    // an expired session is a warning; other notices ("Password changed…") are good news
+                    <p className={location.state?.expired && !location.state?.notice ? "alert-warning" : "alert-success"}
+                       role="status">{notice}</p>
+                )}
                 {error && (
                     <div className="alert-error" role="alert">
                         {error}

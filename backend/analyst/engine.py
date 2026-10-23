@@ -554,7 +554,8 @@ def build_metrics(f: Facts, data: AssetData) -> list[Metric]:
     consensus = consensus_words(fu.get("recommendationMean"))
     if consensus and fu.get("numberOfAnalystOpinions"):
         m.append(Metric(label="Analyst consensus", value=consensus.split(" (")[0].capitalize()
-                        + f" ({fu['recommendationMean']:.1f}/5)", group="analysts"))
+                        # Yahoo's scale runs the "wrong" way for most readers (1 is the most positive), so say so
+                        + f" ({fu['recommendationMean']:.1f} on a 1–5 scale, 1 = most positive)", group="analysts"))
 
     if _ok(coin.get("market_cap")):
         rank = f" (#{coin['market_cap_rank']})" if coin.get("market_cap_rank") else ""

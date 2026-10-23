@@ -174,6 +174,24 @@ def test_crypto_search_rate_limited_returns_503(client, user, search_http):
     assert res.status_code == 503
 
 
+def test_crypto_search_without_a_key_leaves_the_header_out(client, user, search_http, monkeypatch):
+    # a None header value used to crash httpx, so crypto search answered 500 whenever the key was unset
+    monkeypatch.delenv("API_KEY_COINEGECKO", raising=False)
+    search_http.responses[GECKO_SEARCH] = {"coins": []}
+    assert client.get("/assets/search/crypto?asset=nokey", headers=user.headers).status_code == 200
+    assert search_http.clients[-1]["headers"] == {}
+
+
+def test_crypto_search_network_error_returns_503(client, user, search_http):
+    def timeout(_params):
+        raise search_http.HTTPError("timed out")
+
+    search_http.responses[GECKO_SEARCH] = timeout
+    res = client.get("/assets/search/crypto?asset=slow", headers=user.headers)
+    assert res.status_code == 503
+    assert res.json()["detail"] == "Crypto prices are temporarily unavailable"
+
+
 def test_crypto_search_blank_query_skips_the_api(client, user, search_http):
     assert client.get("/assets/search/crypto?asset=%20", headers=user.headers).json() == []
     assert search_http.calls == []

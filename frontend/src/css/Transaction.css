@@ -71,6 +71,9 @@
     font-size: 1.15rem;
     font-weight: 700;
     text-transform: uppercase;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .asset-action {
@@ -734,13 +737,14 @@
     }
 }
 
+/* an amount never breaks between digits ("CA$1,460. / 00" at 320px); the symbol side gives way instead */
 .price-paid {
-    overflow-wrap: anywhere;
+    white-space: nowrap;
     text-align: right;
 }
 
 .transaction-right {
-    min-width: 0;
+    flex-shrink: 0;
 }
 
 .filter-hint,

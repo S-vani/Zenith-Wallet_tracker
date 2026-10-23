@@ -18,6 +18,7 @@ function DemoVideoModal({onClose, loggedIn, returnFocusRef}) {
     const captionId = useId();
     const videoRef = useRef(null);
     const closeButtonRef = useRef(null);
+    const dialogRef = useRef(null);
     const closeTimer = useRef(null);
     const scrollToFeatures = useRef(false);
     const [closing, setClosing] = useState(false);
@@ -61,9 +62,28 @@ function DemoVideoModal({onClose, loggedIn, returnFocusRef}) {
         };
     }, []);
 
-    // close with Escape
+    // close with Escape; Tab wraps around inside the dialog so focus can't wander to the page behind it
     useEffect(() => {
-        const onKey = (e) => e.key === "Escape" && requestClose();
+        const onKey = (e) => {
+            if (e.key === "Escape") {
+                requestClose();
+                return;
+            }
+            if (e.key !== "Tab" || !dialogRef.current) return;
+            const focusable = dialogRef.current.querySelectorAll(
+                "a[href], button:not([disabled]), video[controls], [tabindex]:not([tabindex='-1'])");
+            if (focusable.length === 0) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (e.shiftKey && document.activeElement === first) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && (document.activeElement === last
+                || !dialogRef.current.contains(document.activeElement))) {
+                e.preventDefault();
+                first.focus();
+            }
+        };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
     }, [requestClose]);
@@ -88,7 +108,7 @@ function DemoVideoModal({onClose, loggedIn, returnFocusRef}) {
     return (
         <div className={`demo-overlay${closing ? " is-closing" : ""}`}
              onMouseDown={(e) => e.target === e.currentTarget && requestClose()}>
-            <div className="demo-box" role="dialog" aria-modal="true" aria-labelledby={titleId}
+            <div className="demo-box" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId}
                  aria-describedby={captionId}>
                 <div className="demo-header">
                     <div className="demo-heading">

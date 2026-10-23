@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {createTransaction, getHoldings} from "../services/api.js";
 import {useUser} from "../context/UserContext.jsx";
 import {formatMoney, formatQuantity, priceInputValue} from "../utils/format.js";
@@ -55,6 +55,14 @@ function TransactionCreate({onClose, onCreated, data}) {
     const backdated = Boolean(form.created_at) && form.created_at !== initialDate;
 
     const total = quantity * price; // NaN (not shown) while either is invalid
+    // a heads-up before saving; the server still decides (a backdated sell is checked against that date instead)
+    const sellsTooMuch = form.action === "SELL" && owned !== null && !backdated && quantity > owned * (1 + 1e-9);
+
+    // on a phone the sheet's error can land below the fold, under the Save button
+    const errorRef = useRef(null);
+    useEffect(() => {
+        if (error) errorRef.current?.scrollIntoView({block: "nearest", behavior: "smooth"});
+    }, [error]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -105,9 +113,12 @@ function TransactionCreate({onClose, onCreated, data}) {
                     </p>
                 )}
 
-                {error && <p className="alert-error" role="alert">{error}</p>}
+                {error && <p className="alert-error" role="alert" ref={errorRef}>{error}</p>}
 
                 {hint && <p className="create-hint">{hint}</p>}
+                {sellsTooMuch && (
+                    <p className="create-hint">That's more than the {formatQuantity(owned)} you own.</p>
+                )}
                 {dateInFuture && <p className="create-hint">The date can't be in the future.</p>}
 
                 <div className="create-transaction-buttons">

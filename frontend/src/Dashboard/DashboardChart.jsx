@@ -72,6 +72,7 @@ function DashboardChart({entry, updating = false, currency, error}) {
                         separator=": "
                         formatter={(value, name) => [formatMoney(value, currency), name]}
                         labelFormatter={(value) => tooltipDate(value, days <= 7)}
+                        itemSorter={(item) => (item.dataKey === "value" ? 0 : 1)} // same order as the legend
                         cursor={{stroke: "rgba(59,130,246,0.3)", strokeWidth: 1}}
                     />
                     <Area

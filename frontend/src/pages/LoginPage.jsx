@@ -27,7 +27,7 @@ function LoginPage() {
                     <BrandLink className="home-brand" {...(isNative ? {} : {to: "/"})}>
                         <img className="brand-mark" src="/zenith-logo.svg" alt="" width="32" height="32"/>
                         <span className="brand-name">Zenith&nbsp;<span
-                            className="brand-accent">Wallet Tracker</span></span>
+                            className="brand-accent">{isNative ? "Portfolio Tracker" : "Wallet Tracker"}</span></span>
                     </BrandLink>
                 </div>
                 <div className="login-page-information">

@@ -22,6 +22,7 @@ function TransactionSymbolSearch({onSub}) {
         searchId.current += 1;
         setLoading(false);
         setType(newType);
+        setSymbol("");  // a stock ticker typed before the switch isn't a coin (and vice versa)
         setResults(null);
         setError(null);
     };
