@@ -2,10 +2,13 @@ import {Link, Navigate} from "react-router-dom";
 import SignupForm from "../Authentication/SignupForm.jsx";
 import {getToken, signupAuthentication} from "../services/api";
 import usePageTitle from "../utils/usePageTitle.js";
+import {isNative} from "../native/platform.js";
 
 import "../css/Home.css";
 import "../css/Auth.css";
 import "../css/Signup.css";
+
+const BrandLink = isNative ? "div" : Link;
 
 function SignupPage() {
     usePageTitle("Sign up");
@@ -20,11 +23,12 @@ function SignupPage() {
 
             <div className="signup-page-right-side">
                 <div className="signup-page-brand">
-                    <Link to="/" className="home-brand">
+                    {/* in the app "/" only bounces back to log in, so the logo isn't a link there */}
+                    <BrandLink className="home-brand" {...(isNative ? {} : {to: "/"})}>
                         <img className="brand-mark" src="/zenith-logo.svg" alt="" width="32" height="32"/>
                         <span className="brand-name">Zenith&nbsp;<span
                             className="brand-accent">Wallet Tracker</span></span>
-                    </Link>
+                    </BrandLink>
                 </div>
 
                 <div className="signup-page-information">

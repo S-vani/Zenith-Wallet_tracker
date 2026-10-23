@@ -50,8 +50,8 @@ function VerifyPage() {
 
                 {status === "loading" && (
                     <>
-                        <div className="spinner"/>
-                        <h1>Verifying your email…</h1>
+                        <div className="spinner" aria-hidden="true"/>
+                        <h1 role="status">Verifying your email…</h1>
                     </>
                 )}
 

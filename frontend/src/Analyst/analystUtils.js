@@ -147,6 +147,10 @@ const ENGINES = {
     },
 };
 
+// Shown as the confidence badge's tooltip and, for touch screens, under "Sources & limitations"
+export const CONFIDENCE_MEANING = "Confidence is how strongly the signals agree with each other, not how likely "
+    + "the outlook is to come true.";
+
 export function engineMeta(engine) {
     return ENGINES[engine] ?? ENGINES.rules;
 }

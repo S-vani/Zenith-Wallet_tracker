@@ -3,10 +3,13 @@ import LoginForm from "../Authentication/LoginForm.jsx";
 import LoginVisual from "../Authentication/LoginVisual.jsx";
 import {getToken, loginAuthentication} from "../services/api";
 import usePageTitle from "../utils/usePageTitle.js";
+import {isNative} from "../native/platform.js";
 
 import "../css/Home.css"
 import "../css/Auth.css"
 import "../css/Login.css"
+
+const BrandLink = isNative ? "div" : Link;
 
 function LoginPage() {
     usePageTitle("Log in");
@@ -20,11 +23,12 @@ function LoginPage() {
         <div className="login-page-wrapper">
             <div className="login-page-left-side">
                 <div className="login-page-brand">
-                    <Link to="/" className="home-brand">
+                    {/* in the app "/" only bounces back to log in, so the logo isn't a link there */}
+                    <BrandLink className="home-brand" {...(isNative ? {} : {to: "/"})}>
                         <img className="brand-mark" src="/zenith-logo.svg" alt="" width="32" height="32"/>
                         <span className="brand-name">Zenith&nbsp;<span
                             className="brand-accent">Wallet Tracker</span></span>
-                    </Link>
+                    </BrandLink>
                 </div>
                 <div className="login-page-information">
                     <span className="hero-eyebrow">Invest smarter</span>
