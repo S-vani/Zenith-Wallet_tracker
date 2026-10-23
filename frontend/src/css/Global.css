@@ -284,10 +284,11 @@ button:disabled {
     box-shadow: 0 0 1rem rgba(59, 130, 246, 0.3);
 }
 
+/* #15803d → #166534 keeps white text at 5:1 or more everywhere (the old #16a34a top was only ~3.1:1) */
 .btn-success {
     border-color: rgba(34, 197, 94, 0.45);
-    background: linear-gradient(180deg, #16a34a, #15803d);
-    color: #f5f7ff;
+    background: linear-gradient(180deg, #15803d, #166534);
+    color: #fff;
 }
 
 .btn-success:hover:not(:disabled) {
@@ -438,6 +439,34 @@ body::before {
     font-weight: 600;
     text-decoration: underline;
     text-underline-offset: 2px;
+}
+
+/* an error with a "Try again" button beside it (dashboard, holdings, transactions, account), like the analyst's */
+.alert-retry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    text-align: left;
+}
+
+.alert-retry .btn {
+    padding: 0.45rem 1rem;
+    min-height: 2.5rem;
+}
+
+/* text only screen readers get (e.g. what a spinner is loading) */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 /* ---------- Confirm dialog (components/ConfirmDialog.jsx) ---------- */
@@ -592,6 +621,36 @@ body::before {
 
     .btn {
         min-height: 2.75rem;
+    }
+
+    .alert-retry .btn {
+        min-height: 44px;
+    }
+
+    /* 44px tap targets for the small text buttons ("Resend verification email", "Sell all") and the toast's ×.
+       px, not rem: 2.75rem is only 41px at the phone base size */
+    .inline-link {
+        display: flex;
+        align-items: center;
+        min-height: 44px;
+        min-width: 44px;
+        margin-top: 0;
+    }
+
+    .inline-link.sell-all {
+        display: inline-flex; /* stays on the "You own …" line (Transaction.css makes it inline) */
+        vertical-align: middle;
+    }
+
+    .toast-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: auto;
+        height: auto;
+        min-width: 44px;
+        min-height: 44px;
+        margin: -0.5rem -0.4rem -0.5rem 0; /* the toast keeps its height: the bigger target overlaps its padding */
     }
 }
 

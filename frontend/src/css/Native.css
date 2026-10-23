@@ -45,6 +45,12 @@ html.native .verify-page {
     html.native .main-content {
         padding-bottom: calc(3.9rem + 1px + 1.5rem + env(safe-area-inset-bottom));
     }
+
+    /* while typing (bootstrap.js watchKeyboard) the tab bar would ride up on top of the keyboard and cover the
+       field and the Done bar; it comes back when the keyboard closes */
+    html.native.keyboard-open .navbar-links {
+        display: none;
+    }
 }
 
 /* big amounts shrink to fit (fitNumbers.js) instead of breaking between digits; only one that still doesn't fit
@@ -183,6 +189,49 @@ html.native .nav-link:focus-visible .nav-tooltip {
     font: inherit;
     font-size: 0.9rem;
     color: var(--text-subtle);
+}
+
+/* ---------- "Update required" (UpdateRequired.jsx, after a 426 from the server) ---------- */
+/* like the Face ID lock, nothing behind it can be tapped, focused or read; it stays visible over the lock too */
+html.native.update-required body {
+    visibility: hidden;
+}
+
+html.native.update-required .update-screen {
+    visibility: visible;
+}
+
+.update-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 3500; /* over the Face ID lock (3000): it shows nothing private, and the lock couldn't help anyway */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.9rem;
+    padding: calc(2rem + env(safe-area-inset-top)) 1.5rem calc(2rem + env(safe-area-inset-bottom));
+    text-align: center;
+    background: radial-gradient(ellipse at 50% 38%, #13254a 0%, #0b1220 45%, #060a12 100%);
+}
+
+.update-screen h1 {
+    margin: 0;
+    font-size: 1.6rem;
+    color: var(--text);
+    outline: none; /* focused only so VoiceOver starts here */
+}
+
+.update-screen p {
+    margin: 0 0 1rem;
+    max-width: 20rem;
+    color: var(--text-muted);
+}
+
+.update-screen .auth-btn {
+    width: 100%;
+    max-width: 18rem;
+    min-height: 2.75rem;
 }
 
 /* ---------- offline strip ---------- */

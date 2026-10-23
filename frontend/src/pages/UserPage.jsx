@@ -7,18 +7,29 @@ import {isNative} from "../native/platform.js";
 import {biometricInfo, isLockEnabled, setLockEnabled, verifyIdentity} from "../native/biometric.js";
 import {lockWording} from "../native/lockRules.js";
 import {useUser} from "../context/UserContext.jsx";
+import ConfirmDialog from "../components/ConfirmDialog.jsx";
 import usePageTitle from "../utils/usePageTitle.js";
 import {showToast} from "../utils/toast.js";
 
 function UserPage() {
     usePageTitle("Account");
 
-    const {user, setUser} = useUser();
+    const {user, setUser, error, reload} = useUser();
 
     if (!user) {
         return (
             <div className="app-page">
-                <div className="state-message"><div className="spinner"/>Loading your account…</div>
+                {error ? (
+                    // a failed load used to leave "Loading your account…" spinning forever
+                    <div className="state-message">
+                        <div className="alert-error alert-retry" role="alert">
+                            <span>{error}</span>
+                            <button type="button" className="btn" onClick={reload}>Try again</button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="state-message" role="status"><div className="spinner"/>Loading your account…</div>
+                )}
             </div>
         );
     }
@@ -86,11 +97,14 @@ function UserSettings({user, setUser}) {
         navigate("/login", {replace: true});
     };
 
-    // Revokes every token (a lost phone, a shared computer), then signs this device out too
+    // Revokes every token (a lost phone, a shared computer), then signs this device out too. It signs out every
+    // other device at once, so it asks first, like the nav bar's Log out.
+    const [confirmingLogoutAll, setConfirmingLogoutAll] = useState(false);
     const [loggingOutAll, setLoggingOutAll] = useState(false);
     const [logoutAllError, setLogoutAllError] = useState(null);
 
     const handleLogoutAll = async () => {
+        setConfirmingLogoutAll(false);
         setLoggingOutAll(true);
         setLogoutAllError(null);
         try {
@@ -140,7 +154,11 @@ function UserSettings({user, setUser}) {
         .slice(0, 2)
         .toUpperCase();
 
-    const memberSince = new Date(user.date_joined).toLocaleDateString(undefined, {month: "long", year: "numeric"});
+    // new Date(null) is the 1970 epoch ("December 1969" west of UTC), so a missing date hides the line instead
+    const joined = user.date_joined ? new Date(user.date_joined) : null;
+    const memberSince = joined && !Number.isNaN(joined.getTime())
+        ? joined.toLocaleDateString(undefined, {month: "long", year: "numeric"})
+        : null;
 
     return (
         <div className="user-page-wrapper">
@@ -267,22 +285,38 @@ function UserSettings({user, setUser}) {
                         <h2 className="user-card-title">Account info</h2>
                     </div>
 
-                    <div className="user-info-grid">
-                        <div className="user-info-row">
-                            <span className="user-info-label">Member since</span>
-                            <span className="user-info-value">{memberSince}</span>
+                    {memberSince && (
+                        <div className="user-info-grid">
+                            <div className="user-info-row">
+                                <span className="user-info-label">Member since</span>
+                                <span className="user-info-value">{memberSince}</span>
+                            </div>
                         </div>
-                    </div>
+                    )}
 
-                    <Link to="/privacy" className="user-privacy-link">Privacy policy &amp; disclaimer</Link>
+                    <nav className="user-legal-links" aria-label="Help and legal">
+                        <Link to="/privacy" className="user-privacy-link">Privacy policy &amp; disclaimer</Link>
+                        <Link to="/terms" className="user-privacy-link">Terms of use</Link>
+                        <Link to="/support" className="user-privacy-link">Support</Link>
+                    </nav>
 
                     <div className="user-logout-actions">
                         <button className="btn user-logout-button" onClick={handleLogout}>Log out</button>
-                        <button className="btn user-logout-button" onClick={handleLogoutAll} disabled={loggingOutAll}>
+                        <button className="btn user-logout-button" onClick={() => setConfirmingLogoutAll(true)}
+                                disabled={loggingOutAll}>
                             {loggingOutAll ? "Logging out…" : "Log out of all devices"}
                         </button>
                     </div>
                     {logoutAllError && <p className="alert-error" role="alert">{logoutAllError}</p>}
+
+                    <ConfirmDialog
+                        open={confirmingLogoutAll}
+                        title="Log out of all devices?"
+                        message="Every device signed in to your account, including this one, will need to sign in again."
+                        confirmLabel="Log out everywhere"
+                        onConfirm={handleLogoutAll}
+                        onCancel={() => setConfirmingLogoutAll(false)}
+                    />
                 </div>
 
                 <PasswordCard hasPassword={hasPassword}/>
@@ -294,9 +328,13 @@ function UserSettings({user, setUser}) {
                         <h2 className="user-card-title">Delete account</h2>
                     </div>
 
+                    {/* the app has no Google sign-in (it's hidden there), so it doesn't mention it */}
                     <p className="user-field-hint">
-                        Permanently deletes your account, every transaction you've logged and any linked Google
-                        sign-in. This can't be undone. See our <Link to="/privacy">privacy policy</Link> for details.
+                        {isNative
+                            ? "Permanently deletes your account and every transaction you've logged."
+                            : "Permanently deletes your account, every transaction you've logged and any linked " +
+                            "Google sign-in."}
+                        {" "}This can't be undone. See our <Link to="/privacy">privacy policy</Link> for details.
                     </p>
 
                     {!hasPassword ? (
@@ -350,11 +388,15 @@ function UserSettings({user, setUser}) {
     )
 }
 
-// Sensitive changes ask for the current password, which Google accounts don't have until they set one
+// Sensitive changes ask for the current password, which Google accounts don't have until they set one.
+// The app has no Google sign-in, so it doesn't name it there.
 function NoPasswordHint({action}) {
     return (
         <p className="user-field-hint">
-            You signed in with Google, so your account doesn't have a password yet. To {action}, use{" "}
+            {isNative
+                ? "Your account doesn't have a password yet."
+                : "You signed in with Google, so your account doesn't have a password yet."}
+            {" "}To {action}, use{" "}
             <Link to="/forgot-password" className="user-inline-link">Forgot password</Link> to set one first.
         </p>
     );

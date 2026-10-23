@@ -4,6 +4,7 @@ import {requestVerification} from "../services/api.js";
 import {showToast} from "../utils/toast.js";
 import PasswordInput from "./PasswordInput.jsx";
 import GoogleButton from "./GoogleButton.jsx";
+import {LegalLinks} from "../components/LegalLayout.jsx";
 
 // reasons the backend can send back after a failed Google sign in
 const GOOGLE_ERRORS = {
@@ -135,7 +136,7 @@ function LoginForm({onSubmit}) {
                     <span>Don't have an account?</span>
                     <Link to="/signup" className="hero-link-btn">Sign up</Link>
                 </div>
-                <Link to="/privacy" className="auth-legal-link">Privacy policy &amp; disclaimer</Link>
+                <LegalLinks/>
             </div>
         </main>
     )

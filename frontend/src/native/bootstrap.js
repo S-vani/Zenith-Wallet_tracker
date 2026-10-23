@@ -6,6 +6,8 @@ import {setOnline} from "./connectivity.js";
 import {watchNumbers} from "./fitNumbers.js";
 import {applyPreferredTextSize} from "./textZoom.js";
 import {openLinksInAppBrowser} from "./externalLinks.js";
+import {loadAppVersion} from "./appVersion.js";
+import {handleAppUrl} from "./appLinks.js";
 
 const appPlugin = loadPlugin(() => import("@capacitor/app"));
 const networkPlugin = loadPlugin(() => import("@capacitor/network"));
@@ -37,9 +39,13 @@ export async function initNative() {
     privacyBackGoesBack();
     openLinksInAppBrowser();
     applyPreferredTextSize(); // the iPhone's Text Size setting, capped so layouts still fit
+    // the version every request reports (X-Zenith-App-Version); read alongside the Keychain so the first requests
+    // carry it. It never fails: without it requests just go out without the header.
+    const versionRead = loadAppVersion();
 
     await restoreToken(); // must finish before the first render, which checks for a token
     const lockEnabled = await isLockEnabled();
+    await versionRead;
     return {lockEnabled};
 }
 
@@ -71,6 +77,13 @@ function watchAppState() {
         App.addListener("pause", () => window.dispatchEvent(new Event("app:pause")));
         // Text Size may have been changed in Settings while the app was away
         App.addListener("resume", () => applyPreferredTextSize());
+        // zenithwallet://login from the "Open the Zenith app" button after verifying an email or resetting a
+        // password in Safari (appLinks.js). The launch URL covers a cold start, in case its event came before
+        // this listener; opening the same screen twice is harmless.
+        App.addListener("appUrlOpen", ({url}) => handleAppUrl(url));
+        App.getLaunchUrl()
+            .then((launch) => launch?.url && handleAppUrl(launch.url))
+            .catch(() => null);
     }).catch(() => null);
 }
 
@@ -88,11 +101,16 @@ function watchNetwork() {
     }).catch(() => null);
 }
 
-// The web view shrinks above the keyboard (resize "native" in capacitor.config.json) and the Prev/Next/Done bar is
-// hidden; the field being typed in is scrolled into the space that's left.
+// The web view shrinks above the keyboard (resize "native" in capacitor.config.json) and the field being typed in
+// is scrolled into the space that's left. The Prev/Next/Done bar stays: the decimal keypad (prices, quantities)
+// has no return key, so Done is the only way to close it. While the keyboard is up <html> has "keyboard-open"
+// and Native.css hides the bottom tab bar, which would otherwise sit right above the keys and eat the space.
 function watchKeyboard() {
     keyboardPlugin().then(({Keyboard}) => {
-        Keyboard.setAccessoryBarVisible({isVisible: false}).catch(() => null);
+        Keyboard.setAccessoryBarVisible({isVisible: true}).catch(() => null);
+        const classes = document.documentElement.classList;
+        Keyboard.addListener("keyboardWillShow", () => classes.add("keyboard-open"));
+        Keyboard.addListener("keyboardWillHide", () => classes.remove("keyboard-open"));
         Keyboard.addListener("keyboardDidShow", () => {
             const field = document.activeElement;
             if (field?.matches?.("input, textarea, select, [contenteditable=true]")) {
@@ -102,9 +120,10 @@ function watchKeyboard() {
     }).catch(() => null);
 }
 
-// The privacy page's "Back to the app" link goes to the dashboard, which suits the website. In the app the page is
-// opened from Account, so "Back" returns there, like a native back button. Runs in the capture phase, before
-// React Router's own click handling; with no earlier page in this session the link works as usual.
+// The policy pages' (privacy, terms, support) "Back to the app" link goes to the dashboard, which suits the
+// website. In the app they are opened from another screen (Account, sign in, another policy page), so "Back"
+// returns there, like a native back button. Runs in the capture phase, before React Router's own click handling;
+// with no earlier page in this session the link works as usual.
 function privacyBackGoesBack() {
     document.addEventListener("click", (e) => {
         const link = e.target.closest?.(".legal-page .home-auth a");

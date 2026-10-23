@@ -3,6 +3,8 @@ import {cacheTicket, forgetAll, recall, remember} from "../native/offlineCache.j
 import {markFresh, markStale, requestStarted, requestTimeout} from "../native/connectivity.js";
 import {resetLockOnSignOut} from "../native/biometric.js";
 import {isNative} from "../native/platform.js";
+import {appVersionHeaders} from "../native/appVersion.js";
+import {requireUpdate, updateMessageFrom} from "../native/updateRequired.js";
 
 const BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -92,6 +94,23 @@ async function errorMessage(res, fallback) {
     return res.status === 429 ? TOO_MANY_REQUESTS : fallback;
 }
 
+// 426: the server no longer supports this app version (only the app sends X-Zenith-App-Version). The app shows its
+// "Update required" screen; the caller gets an error, never saved data, and the person stays signed in.
+async function updateRequiredError(res) {
+    let body = null;
+    try {
+        body = await res.json();
+    } catch {
+        // no readable body (or the time limit hit while reading it): the default message still says what to do
+    }
+    const message = updateMessageFrom(body);
+    requireUpdate(message); // no-op on the website
+    const error = new Error(message);
+    error.status = 426;
+    error.code = "UPDATE_REQUIRED";
+    return error;
+}
+
 // Shared fetch wrapper: attaches the token, turns error responses into readable messages,
 // and signs the user out when their session is no longer valid.
 // In the iOS app a request also gives up after a while (requestTimeout; never on the website), and a portfolio
@@ -132,10 +151,19 @@ async function request(path, {auth = true, fallbackError = "Something went wrong
             res = await fetch(`${BASE_URL}${path}`, {
                 ...options,
                 signal: controller ? controller.signal : signal,
-                headers: auth ? {...getAuthHeaders(), ...options.headers} : {"Content-Type": "application/json", ...options.headers},
+                headers: {
+                    ...(auth ? getAuthHeaders() : {"Content-Type": "application/json"}),
+                    ...appVersionHeaders(), // app only
+                    ...options.headers,
+                },
             });
         } catch (err) {
             return unreachable(err);
+        }
+
+        // before everything else: not a sign out, not an ordinary error, and nothing to save for offline use
+        if (res.status === 426) {
+            throw await updateRequiredError(res);
         }
 
         if (auth && (res.status === 401 || res.status === 403)) {
@@ -278,11 +306,15 @@ export async function loginAuthentication(form) {
     try {
         res = await fetch(`${BASE_URL}/auth/jwt/login`, {
             method: "POST",
-            headers: {"Content-Type": "application/x-www-form-urlencoded", ...APP_CLIENT_HEADERS},
+            headers: {"Content-Type": "application/x-www-form-urlencoded", ...APP_CLIENT_HEADERS, ...appVersionHeaders()},
             body: formData
         });
     } catch {
         throw new Error("Can't reach the server. Check your connection and try again.");
+    }
+
+    if (res.status === 426) {
+        throw await updateRequiredError(res);
     }
 
     if (!res.ok) {

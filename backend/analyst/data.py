@@ -14,7 +14,7 @@ from typing import Optional
 import httpx
 import yfinance as yf
 
-from backend.services.asset_services import get_history_of_prices
+from backend.services.asset_services import get_history_of_prices, run_yahoo
 
 log = logging.getLogger("uvicorn.error")
 
@@ -88,7 +88,7 @@ def _read_stock_details(symbol: str) -> tuple[dict, dict]:
 
 async def _stock_details(data: AssetData) -> None:
     try:
-        info, calendar = await asyncio.to_thread(_read_stock_details, data.symbol)
+        info, calendar = await run_yahoo(_read_stock_details, data.symbol)  # shares the Yahoo limit and threads
     except Exception:
         data.limitations.append("Company fundamentals couldn't be loaded, so the analysis uses price data only.")
         return
@@ -248,20 +248,50 @@ async def _crypto(data: AssetData, coin_id: Optional[str]) -> None:
 
 CHART_DAYS = {"1D": 1, "1W": 7, "1M": 30, "1Y": 365, "5Y": 365}  # CoinGecko's free plan only goes back 365 days
 
+# Tickers / coin ids CoinGecko said it doesn't know, kept for a day. Anyone can ask for a chart of a made-up coin,
+# and each miss would otherwise spend calls of the monthly CoinGecko quota again every few minutes.
+UNKNOWN_COIN_SECONDS = 24 * 3600
+UNKNOWN_COIN_CACHE_SIZE = 10_000
+_unknown_coins: dict[str, float] = {}  # "symbol:pepe" / "id:pepe" -> when it was found unknown
+
+
+def _is_unknown_coin(key: str) -> bool:
+    found = _unknown_coins.get(key)
+    if found is None:
+        return False
+    if time.time() - found >= UNKNOWN_COIN_SECONDS:
+        del _unknown_coins[key]  # a coin listed since then gets its chart
+        return False
+    return True
+
+
+def _remember_unknown_coin(key: str) -> None:
+    _unknown_coins.pop(key, None)
+    _unknown_coins[key] = time.time()
+    while len(_unknown_coins) > UNKNOWN_COIN_CACHE_SIZE:
+        _unknown_coins.pop(next(iter(_unknown_coins)))  # oldest first
+
 
 async def coingecko_chart(symbol: str, range_code: str, currency: str, coin_id: Optional[str] = None) -> list[dict]:
     """
     Price history for the charts when Yahoo has nothing for a coin (Yahoo's "SYMBOL-USD" naming misses coins like
     PEPE). Same shape as get_history_of_prices: [{"time": iso string, "price": float in `currency`}].
     A known `coin_id` (saved with the trade or from search) skips the ticker lookup, which picks the most popular
-    coin with that symbol and could be a different coin.
+    coin with that symbol and could be a different coin. Coins CoinGecko doesn't know are remembered for a day.
     """
+    lookup_key = f"id:{coin_id}" if coin_id else f"symbol:{symbol.lower()}"
+    if _is_unknown_coin(lookup_key):
+        return []
     async with httpx.AsyncClient(timeout=12, headers=_coingecko_headers()) as client:
         coin_id = coin_id or await resolve_coin_id(client, symbol)
         if not coin_id:
+            _remember_unknown_coin(lookup_key)
             return []
         res = await client.get(f"{COINGECKO}/coins/{coin_id}/market_chart",
                                params={"vs_currency": currency.lower(), "days": CHART_DAYS.get(range_code, 30)})
+        if res.status_code == 404:  # an unknown coin id (a rate limit is 429 and is tried again soon)
+            _remember_unknown_coin(lookup_key)
+            return []
         if res.status_code != 200:
             return []
         return [{"time": datetime.fromtimestamp(ms / 1000, tz=timezone.utc).isoformat(), "price": float(price)}

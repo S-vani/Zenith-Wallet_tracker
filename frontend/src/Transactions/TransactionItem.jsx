@@ -156,8 +156,6 @@ function TransactionItem({transaction, index, onChanged}) {
                             </button>
                         </div>
                     )}
-
-                    <div className="transaction-id">ID {transaction.id}</div>
                 </div>
             )}
         </div>

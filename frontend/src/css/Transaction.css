@@ -159,13 +159,6 @@
     color: var(--text);
 }
 
-.transaction-id {
-    margin-top: 0.25rem;
-    font-size: 0.7rem;
-    color: var(--text-subtle);
-    word-break: break-all;
-}
-
 .divider {
     height: 1px;
     background: rgba(255, 255, 255, 0.08);
@@ -875,8 +868,7 @@
 @media (max-width: 768px) {
     .action-badge,
     .filter-label,
-    .symbol-type,
-    .transaction-id {
+    .symbol-type {
         font-size: 0.75rem;
     }
 }

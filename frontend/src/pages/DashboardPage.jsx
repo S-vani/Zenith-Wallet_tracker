@@ -41,8 +41,9 @@ const greeting = () => {
 function DashboardPage() {
     usePageTitle("Dashboard");
 
-    const {user, currency} = useUser();
+    const {user, currency, error: userError, reload: reloadUser} = useUser();
     const [error, setError] = useState(null);
+    const [attempt, setAttempt] = useState(0); // bumped by "Try again" to fetch the selected range again
     const [activeRange, setActiveRange] = useState("day");
     const [clock, setClock] = useState(currentTime); // "now" for cache ages, moved on by range clicks
     // everything loaded while the page is open, by cache key: {range, days, stats, chart}
@@ -52,15 +53,21 @@ function DashboardPage() {
     const refreshKey = useRefreshKey(); // app only: pull to refresh / coming back to the app
 
     const days = rangeDays(activeRange, user?.date_joined, clock);
-    const key = dashboardKey(activeRange, days, currency);
+    // no key until the user (and so the currency every amount comes in) is known, so nothing is cached or shown
+    // under a guessed currency
+    const key = currency ? dashboardKey(activeRange, days, currency) : null;
 
     // Stats and chart always come from the same range and are swapped together, so the chart's colour and the
     // return next to it can never disagree
-    const current = loaded[key] ?? readDashboardCache(key, clock);
-    const shown = current ?? loaded[shownKey] ?? null;
+    const current = key ? loaded[key] ?? readDashboardCache(key, clock) : undefined;
+    const shown = current ?? (key && loaded[shownKey]) ?? null;
     const pending = !current; // the selected range is still loading; an older one stays on screen, dimmed
+    // nothing to show and the load failed (or the account couldn't be loaded): "—" and the error, not skeletons
+    const loadError = error ?? (currency ? null : userError);
+    const failed = !shown && Boolean(loadError);
 
     useEffect(() => {
+        if (!key) return; // waiting for the user's currency
         // fetched during this visit and nothing asked for a refresh since: the saved copy is good for a minute
         const fresh = readDashboardCache(key) !== undefined;
         if (fresh && fetchedWith.current[key] === refreshKey) return;
@@ -85,11 +92,17 @@ function DashboardPage() {
         return () => {
             ignore = true;
         };
-    }, [key, activeRange, days, refreshKey]);
+    }, [key, activeRange, days, refreshKey, attempt]);
 
     const selectRange = (value) => {
         setClock(currentTime());
         setActiveRange(value);
+    };
+
+    const retry = () => {
+        setError(null); // back to the loading skeletons while it tries again
+        if (!currency) reloadUser();
+        setAttempt((n) => n + 1);
     };
 
     const firstName = user?.name?.split(" ")[0];
@@ -104,11 +117,16 @@ function DashboardPage() {
                 <p className="page-subtitle">Here's how your portfolio is doing.</p>
             </header>
 
-            {error && shown && <p className="alert-error" role="alert">{error}</p>}
+            {loadError && (
+                <div className="alert-error alert-retry" role="alert">
+                    <span>{loadError}</span>
+                    <button type="button" className="btn" onClick={retry}>Try again</button>
+                </div>
+            )}
 
             {/* the portfolio value is the same for every range, so it stays on screen while a range loads */}
-            <DashboardStats stats={stats} loading={pending} valueLoading={!shown} currency={currency}
-                            range={activeRange}/>
+            <DashboardStats stats={stats} loading={pending && !failed} valueLoading={!shown && !failed}
+                            unavailable={failed} currency={currency} range={activeRange}/>
 
             <div className="dashboard-controls">
                 <div className="segmented" role="group" aria-label="Time range">
@@ -129,8 +147,9 @@ function DashboardPage() {
                 </Link>
             </div>
 
+            {/* the error and its Try again button are above, so the chart only says it couldn't load */}
             <DashboardChart entry={shown} updating={pending && !!shown} currency={currency}
-                            error={shown ? null : error}/>
+                            error={failed ? "Your portfolio history couldn't be loaded." : null}/>
         </div>
     );
 }

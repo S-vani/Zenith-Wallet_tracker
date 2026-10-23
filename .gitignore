@@ -14,3 +14,9 @@ reports/
 # IDE settings and its scratch database (per machine)
 .idea/
 identifier.sqlite
+
+# SQLite side files and local database backups
+*.db-wal
+*.db-shm
+*.db.gz
+backups/

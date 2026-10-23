@@ -94,3 +94,55 @@ curl -sI https://zenithwalletracker.ca | grep -iE 'strict|nosniff|frame|server'
 ```
 
 `nginx -t` checks the config before reloading, so a typo can't take the site down.
+
+## 4. Access logs: 14 days, no tokens
+
+The privacy policy and Apple's privacy manifest promise request logs are kept for at most 14 days. Emailed links
+(`/verify?token=…`, `/reset-password?token=…`) put live one-time tokens in the website's query string, so the website
+log drops query strings on those two pages.
+
+In the `http { }` block:
+
+```nginx
+# $request with the query string removed, for the pages whose links carry one-time tokens
+map $request_uri $zenith_logged_uri {
+    ~^(?<zenith_path>/(verify|reset-password))\?  $zenith_path?[removed];
+    default                                        $request_uri;
+}
+log_format zenith '$remote_addr - [$time_local] "$request_method $zenith_logged_uri $server_protocol" '
+                  '$status $body_bytes_sent "$http_user_agent" $request_time';
+```
+
+In both server blocks: `access_log /var/log/nginx/zenith.access.log zenith;`
+
+`/etc/logrotate.d/nginx` (the stock file rotates weekly and keeps 52): set it to rotate daily and keep 14:
+
+```
+/var/log/nginx/*.log {
+    daily
+    rotate 14
+    missingok
+    compress
+    delaycompress
+    notifempty
+    create 0640 www-data adm
+    sharedscripts
+    postrotate
+        invoke-rc.d nginx rotate >/dev/null 2>&1
+    endscript
+}
+```
+
+The API's own uvicorn access log is switched off (`--no-access-log` in `deploy/walletapp-backend.service`) and the
+journal is capped at 14 days (`deploy/journald-zenith.conf`).
+
+## 5. Website Content-Security-Policy (optional, test first)
+
+The website keeps the login token in localStorage, so a script injected into the page could read it; a CSP that
+only allows the site's own scripts closes that off. Start with `Content-Security-Policy-Report-Only`, click through
+every page (including the price charts, coin logos and Google sign-in) with the browser console open, then switch
+to the enforcing header:
+
+```nginx
+add_header Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://coin-images.coingecko.com https://assets.coingecko.com; connect-src 'self' https://api.zenithwalletracker.ca; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://api.zenithwalletracker.ca" always;
+```

@@ -201,6 +201,8 @@
     justify-content: center;
     width: 50%;
     padding: 2rem;
+    /* clear the iPhone home indicator when the page scrolls to the bottom (0 elsewhere) */
+    padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
 }
 
 .login-form-card {
@@ -310,7 +312,7 @@
         width: 100%;
         flex: 1;
         align-items: flex-start;
-        padding: 1.5rem 1rem 2rem;
+        padding: 1.5rem 1rem calc(2rem + env(safe-area-inset-bottom, 0px));
     }
 
     .login-form-card {
@@ -341,6 +343,18 @@
     padding: 0.15rem 0;
     font-size: 0.78rem;
     color: var(--accent-soft);
+}
+
+/* phones: small text links still get a 44px tall tap target (desktop keeps the compact look) */
+@media (max-width: 768px) {
+    .forgot-link,
+    .auth-legal-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        min-width: 44px;
+    }
 }
 
 .reset-mismatch {

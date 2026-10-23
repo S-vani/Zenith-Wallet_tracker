@@ -1,0 +1,11 @@
+[Unit]
+Description=Nightly Zenith database backup
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 UTC
+# catch up after the server was off at 03:30
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target

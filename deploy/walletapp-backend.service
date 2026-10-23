@@ -1,0 +1,29 @@
+# systemd unit for the Zenith API. Install:
+#   sudo cp deploy/walletapp-backend.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now walletapp-backend
+#
+# One worker on purpose: the rate limits, login lockouts, analyst caps and price caches live in memory
+# (backend/ratelimit.py, analyst/service.py), so a second worker would double every limit and every Yahoo call.
+# Listens on 127.0.0.1 only: nginx proxies to it, and the backend trusts X-Real-IP only from 127.0.0.1.
+# --no-access-log: nginx already keeps the request log (14 days, see docs/deploy.md); this avoids a second copy
+# in the journal with query strings in it.
+
+[Unit]
+Description=Zenith Wallet Tracker API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=deploy
+WorkingDirectory=/home/deploy/walletapp
+EnvironmentFile=/home/deploy/walletapp/.env
+ExecStart=/home/deploy/walletapp/.venv/bin/uvicorn backend.main:app --host 127.0.0.1 --port 8000 --workers 1 --proxy-headers --forwarded-allow-ips 127.0.0.1 --no-access-log
+Restart=always
+RestartSec=3
+# give in-flight requests a moment to finish on restart
+TimeoutStopSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

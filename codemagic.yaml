@@ -31,7 +31,10 @@ workflows:
         distribution_type: app_store
         bundle_identifier: ca.zenithwalletracker.app
       vars:
-        # baked into the app at build time; the same public API the website uses
+        # baked into the app at build time; the same public API the website uses. frontend/.env.ios has the same
+        # value (npm run build:ios uses --mode ios); a variable set here wins over that file, and the build stops if
+        # the address isn't https (the step below and scripts/prune-ios-build.mjs).
+        # VITE_IOS_APP_STORE_URL (the "Update required" screen's App Store link) can be set here the same way.
         VITE_BACKEND_URL: https://api.zenithwalletracker.ca
         XCODE_PROJECT: frontend/ios/App/App.xcodeproj
         XCODE_SCHEME: App
@@ -82,6 +85,18 @@ workflows:
             *[!0-9]*) echo "Unexpected build number from App Store Connect: '$LATEST'" && exit 1 ;;
           esac
           cd frontend/ios/App && agvtool new-version -all $((LATEST + 1))
+      - name: Set the version from the tag
+        script: |
+          # a tag like ios-v1.2.0 makes this build version 1.2.0 (CFBundleShortVersionString, also what the app sends
+          # as X-Zenith-App-Version); a build started by hand keeps the version in the Xcode project
+          if [ -z "$CM_TAG" ]; then
+            echo "Not started by a tag, keeping the project's version" && exit 0
+          fi
+          VERSION="${CM_TAG#ios-v}"
+          case "$VERSION" in
+            ""|*[!0-9.]*|.*|*.|*..*) echo "Tag '$CM_TAG' should look like ios-v1.2.0" && exit 1 ;;
+          esac
+          cd frontend/ios/App && agvtool new-marketing-version "$VERSION"
       - name: Build the signed .ipa
         script: xcode-project build-ipa --project "$XCODE_PROJECT" --scheme "$XCODE_SCHEME"
     artifacts:

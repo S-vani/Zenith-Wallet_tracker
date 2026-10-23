@@ -1,0 +1,12 @@
+# Runs deploy/zenith-backup.sh; started every night by zenith-backup.timer. Install:
+#   sudo cp deploy/zenith-backup.service deploy/zenith-backup.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now zenith-backup.timer
+# Check: systemctl list-timers zenith-backup.timer ; journalctl -u zenith-backup
+
+[Unit]
+Description=Back up the Zenith database
+
+[Service]
+Type=oneshot
+User=deploy
+ExecStart=/bin/bash /home/deploy/walletapp/deploy/zenith-backup.sh nightly

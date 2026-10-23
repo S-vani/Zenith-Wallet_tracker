@@ -18,6 +18,8 @@ import {isNative} from "./native/platform.js";
 import AppLock from "./native/AppLock.jsx";
 import OfflineBanner from "./native/OfflineBanner.jsx";
 import PullToRefresh from "./native/PullToRefresh.jsx";
+import UpdateRequired from "./native/UpdateRequired.jsx";
+import AppLinkNavigator from "./native/AppLinkNavigator.jsx";
 
 // signed in pages (and the charting library they use) load on demand to keep the landing page fast
 const DashboardPage = lazy(() => import("./pages/DashboardPage.jsx"));
@@ -26,6 +28,10 @@ const TransactionPage = lazy(() => import("./pages/TransactionPage.jsx"));
 const SearchPage = lazy(() => import("./pages/SearchPage.jsx"));
 const UserPage = lazy(() => import("./pages/UserPage.jsx"));
 const PrivacyPage = lazy(() => import("./pages/PrivacyPage.jsx"));
+const TermsPage = lazy(() => import("./pages/TermsPage.jsx"));
+const SupportPage = lazy(() => import("./pages/SupportPage.jsx"));
+
+const pageFallback = <div className="state-message"><div className="spinner"/></div>;
 
 
 // Wraps every page that needs an account: sends logged out users to /login and adds the nav bar
@@ -64,6 +70,8 @@ function App({lockEnabled = false}) {
         <Toaster/>
         {isNative && <OfflineBanner/>}
         {isNative && <AppLock initiallyEnabled={lockEnabled}/>}
+        {isNative && <UpdateRequired/>}
+        {isNative && <AppLinkNavigator/>}
         <Routes>
             {/* the app opens straight to your portfolio (or sign in); the marketing page is for the website */}
             <Route path="/" element={isNative
@@ -75,11 +83,10 @@ function App({lockEnabled = false}) {
             <Route path="/forgot-password" element={<ForgotPasswordPage/>}/>
             <Route path="/reset-password" element={<ResetPasswordPage/>}/>
             <Route path="/auth/callback" element={<OAuthCallbackPage/>}/>
-            <Route path="/privacy" element={
-                <Suspense fallback={<div className="state-message"><div className="spinner"/></div>}>
-                    <PrivacyPage/>
-                </Suspense>
-            }/>
+            <Route path="/privacy" element={<Suspense fallback={pageFallback}><PrivacyPage/></Suspense>}/>
+            {/* public: App Store Connect's Support URL and the terms sign up agrees to */}
+            <Route path="/terms" element={<Suspense fallback={pageFallback}><TermsPage/></Suspense>}/>
+            <Route path="/support" element={<Suspense fallback={pageFallback}><SupportPage/></Suspense>}/>
 
             <Route element={<ProtectedLayout/>}>
                 <Route path="/dashboard" element={<DashboardPage/>}/>

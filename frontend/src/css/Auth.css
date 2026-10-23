@@ -65,6 +65,28 @@
     height: 1.1rem;
 }
 
+/* phones: 44px tap targets for the show-password toggle and the "Sign up" / "Log in" footer links */
+@media (max-width: 768px) {
+    .password-wrapper input {
+        padding-right: 3rem !important;
+    }
+
+    .password-toggle {
+        right: 0.15rem;
+        width: 44px;
+        height: 44px;
+    }
+
+    .login-form-footer .hero-link-btn,
+    .signup-form-footer .hero-link-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        min-width: 44px;
+    }
+}
+
 .login-submit-btn,
 .signup-submit-btn {
     display: inline-flex;

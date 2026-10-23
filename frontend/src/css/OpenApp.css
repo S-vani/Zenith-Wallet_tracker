@@ -1,0 +1,7 @@
+/* "Open the Zenith app" on the verify / reset password pages (iPhone and iPad browsers only, OpenAppButton.jsx):
+   the same size as the "Log in" button above it, outlined so Log in stays the main action */
+.open-app-btn.large {
+    padding: 0.8rem 1.6rem;
+    font-size: 0.95rem;
+    min-height: 2.75rem; /* 44px tap target */
+}

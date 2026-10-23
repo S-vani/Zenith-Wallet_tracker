@@ -1,9 +1,12 @@
 import {describe, expect, it} from "vitest";
 import {
+    amountHint,
     createPayload,
     isFutureInput,
     ledgerErrorMessage,
     localInputToIso,
+    parseDecimalInput,
+    quantityInputValue,
     toLocalInputValue,
     updatePayload,
 } from "../src/Transactions/tradeForm.js";
@@ -72,6 +75,54 @@ describe("payloads", () => {
         expect(updatePayload(initial, {...initial, created_at: "2024-01-09T12:05"}))
             .toEqual({created_at: "2024-01-09T17:05:00.000Z"});
         expect(updatePayload(initial, {...initial, created_at: ""})).toEqual({}); // cleared = unchanged
+    });
+});
+
+describe("decimal input", () => {
+    it("reads a decimal comma or point the same way", () => {
+        expect(parseDecimalInput("1,5")).toBe(1.5);
+        expect(parseDecimalInput("1.5")).toBe(1.5);
+        expect(parseDecimalInput(" 0,000125 ")).toBe(0.000125);
+        expect(parseDecimalInput(",5")).toBe(0.5);
+        expect(parseDecimalInput(".5")).toBe(0.5);
+        expect(parseDecimalInput("5,")).toBe(5);
+        expect(parseDecimalInput("42")).toBe(42);
+        expect(parseDecimalInput("0")).toBe(0);
+    });
+
+    it("rejects thousands separators, several separators and anything else", () => {
+        for (const text of ["", " ", "1,234.5", "1.234,5", "1.2.3", "1,,5", ",", ".", "1e5", "-1", "+1", "abc",
+            "1 000", "$5", null, undefined]) {
+            expect(parseDecimalInput(text), String(text)).toBeNaN();
+        }
+    });
+
+    it("explains a typed value that isn't a positive number", () => {
+        expect(amountHint("", "")).toBeNull();
+        expect(amountHint("1,5", "100.25")).toBeNull();
+        expect(amountHint("1,5", "")).toBeNull();
+        expect(amountHint("1,234.5", "")).toMatch(/numbers only/);
+        expect(amountHint("2", "abc")).toMatch(/numbers only/);
+        expect(amountHint("0", "10")).toBe("Quantity and price must both be greater than 0.");
+        expect(amountHint("1", "0,00")).toBe("Quantity and price must both be greater than 0.");
+    });
+
+    it("prefills quantities without exponents or float noise", () => {
+        expect(quantityInputValue(0.0000001)).toBe("0.0000001");
+        expect(quantityInputValue(2)).toBe("2");
+        expect(quantityInputValue(1.5)).toBe("1.5");
+        expect(quantityInputValue(0.1 + 0.2)).toBe("0.3");
+        expect(quantityInputValue(1e9)).toBe("1000000000");
+        expect(quantityInputValue("abc")).toBe("");
+        expect(parseDecimalInput(quantityInputValue(0.0000001))).toBe(0.0000001);
+    });
+
+    it("sends what was typed with a comma as a number", () => {
+        const form = {symbol: "BTC", api_id: "btc", asset_type: "crypto", action: "BUY", quantity: "0,5",
+            price_of_one: "95000,25", created_at: ""};
+        expect(createPayload(form, "")).toMatchObject({quantity: 0.5, price_of_one: 95000.25});
+        const initial = {action: "BUY", quantity: "2", price_of_one: "100", created_at: ""};
+        expect(updatePayload(initial, {...initial, quantity: "2,5"})).toEqual({quantity: 2.5});
     });
 });
 
