@@ -90,6 +90,10 @@ function AnalystScenarios({report, headingId}) {
             {hasRanges && report.range_method && (
                 <AnalystDisclosure title="How these ranges are calculated" className="analyst-disclosure-small">
                     <p className="analyst-muted-text">{report.range_method}</p>
+                    {/* also the note's tooltip above, which touch screens never show */}
+                    <p className="analyst-muted-text">
+                        Ranges start from the last daily closing price, which can differ slightly from the live price.
+                    </p>
                 </AnalystDisclosure>
             )}
             {!hasRanges && (

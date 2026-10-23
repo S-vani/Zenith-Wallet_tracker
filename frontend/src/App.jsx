@@ -31,7 +31,13 @@ const PrivacyPage = lazy(() => import("./pages/PrivacyPage.jsx"));
 const TermsPage = lazy(() => import("./pages/TermsPage.jsx"));
 const SupportPage = lazy(() => import("./pages/SupportPage.jsx"));
 
-const pageFallback = <div className="state-message"><div className="spinner"/></div>;
+// shown while a page's code loads; the hidden text tells screen readers what the spinner means
+const pageFallback = (
+    <div className="state-message" role="status">
+        <div className="spinner" aria-hidden="true"/>
+        <span className="visually-hidden">Loading…</span>
+    </div>
+);
 
 
 // Wraps every page that needs an account: sends logged out users to /login and adds the nav bar
@@ -54,7 +60,7 @@ function ProtectedLayout() {
             {isNative && <PullToRefresh/>}
             <NavBar/>
             <main className="main-content" id="main-content" tabIndex={-1}>
-                <Suspense fallback={<div className="state-message"><div className="spinner"/></div>}>
+                <Suspense fallback={pageFallback}>
                     <Outlet/>
                 </Suspense>
                 <DataCredits/>

@@ -396,45 +396,6 @@
     color: #f5f7ff;
 }
 
-.saving-popup {
-    position: fixed;
-    top: 1.5rem;
-    right: 1.5rem;
-
-    padding: 0.9rem 1.25rem;
-
-    border-radius: 0.75rem;
-
-    background: linear-gradient(180deg, #16a34a, #15803d);
-
-    border: 0.05rem solid #22c55e;
-
-    color: #f5f7ff;
-
-    font-size: 0.9rem;
-    font-weight: 600;
-
-    box-shadow:
-        0 0.5rem 1.5rem rgba(0, 0, 0, 0.35),
-        0 0 1rem rgba(34, 197, 94, 0.2);
-
-    z-index: 1000;
-
-    animation: saving-popup-in 0.25s ease-out;
-}
-
-@keyframes saving-popup-in {
-    from {
-        opacity: 0;
-        transform: translateY(-0.5rem);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
 @media (max-width: 768px) {
     .user-page-wrapper {
         padding-top: 1.5rem;

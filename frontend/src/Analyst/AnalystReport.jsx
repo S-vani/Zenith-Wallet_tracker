@@ -87,7 +87,8 @@ function AnalystReport({report, now}) {
 
             <div className="analyst-details">
                 <AnalystMetrics metrics={report.metrics}/>
-                <AnalystSources sources={report.sources} limitations={report.limitations}/>
+                <AnalystSources sources={report.sources} limitations={report.limitations}
+                                engine={report.engine || "rules"}/>
             </div>
         </>
     );

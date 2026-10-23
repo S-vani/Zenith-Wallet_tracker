@@ -192,7 +192,9 @@ app.add_middleware(
     # FRONTEND_URL can list several origins separated by commas (e.g. with and without www)
     allow_origins=[origin.strip().rstrip("/") for origin in frontend_url.split(",") if origin.strip()]
                   + NATIVE_APP_ORIGINS,
-    allow_credentials=True,
+    # sign-in uses a bearer token, never cookies, so browsers needn't send cookies cross-origin (Google sign-in's
+    # CSRF cookie only travels on full-page redirects, which CORS doesn't cover)
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],  # includes the app's X-Zenith-Client and X-Zenith-App-Version (preflights echo them back)
 )

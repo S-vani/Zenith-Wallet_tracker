@@ -1,4 +1,4 @@
-import {formatDate, groupMetrics, safeUrl} from "./analystUtils.js";
+import {CONFIDENCE_MEANING, engineMeta, formatDate, groupMetrics, safeUrl} from "./analystUtils.js";
 import AnalystDisclosure from "./AnalystDisclosure.jsx";
 import {isNative} from "../native/platform.js";
 
@@ -29,14 +29,24 @@ export function AnalystMetrics({metrics}) {
     );
 }
 
-// Where the data came from and what's missing
-export function AnalystSources({sources = [], limitations = []}) {
+// Where the data came from and what's missing. With `engine`, it also explains the badges at the top, whose
+// tooltips touch screens never show.
+export function AnalystSources({sources = [], limitations = [], engine}) {
     const items = sources.filter((s) => s?.name);
     const notes = limitations.filter(Boolean);
-    if (items.length === 0 && notes.length === 0) return null;
+    if (items.length === 0 && notes.length === 0 && !engine) return null;
 
     return (
         <AnalystDisclosure title="Sources & limitations">
+            {engine && (
+                <>
+                    <h4 className="analyst-subheading">Reading this report</h4>
+                    <ul className="analyst-limitations">
+                        <li>{engineMeta(engine).description}</li>
+                        <li>{CONFIDENCE_MEANING}</li>
+                    </ul>
+                </>
+            )}
             {items.length > 0 && (
                 <>
                     <h4 className="analyst-subheading">Sources</h4>

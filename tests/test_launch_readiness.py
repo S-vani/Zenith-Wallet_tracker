@@ -348,6 +348,16 @@ def test_426_reaches_the_app_through_cors_and_preflights_pass(client, monkeypatc
     assert res.headers["x-content-type-options"] == "nosniff"
 
 
+def test_cors_never_allows_credentials(client):
+    # bearer tokens only: browsers must not attach cookies to cross-origin API calls
+    preflight = client.options("/users", headers={
+        "Origin": "capacitor://localhost", "Access-Control-Request-Method": "GET",
+        "Access-Control-Request-Headers": "authorization"})
+    assert preflight.status_code == 200
+    assert "access-control-allow-credentials" not in preflight.headers
+    assert "authorization" in preflight.headers["access-control-allow-headers"].lower()
+
+
 # =====================================================================================================================
 # 5. /health
 # =====================================================================================================================

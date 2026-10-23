@@ -1,4 +1,4 @@
-import {confidenceMeta, formatScore, scorePosition, sentimentMeta} from "./analystUtils.js";
+import {CONFIDENCE_MEANING, confidenceMeta, formatScore, scorePosition, sentimentMeta} from "./analystUtils.js";
 
 // Sentiment badge, confidence, score gauge, the summary and the main reasons
 function AnalystOverview({report}) {
@@ -18,7 +18,7 @@ function AnalystOverview({report}) {
                     </span>
 
                     {confidence && (
-                        <span className="analyst-confidence" title="How strongly the signals agree with each other">
+                        <span className="analyst-confidence" title={CONFIDENCE_MEANING}>
                             <span className="analyst-confidence-bars" aria-hidden="true">
                                 {[1, 2, 3].map((n) => (
                                     <span key={n} className={n <= confidence.level ? "on" : ""}/>
