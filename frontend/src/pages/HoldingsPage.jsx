@@ -12,6 +12,7 @@ function HoldingsPage() {
 
     const [error, setError] = useState(null);
     const [holdings, setHoldings] = useState(null); // null until the first load finishes
+    const [attempt, setAttempt] = useState(0); // bumped by "Try again"
     const refreshKey = useRefreshKey(); // app only: pull to refresh / coming back to the app
 
     useEffect(() => {
@@ -32,12 +33,24 @@ function HoldingsPage() {
         return () => {
             ignore = true;
         };
-    }, [refreshKey]);
+    }, [refreshKey, attempt]);
+
+    const retry = () => {
+        setError(null); // back to the spinner (or the current list) while it tries again
+        setAttempt((n) => n + 1);
+    };
+
+    const errorAlert = (
+        <div className="alert-error alert-retry holdings-refresh-error" role="alert">
+            <span>{error}</span>
+            <button type="button" className="btn" onClick={retry}>Try again</button>
+        </div>
+    );
 
     let content;
     if (holdings === null) {
         content = error
-            ? <div className="state-message"><p className="alert-error" role="alert">{error}</p></div>
+            ? <div className="state-message">{errorAlert}</div>
             : <div className="state-message"><div className="spinner"/>Loading your holdings…</div>;
     } else if (holdings.length === 0) {
         content = (
@@ -50,7 +63,7 @@ function HoldingsPage() {
     } else {
         content = (
             <>
-                {error && <p className="alert-error holdings-refresh-error" role="alert">{error}</p>}
+                {error && errorAlert}
                 <HoldingsList holdings={holdings}/>
             </>
         );

@@ -2,6 +2,7 @@ import {useState} from "react";
 import {Link, useSearchParams} from "react-router-dom";
 import {verify} from "../services/api"
 import usePageTitle from "../utils/usePageTitle.js";
+import OpenAppButton from "../components/OpenAppButton.jsx";
 
 import "../css/Home.css"
 import "../css/Auth.css"
@@ -60,6 +61,7 @@ function VerifyPage() {
                         <h1>You're verified!</h1>
                         <p>Your email has been confirmed. You can now log in to your dashboard.</p>
                         <Link to="/login" className="auth-btn signup-btn large">Log in</Link>
+                        <OpenAppButton/>
                         {/* verification links always open in the browser, even for people who signed up in the app */}
                         <p className="verify-app-note">Signed up in the Zenith iPhone app? Go back to the app and log in there.</p>
                     </>

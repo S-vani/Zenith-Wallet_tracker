@@ -151,3 +151,35 @@
         padding: 1.25rem;
     }
 }
+
+/* ---------- Privacy · Terms · Support links (policy page footers, sign in / sign up, under signed-in pages) ---------- */
+.legal-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0 0.25rem;
+    font-size: 0.8rem;
+}
+
+.legal-links a {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.5rem;
+    border-radius: 0.4rem;
+    color: var(--text-subtle);
+    text-decoration: none;
+}
+
+.legal-links a:hover,
+.legal-links a:focus-visible {
+    color: var(--accent-soft);
+    text-decoration: underline;
+}
+
+/* fingers need bigger targets than a mouse pointer (44px, Apple's minimum) */
+@media (pointer: coarse) {
+    .legal-links a {
+        min-height: 2.75rem;
+        padding: 0 0.65rem;
+    }
+}

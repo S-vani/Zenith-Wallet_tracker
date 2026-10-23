@@ -5,6 +5,7 @@ import PasswordInput from "./PasswordInput.jsx";
 import GoogleButton from "./GoogleButton.jsx";
 import {showToast} from "../utils/toast.js";
 import {isNative} from "../native/platform.js";
+import {LegalLinks} from "../components/LegalLayout.jsx";
 
 function SignupForm({onSubmit}) {
     const [form, setForm] = useState({
@@ -159,8 +160,8 @@ function SignupForm({onSubmit}) {
                         {submitting ? "Creating account…" : "Create account"}
                     </button>
                     <p className="signup-legal">
-                        By creating an account you agree to our <Link to="/privacy">privacy policy</Link>. Zenith is
-                        not financial advice.
+                        By creating an account you agree to the <Link to="/terms">Terms of Use</Link> and{" "}
+                        <Link to="/privacy">Privacy Policy</Link>. Zenith is not financial advice.
                     </p>
                 </form>
 
@@ -168,6 +169,7 @@ function SignupForm({onSubmit}) {
                     <span>Already have an account?</span>
                     <Link to="/login" className="hero-link-btn">Log in</Link>
                 </div>
+                <LegalLinks/>
             </div>
         </main>
     );

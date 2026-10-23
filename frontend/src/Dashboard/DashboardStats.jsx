@@ -10,8 +10,9 @@ const RANGE_LABELS = {
 };
 
 // `loading`: the selected range's return is still loading. `valueLoading`: nothing has loaded yet; the portfolio
-// value doesn't depend on the range, so it stays on screen while another range loads.
-function DashboardStats({stats, loading, valueLoading = loading, currency, range}) {
+// value doesn't depend on the range, so it stays on screen while another range loads. `unavailable`: nothing could
+// be loaded, so both cards show "—" (the page shows the error and a Try again button) instead of shimmering forever.
+function DashboardStats({stats, loading, valueLoading = loading, unavailable = false, currency, range}) {
     const change = stats.curr_timeperiod;
     // the backend's base: value at the start of the period + money put in (all time: cost of every buy).
     // value − change was wrong once anything had been sold (e.g. +1300% for a +13% gain)
@@ -19,14 +20,16 @@ function DashboardStats({stats, loading, valueLoading = loading, currency, range
     const changePct = basis > 0 ? (change / basis) * 100 : null;
     // holdings with no price anywhere are left out of both numbers; the list is about now, so it's the same for
     // every range and can stay while another range loads
-    const missing = valueLoading ? null : unpricedNote(stats.unpriced);
+    const missing = valueLoading || unavailable ? null : unpricedNote(stats.unpriced);
 
     return (
         <>
             <div className="dashboard-stats">
                 <div className="stat-card">
                     <div className="stat-label">Portfolio value</div>
-                    {valueLoading ? (
+                    {unavailable ? (
+                        <div className="stat-value">—</div>
+                    ) : valueLoading ? (
                         <span className="skeleton stat-skeleton"/>
                     ) : (
                         <div className="stat-value">{formatMoney(stats.value, currency)}</div>
@@ -35,7 +38,9 @@ function DashboardStats({stats, loading, valueLoading = loading, currency, range
 
                 <div className="stat-card">
                     <div className="stat-label">{RANGE_LABELS[range] ?? "Period return"}</div>
-                    {loading ? (
+                    {unavailable ? (
+                        <div className="stat-value">—</div>
+                    ) : loading ? (
                         <span className="skeleton stat-skeleton"/>
                     ) : (
                         <div className={`stat-value ${changeClass(change)}`}>

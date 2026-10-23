@@ -62,7 +62,13 @@ function HoldingChart({symbol, type, coinId = null, initialRange = "1M", compact
 
     let body;
     if (!shown && !error) {
-        body = <div className="state-message"><div className="spinner"/></div>;
+        // a spinner alone says nothing to a screen reader
+        body = (
+            <div className="state-message" role="status">
+                <div className="spinner" aria-hidden="true"/>
+                <span className="visually-hidden">Loading {label} price chart…</span>
+            </div>
+        );
     } else if (failed) {
         body = <div className="state-message"><p className="alert-error">{error}</p></div>;
     } else if (data.length === 0) {

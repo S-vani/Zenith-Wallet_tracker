@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build:ios": "vite build --outDir dist-ios --emptyOutDir && node scripts/prune-ios-build.mjs && cap sync ios"
+    "build:ios": "vite build --mode ios --outDir dist-ios --emptyOutDir && node scripts/prune-ios-build.mjs && cap sync ios"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.2",

@@ -9,6 +9,11 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
   so run from the project root (`backend/main.py` also fixes `sys.path` when run directly).
   - `main.py` — app, CORS (`FRONTEND_URL`, comma-separated), JSON 500 handler, 422 handler that never echoes inputs,
     security headers middleware; `/docs`/`/redoc`/`/openapi.json` are 404 unless `ENABLE_API_DOCS=1` (tests set it).
+    Refuses to start without a `SECRET` of 32+ characters. `GET /health` (DB `SELECT 1` + whether FX rates are
+    cached; 503 on failure) is what the uptime monitor and `deploy/deploy.sh` poll. `RequireAppVersion`: the iOS app
+    sends `X-Zenith-App-Version`; below `MIN_IOS_APP_VERSION` (unset = off) it gets 426 `{detail, code:
+    "UPDATE_REQUIRED"}` and shows a non-dismissable "Update required" screen. Requests without the header (website)
+    are never affected. Keep API changes additive — old app versions stay installed for months.
   - Auth hardening: `ratelimit.py` (in-memory per-IP / per-email limits on login, register, verify and reset emails,
     login lockout, re-auth attempts; trusts `X-Real-IP` only from 127.0.0.1), `authentication/` (JWT carries
     `ver` = `user.token_version`, bumped on password reset/change, email change, first Google link and
@@ -20,25 +25,37 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
     startup (create_all only creates tables). Register every new column there.
   - `routes/assets.py` — transactions CRUD + filters (optional `created_at` to backdate; every create/edit/delete
     replays the symbol's ledger and returns 409 if history would oversell), holdings, dashboard, price/portfolio
-    history, stock/crypto search (results carry `name`; query ≤ 20 chars; LRU caches; 20 new searches/min/user),
-    user info/email, `DELETE /user` (account deletion: transactions + OAuth links + user, required by the
-    app stores). `routes/oauth.py` — Google sign-in. `routes/analyst.py` — `GET /analyst`.
+    history, stock/crypto search (results carry `name`; query ≤ 20 chars; LRU caches; 20 new searches/min/user;
+    `/prices/history` 60/min/user, both via `_check_user_rate` with Retry-After), user info/email, `DELETE /user`
+    (account deletion: transactions + OAuth links + user, required by the app stores). At most 20,000 trades per
+    user (`MAX_TRANSACTIONS_PER_USER`). `routes/oauth.py` — Google sign-in. `routes/analyst.py` — `GET /analyst`.
   - `services/asset_services.py` — pricing (yfinance), FX conversion (open.er-api, 1 h cache; the last good rates are served if a refresh fails, 503 only with none), holdings math,
-    `rebuild_symbol_ledger` (replays a symbol's buys/sells; used by PUT/DELETE to keep history valid).
+    `rebuild_symbol_ledger` (replays a symbol's buys/sells; used by PUT/DELETE to keep history valid). Ledger
+    replays sort by `LEDGER_ORDER` (time, then BUY before SELL, so same-tick trades can't oversell). Every yfinance
+    call goes through `run_yahoo` (own 16-thread pool, at most 6 at once); concurrent cache misses for one series
+    share one fetch; FX refreshes are locked. Routes call `end_read(session)` before waiting on any price source so
+    a slow provider doesn't hold one of the few DB connections — do the same in new routes.
   - `analyst/` — market analyst: `data.py` (collects data), `indicators.py` (pure maths), `engine.py` (rules →
     report), `gemini.py` (optional rewording), `service.py` (DB cache, rate limits), `schema.py` (response model).
   - `db_models/assets.py` — `User`, `Transaction`, `OAuthAccount`, `UserManager` (password rules: 8–128 chars, not
     the email, not one repeated character, not in `common_passwords.py`) and
-    `send_link_email` (verification + password-reset emails; logs the link when GMAIL_* is empty). Reset flow:
+    `send_link_email` (verification + password-reset emails via `SMTP_*`, else `GMAIL_*`, else the link is logged;
+    retried twice; failure logs never include addresses). Login and re-auth hash passwords in a thread. Reset flow:
     `/auth/forgot-password` (always 202) → email → `/reset-password?token=` page (moves the token out of the address
     bar into sessionStorage, `Authentication/resetToken.js`) → `/auth/reset-password`.
 - `frontend/` — React 19 + Vite + recharts. `src/services/api.js` is the only place that calls the backend
   (`request()` adds the token, maps errors to readable messages, logs out on 401/403).
   - `pages/` (one per route), `Dashboard/`, `Holdings/`, `Transactions/`, `Search/`, `Analyst/`, `Authentication/`.
     `pages/PrivacyPage.jsx` (`/privacy`, public) is the privacy policy + "not financial advice" disclaimer the app
-    stores require — update it whenever the app starts collecting or sending data somewhere new.
-  - `context/UserContext.jsx` (current user + currency), `utils/format.js` (money/price/percent formatting — use
-    `formatPrice` for asset prices so tiny coins never show $0.00), `utils/chart.js`, `utils/toast.js` (`showToast`).
+    stores require — update it whenever the app starts collecting or sending data somewhere new. `/terms` (Terms of
+    Use, incl. the CoinGecko clause its API terms require) and `/support` (App Store Connect's Support URL) share
+    `components/LegalLayout.jsx` (`LegalLinks` = Privacy · Terms · Support, also under `DataCredits`); the contact
+    address is `utils/contact.js`.
+  - `context/UserContext.jsx` (current user + `loading`/`error`/`reload`; `currency` is null until `/user` loads, so
+    nothing is formatted or cached under a guessed currency), `utils/format.js` (money/price/percent formatting — use
+    `formatPrice` for asset prices so tiny coins never show $0.00; a null currency gives "—"), `utils/chart.js`,
+    `utils/toast.js` (`showToast`). Quantity/price inputs are `type="text" inputMode="decimal"` and accept "1,5" or
+    "1.5" (`parseDecimalInput` in `Transactions/tradeForm.js`) for comma-decimal regions.
   - CSS in `src/css/` with design tokens in `Global.css` (navy theme). Phones get a bottom tab bar (≤768px).
   - Accessibility: `components/SkipLink.jsx` ("Skip to main content") is the first Tab stop on every page; each page
     renders one `<main id="main-content" tabIndex={-1}>` as its target. On login, "Forgot password?" sits after the
@@ -50,15 +67,23 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
   was *unlocked* skips Face ID), haptics, share sheet, pull to refresh (`useRefreshKey`), offline cache of the
   portfolio screens (`offlineCache.js`, used by `api.js`; keyed by user + currency, LRU 40), 12 s request timeout
   falling back to saved data (`connectivity.js`), native app-switcher cover in `SceneDelegate.swift` (when the lock
-  is on), `@capacitor/keyboard`, offline banner, labelled tab bar without log out and with Dashboard first
+  is on), `@capacitor/keyboard` (accessory bar kept for its Done key; `keyboard-open` on `<html>` hides the tab bar),
+  offline banner, app version header + "Update required" screen (`appVersion.js`, `updateRequired.js`,
+  `UpdateRequired.jsx`), `zenithwallet://login` links from the verify/reset pages' "Open the Zenith app" button
+  (`appLinks.js`, `AppLinkNavigator.jsx`; only known screens, never data from the URL), labelled tab bar without log out and with Dashboard first
   (`tabOrder.js`; the website keeps Search first) (`html.native` CSS in `Native.css`), splash/status bar, no pinch
   zoom, iOS Text Size via `@capacitor/text-zoom` (`textZoom.js`, capped at 130%, re-read on resume; tab labels stay
   fixed like a native tab bar), outside `http(s)` links opened in an in-app Safari sheet via `@capacitor/browser`
   (`externalLinks.js`, one capture-phase click listener; `mailto:` untouched). In the app `/` skips the marketing page and
   Google sign-in is hidden (web views can't use it; would also need Sign in with Apple). Backend CORS always allows
   `capacitor://localhost`.
-  - Build the app with `npm run build:ios` (Vite into `dist-ios/`, drops website-only files like the demo video,
-    then `cap sync ios`); the website's `dist/` is separate. Cloud builds: `codemagic.yaml` (no Mac needed).
+  - Build the app with `npm run build:ios` (`vite build --mode ios` into `dist-ios/` using the committed
+    `frontend/.env.ios`, drops website-only files like the demo video and fails unless the bundle has an https API
+    URL, then `cap sync ios`); the website's `dist/` is separate. iOS 17+, iPhone only. Cloud builds:
+    `codemagic.yaml` (no Mac needed); a pushed `ios-v<version>` tag sets the app version, the build number is bumped
+    automatically. `VITE_IOS_APP_STORE_URL` (empty until the app is live) is the update screen's App Store link.
+  - App Store submission: `docs/app-store.md` (listing fields, review notes, checklist); the reviewers' demo account
+    is made/reset on the server with `scripts/create_demo_account.py <email> [--reset]`.
   - `ios/App/App/PrivacyInfo.xcprivacy` is Apple's privacy manifest (UserDefaults reason CA92.1, collected data
     incl. search history: not linked, 14-day server logs; check new plugins for required-reason APIs);
     keep it, the App Privacy answers and `/privacy` in step. Icons/splash come from `frontend/assets/`
@@ -68,7 +93,8 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
   results are required by CoinGecko's and ExchangeRate-API's free plans; keep them.
 - `tests/` — pytest (offline: network blocked, prices/FX/yfinance/HTTP stubbed, temp SQLite DB).
   `frontend/test/` — Vitest for pure utils.
-- `scripts/dev.mjs`, `scripts/test-backend.mjs` — used by the root `package.json`.
+- `scripts/dev.mjs`, `scripts/test-backend.mjs` — used by the root `package.json`. `deploy/` — server files
+  (systemd units, backup and deploy scripts, journald config).
 
 ## Commands (project root)
 - `npm run dev` — backend :8000 + frontend :5173 (uses `.venv`). `dev:backend` / `dev:frontend` for one.
@@ -133,15 +159,19 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
 ## Environment (`.env` in project root; never commit it)
 `SECRET`, `DATABASE_URL` (default `sqlite+aiosqlite:///./walletdatabase.db`, anchored to project root),
 `FRONTEND_URL`, `BACKEND_URL` (public API URL, used for the Google callback), `API_KEY` (TwelveData),
-`API_KEY_COINEGECKO` (CoinGecko demo), `GMAIL_USER`/`GMAIL_PASS` (verification email; if empty the link is logged),
+`API_KEY_COINEGECKO` (CoinGecko demo), `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS`/`EMAIL_FROM` (transactional
+email provider; 465 = SSL, else STARTTLS), else `GMAIL_USER`/`GMAIL_PASS`; with neither the link is logged,
 `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (Google sign-in; button hidden without them), `GEMINI_API_KEY`
-(+ optional `GEMINI_MODEL`, default `gemini-2.5-flash`). Frontend: `frontend/.env` → `VITE_BACKEND_URL`.
+(+ optional `GEMINI_MODEL`, default `gemini-2.5-flash`; free tier isn't allowed for EU/UK/Swiss users — leave unset
+unless billing is on), `MIN_IOS_APP_VERSION` (forced update; unset = off), `BACKUP_DIR`/`BACKUP_REMOTE` (backups).
+Frontend: `frontend/.env` → `VITE_BACKEND_URL`; `frontend/.env.ios` for the app build.
 
 ## Deploying (server: `~/walletapp` as user `deploy`)
-`git pull` → `uv sync` (or `.venv/bin/pip install -r requirements.txt`) → `cd frontend && npm ci && npm run build`
-(copy `dist` if nginx serves `/var/www/html`) → **restart the backend: `sudo systemctl restart walletapp-backend`** (a pull alone doesn't reload Python;
-this was missed before, leaving the old API running). Check: `curl https://api.zenithwalletracker.ca/auth/providers`. nginx rate limits and security headers:
-`docs/nginx-hardening.md` (nginx must proxy from 127.0.0.1 so the backend sees real client IPs).
+`bash deploy/deploy.sh [tag]`: backs up the DB, checks out the release, `uv sync --frozen`, builds the website into
+`/var/www/html`, restarts `walletapp-backend` and waits for `/health`, rolling back to the previous commit if it
+isn't healthy. One-time server setup (systemd unit with exactly one worker on 127.0.0.1, nightly backups kept 30
+days, 14-day logs, uptime monitor) and restore steps: `docs/deploy.md`. nginx rate limits, security headers, log
+format: `docs/nginx-hardening.md` (nginx must proxy from 127.0.0.1 so the backend sees real client IPs).
 
 ## Working notes
 - Keep changes in the existing style (JSX with 4-space indent, plain CSS files per area, small comments explaining

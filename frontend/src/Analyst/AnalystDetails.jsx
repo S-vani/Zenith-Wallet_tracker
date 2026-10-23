@@ -1,5 +1,6 @@
 import {formatDate, groupMetrics, safeUrl} from "./analystUtils.js";
 import AnalystDisclosure from "./AnalystDisclosure.jsx";
+import {isNative} from "../native/platform.js";
 
 // The facts behind the wording, grouped (performance, trend, risk, ...)
 export function AnalystMetrics({metrics}) {
@@ -49,7 +50,8 @@ export function AnalystSources({sources = [], limitations = []}) {
                                         <a href={url} target="_blank" rel="noopener noreferrer"
                                            className="analyst-source-link">
                                             {source.name}
-                                            <span className="sr-only"> (opens in a new tab)</span>
+                                            {/* the app opens it in an in-app Safari sheet instead (externalLinks.js) */}
+                                            {!isNative && <span className="sr-only"> (opens in a new tab)</span>}
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
                                                  strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                                 <path d="M14 4h6v6"/>

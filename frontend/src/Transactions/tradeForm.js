@@ -23,6 +23,35 @@ export function isFutureInput(value, now = new Date()) {
     return !Number.isNaN(d.getTime()) && d > now;
 }
 
+// The quantity and price fields are plain text with a decimal keypad: iPhones set to French, German etc. only offer
+// a comma there, and a type="number" field silently turns "1,5" into "". So "1,5" and "1.5" both mean 1.5. A second
+// separator ("1,234.5", "1.234,5"), letters or exponents are rejected rather than guessed. Returns NaN when invalid.
+const DECIMAL_TEXT = /^(\d+([.,]\d*)?|[.,]\d+)$/;
+
+export function parseDecimalInput(text) {
+    const value = String(text ?? "").trim();
+    if (!DECIMAL_TEXT.test(value)) return NaN;
+    return Number(value.replace(",", "."));
+}
+
+// What's wrong with the typed quantity/price, or null. Empty fields aren't flagged yet (Save just stays disabled).
+export function amountHint(quantity, price) {
+    const typed = [quantity, price].filter((v) => String(v ?? "").trim() !== "");
+    if (typed.some((v) => Number.isNaN(parseDecimalInput(v)))) {
+        return "Enter numbers only, like 1.5 or 1,5 (no thousands separators).";
+    }
+    if (typed.some((v) => !(parseDecimalInput(v) > 0))) return "Quantity and price must both be greater than 0.";
+    return null;
+}
+
+// A quantity as plain text for the input: String(0.0000001) is "1e-7", which the field wouldn't accept back.
+// Quantities are stored with 10 decimals, so that's all that's kept.
+export function quantityInputValue(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n < 0) return "";
+    return n.toFixed(10).replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
+}
+
 // Body for POST /transactions. The date is only sent when the user changed it, so an untouched form is dated
 // "now" by the server at the moment it's saved. A coin also sends its CoinGecko id from search, since several
 // coins can share a ticker and the server would otherwise price the most popular one.
@@ -34,8 +63,8 @@ export function createPayload(form, initialDate) {
         api_id: form.api_id,
         asset_type: form.asset_type,
         action: form.action,
-        quantity: Number(form.quantity),
-        price_of_one: Number(form.price_of_one),
+        quantity: parseDecimalInput(form.quantity),
+        price_of_one: parseDecimalInput(form.price_of_one),
         ...(coinId ? {coin_id: coinId} : {}),
         ...(changedDate ? {created_at: localInputToIso(form.created_at)} : {}),
     };
@@ -46,8 +75,8 @@ export function createPayload(form, initialDate) {
 export function updatePayload(initial, form) {
     const changes = {};
     if (form.action !== initial.action) changes.action = form.action;
-    if (form.quantity !== initial.quantity) changes.quantity = Number(form.quantity);
-    if (form.price_of_one !== initial.price_of_one) changes.price_of_one = Number(form.price_of_one);
+    if (form.quantity !== initial.quantity) changes.quantity = parseDecimalInput(form.quantity);
+    if (form.price_of_one !== initial.price_of_one) changes.price_of_one = parseDecimalInput(form.price_of_one);
     if (form.created_at && form.created_at !== initial.created_at) {
         changes.created_at = localInputToIso(form.created_at);
     }

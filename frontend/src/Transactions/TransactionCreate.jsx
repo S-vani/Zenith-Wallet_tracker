@@ -5,7 +5,10 @@ import {formatMoney, formatQuantity, priceInputValue} from "../utils/format.js";
 import {showToast} from "../utils/toast.js";
 import HoldingsChart from "../Holdings/HoldingsChart.jsx";
 import TradeFields from "./TradeFields.jsx";
-import {createPayload, isFutureInput, ledgerErrorMessage, toLocalInputValue} from "./tradeForm.js";
+import {
+    amountHint, createPayload, isFutureInput, ledgerErrorMessage, parseDecimalInput, quantityInputValue,
+    toLocalInputValue,
+} from "./tradeForm.js";
 
 import "../css/Holdings.css";
 
@@ -43,12 +46,15 @@ function TransactionCreate({onClose, onCreated, data}) {
         setForm((prev) => ({...prev, [name]: value}));
     };
 
-    const quantityValid = Number(form.quantity) > 0;
-    const priceValid = Number(form.price_of_one) > 0;
+    const quantity = parseDecimalInput(form.quantity); // "1,5" or "1.5"
+    const price = parseDecimalInput(form.price_of_one);
+    const quantityValid = quantity > 0;
+    const priceValid = price > 0;
+    const hint = amountHint(form.quantity, form.price_of_one);
     const dateInFuture = isFutureInput(form.created_at);
     const backdated = Boolean(form.created_at) && form.created_at !== initialDate;
 
-    const total = Number(form.quantity) * Number(form.price_of_one);
+    const total = quantity * price; // NaN (not shown) while either is invalid
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -86,7 +92,7 @@ function TransactionCreate({onClose, onCreated, data}) {
                         {backdated && " today"}
                         {owned > 0 && (
                             <button type="button" className="inline-link sell-all"
-                                    onClick={() => setField("quantity", String(owned))}>
+                                    onClick={() => setField("quantity", quantityInputValue(owned))}>
                                 Sell all
                             </button>
                         )}
@@ -101,9 +107,7 @@ function TransactionCreate({onClose, onCreated, data}) {
 
                 {error && <p className="alert-error" role="alert">{error}</p>}
 
-                {(form.quantity !== "" && !quantityValid) || (form.price_of_one !== "" && !priceValid) ? (
-                    <p className="create-hint">Quantity and price must both be greater than 0.</p>
-                ) : null}
+                {hint && <p className="create-hint">{hint}</p>}
                 {dateInFuture && <p className="create-hint">The date can't be in the future.</p>}
 
                 <div className="create-transaction-buttons">

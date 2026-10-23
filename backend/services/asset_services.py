@@ -1,6 +1,8 @@
 import asyncio
+import functools
 import math
 from bisect import bisect_right
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from decimal import Decimal
 from datetime import datetime, timedelta, timezone
@@ -23,6 +25,7 @@ log = logging.getLogger("uvicorn.error")
 FX_CACHE_SECONDS = 3600  # open.er-api only updates once a day and asks callers not to poll it often
 FX_RETRY_SECONDS = 300  # after a failed refresh the last good rates are served, and the api is retried this often
 
+SYMBOL_CURRENCY_CACHE_SIZE = 5000  # listing currencies kept (least recently used dropped first)
 _symbol_currency_cache: dict[str, str | None] = {}
 _rates_cache: dict = {}
 _rates_cache_time: float = 0
@@ -38,6 +41,36 @@ _SUFFIX_CURRENCY = {
 }
 
 
+# ---------------------------------------------------------------------------------------------------------------------
+# Yahoo calls. yfinance is blocking, so it runs in threads. It gets its own pool so a burst of price lookups can't
+# take every thread of asyncio's default pool, which also sends emails and hashes passwords. At most
+# YAHOO_CONCURRENCY calls run at once (Yahoo rate limits by IP); the pool is bigger than that because a request that
+# times out (the analyst's wait_for) lets go of its slot while its thread is still finishing the call.
+# ---------------------------------------------------------------------------------------------------------------------
+YAHOO_CONCURRENCY = 6
+_yahoo_executor = ThreadPoolExecutor(max_workers=16, thread_name_prefix="yahoo")
+_loop_primitives: dict[str, tuple] = {}
+
+
+def _for_this_loop(name: str, factory):
+    """
+    One asyncio Lock / Semaphore per event loop. The server runs a single loop, but tests start several, and a
+    primitive that ever waited on one loop can't be used from another.
+    """
+    loop = asyncio.get_running_loop()
+    held = _loop_primitives.get(name)
+    if held is None or held[0] is not loop:
+        held = _loop_primitives[name] = (loop, factory())
+    return held[1]
+
+
+async def run_yahoo(fn, *args, **kwargs):
+    """Run a blocking yfinance call on the Yahoo thread pool, at most YAHOO_CONCURRENCY at a time."""
+    async with _for_this_loop("yahoo", lambda: asyncio.Semaphore(YAHOO_CONCURRENCY)):
+        return await asyncio.get_running_loop().run_in_executor(_yahoo_executor,
+                                                                functools.partial(fn, *args, **kwargs))
+
+
 def guess_listing_currency(symbol: str) -> str | None:
     """Listing currency from the ticker alone: no suffix = USD, a known exchange suffix = its currency, else None."""
     if "." not in symbol:
@@ -51,11 +84,12 @@ async def get_ticker_currency(symbol: str) -> str | None:
     When Yahoo doesn't give one it is guessed from the ticker's suffix (and logged); None means it's unknown.
     """
     if symbol in _symbol_currency_cache:  # If we already have this symbol cached
+        _symbol_currency_cache[symbol] = _symbol_currency_cache.pop(symbol)  # most recently used goes last
         return _symbol_currency_cache[symbol]
 
     try:
         ticker = yf.Ticker(symbol)
-        info = await asyncio.to_thread(lambda: ticker.info) or {}
+        info = await run_yahoo(lambda: ticker.info) or {}
     except Exception:
         info = None  # Yahoo hiccup: guess for now and ask again next time
 
@@ -68,6 +102,8 @@ async def get_ticker_currency(symbol: str) -> str | None:
             return currency
 
     _symbol_currency_cache[symbol] = currency
+    while len(_symbol_currency_cache) > SYMBOL_CURRENCY_CACHE_SIZE:  # anyone can look up made-up tickers
+        _symbol_currency_cache.pop(next(iter(_symbol_currency_cache)))  # least recently used
     return currency
 
 
@@ -76,10 +112,27 @@ async def get_all_conversion_rates() -> dict:
     Exchange rates, cached for an hour. If a refresh fails the last good rates are kept and served (retried every
     few minutes) instead of failing every money page; only with no rates at all is it a 503.
     """
+    if _rates_usable(time.time()):
+        return _rates_cache
+    # when the rates expire many requests notice at once; only the first one asks open.er-api, the rest wait for it
+    async with _for_this_loop("fx", asyncio.Lock):
+        return await _refresh_conversion_rates()
+
+
+def _rates_usable(now: float) -> bool:
+    return bool(_rates_cache) and ((now - _rates_cache_time) < FX_CACHE_SECONDS or now < _rates_retry_at)
+
+
+def has_cached_rates() -> bool:
+    """True when exchange rates are in memory (fresh or the last good ones), for /health."""
+    return bool(_rates_cache)
+
+
+async def _refresh_conversion_rates() -> dict:
     global _rates_cache, _rates_cache_time, _rates_retry_at
 
     now = time.time()
-    if _rates_cache and ((now - _rates_cache_time) < FX_CACHE_SECONDS or now < _rates_retry_at):
+    if _rates_usable(now):  # refreshed by the request we waited for
         return _rates_cache
 
     try:
@@ -168,6 +221,22 @@ def profit_in_currency(t, currency: str | None, conversion: float) -> float:
     if currency and _typed_currency(t) == str(currency).upper() and float(t.price_of_one) > 0:
         return profit * float(t.price_entered) / float(t.price_of_one)
     return profit * conversion
+
+
+# Order trades are replayed in. Trades logged quickly one after the other can get the same created_at (the clock
+# only ticks every ~15 ms on Windows), and the id is a random uuid, so at an equal time a buy goes before a sell:
+# otherwise "buy then sell" could replay as "sell then buy" and be refused as selling more than was owned.
+LEDGER_ORDER = (Transaction.created_at.asc(), Transaction.action.asc(), Transaction.id.asc())  # "BUY" < "SELL"
+
+
+async def end_read(db: AsyncSession) -> None:
+    """
+    End the session's read-only transaction so its pooled connection goes back while the request waits on Yahoo /
+    CoinGecko / exchange rates (a slow provider would otherwise hold one of the few connections the whole time).
+    Only for sessions with nothing unsaved; rows already loaded stay usable (the session maker sets
+    expire_on_commit=False) and the next query simply takes a connection again.
+    """
+    await db.commit()
 
 
 async def get_holdings_from_symbol(db: AsyncSession, user_id: UUID, symbol: str):
@@ -287,7 +356,7 @@ async def get_holdings_at_time(
             Transaction.user_id == user_id,
             Transaction.created_at <= timestamp
         )
-        .order_by(Transaction.created_at.asc(), Transaction.id.asc())
+        .order_by(*LEDGER_ORDER)
     )
 
     transactions = result.scalars().all()  # all transactions from timestamp and before
@@ -341,6 +410,7 @@ async def get_holdings_at_time_list(
     Take the dictionary that get_holdings_at_time returns and turn it into a list to be more easily used by the frontend
     """
     result = await get_holdings_at_time(db, user_id, timestamp, currency)
+    await end_read(db)
     prices = await get_curr_holdings_prices(result, currency)
 
     curr_holdings_list = []
@@ -372,12 +442,22 @@ def get_holdings_helper(curr_avg: float, new_price: float, curr_quantity: float,
 _usd_rates_cache: dict = {"time": 0.0, "rates": {}, "retry_at": 0.0}
 
 
+def _cross_rates_usable(now: float) -> bool:
+    fresh = _usd_rates_cache["rates"] and now - _usd_rates_cache["time"] < FX_CACHE_SECONDS
+    return bool(fresh or now < _usd_rates_cache.get("retry_at", 0.0))
+
+
 async def _refresh_usd_cross_rates() -> None:
     """Units of every currency per 1 USD, refreshed hourly; a failed refresh keeps the old table (retried later)."""
-    now = time.time()
-    fresh = _usd_rates_cache["rates"] and now - _usd_rates_cache["time"] < FX_CACHE_SECONDS
-    if fresh or now < _usd_rates_cache.get("retry_at", 0.0):
+    if _cross_rates_usable(time.time()):
         return
+    async with _for_this_loop("fx-cross", asyncio.Lock):  # one refresh at a time, like get_all_conversion_rates
+        now = time.time()
+        if not _cross_rates_usable(now):
+            await _fetch_usd_cross_rates(now)
+
+
+async def _fetch_usd_cross_rates(now: float) -> None:
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             res = await client.get("https://open.er-api.com/v6/latest/USD")
@@ -495,6 +575,9 @@ COINGECKO_CACHE_SECONDS = {"1D": 300, "1W": 600, "1M": 1800, "1Y": 3600}
 COINGECKO_EMPTY_SECONDS = 300  # an empty answer may just be its rate limit, so check again sooner
 
 _series_cache: dict[tuple, dict] = {}
+# Fetches in progress, by cache key: requests that miss the cache together wait for one fetch instead of each
+# asking Yahoo / CoinGecko for the same history
+_series_inflight: dict[tuple, asyncio.Task] = {}
 
 
 @dataclass
@@ -552,14 +635,34 @@ async def _cached_series(key: tuple, ttl: float, fetch, empty_ttl: float | None 
     """
     Cache around one price history. An empty answer or an error right after good data is far more likely a hiccup
     than a delisting, so the last good copy (up to STALE_SECONDS old) is served instead of nothing.
+    Concurrent misses for the same key share one fetch.
     """
-    now = time.time()
     entry = _series_cache.get(key)
-    if entry and now - entry["checked"] < entry["ttl"]:
+    if entry and time.time() - entry["checked"] < entry["ttl"]:
         if entry.get("error"):
             raise entry["error"]
         return entry["series"]
 
+    loop = asyncio.get_running_loop()
+    task = _series_inflight.get(key)
+    if task is None or task.done() or task.get_loop() is not loop:
+        task = loop.create_task(_fill_series(key, ttl, fetch, empty_ttl))
+        _series_inflight[key] = task
+        task.add_done_callback(functools.partial(_series_fetch_done, key))
+    # shielded: one waiter giving up (a timeout, a closed connection) mustn't cancel the fetch for the others
+    return await asyncio.shield(task)
+
+
+def _series_fetch_done(key: tuple, task: asyncio.Task) -> None:
+    if _series_inflight.get(key) is task:
+        del _series_inflight[key]
+    if not task.cancelled():
+        task.exception()  # marks the error as seen, in case every waiter gave up before it finished
+
+
+async def _fill_series(key: tuple, ttl: float, fetch, empty_ttl: float | None) -> PriceSeries | None:
+    now = time.time()
+    entry = _series_cache.get(key)
     stale = entry["series"] if entry and entry["series"] is not None and now - entry["fetched"] < STALE_SECONDS \
         else None
     try:
@@ -589,7 +692,7 @@ async def _yahoo_series(ticker: str, period: str, interval: str) -> PriceSeries 
 
     async def fetch():
         requested_at = datetime.now(timezone.utc)
-        hist = await asyncio.to_thread(yf.Ticker(ticker).history, period=period, interval=interval)
+        hist = await run_yahoo(yf.Ticker(ticker).history, period=period, interval=interval)
         return _series_from_history(hist, BAR_LENGTH[interval], requested_at)
 
     return await _cached_series(("yahoo", ticker.upper(), period, interval), SERIES_CACHE_SECONDS[interval], fetch)
@@ -714,7 +817,7 @@ async def get_latest_stock_quotes(symbols: list[str]) -> dict[str, dict[str, flo
     which costs one of the 8 free credits per minute for every symbol. Symbols Yahoo has no data for are left out.
     """
     async def fetch_one(symbol):
-        hist = await asyncio.to_thread(yf.Ticker(symbol).history, period="5d", interval="1d")
+        hist = await run_yahoo(yf.Ticker(symbol).history, period="5d", interval="1d")
         closes = hist["Close"].dropna() if not hist.empty else []
         if len(closes) == 0:
             return symbol, None
@@ -741,7 +844,7 @@ async def calculate_profit_for_one_transaction(db: AsyncSession, user_id: UUID, 
     query = select(Transaction).where(Transaction.user_id == user_id, Transaction.symbol == data.symbol)
     if data.created_at is not None:
         query = query.where(Transaction.created_at <= data.created_at)
-    result = await db.execute(query.order_by(Transaction.created_at.asc(), Transaction.id.asc()))
+    result = await db.execute(query.order_by(*LEDGER_ORDER))
 
     replay = _replay_ledger(result.scalars().all(), set_profits=False)
     return float((Decimal(str(data.price_of_one)) - replay.avg_cad) * as_quantity(data.quantity))
@@ -855,7 +958,7 @@ async def rebuild_symbol_ledger(db: AsyncSession, user_id: UUID, symbol: str) ->
     result = await db.execute(
         select(Transaction)
         .where(Transaction.user_id == user_id, Transaction.symbol == symbol)
-        .order_by(Transaction.created_at.asc(), Transaction.id.asc())
+        .order_by(*LEDGER_ORDER)
     )
 
     return not _replay_ledger(result.scalars().all()).oversold
@@ -914,6 +1017,7 @@ async def get_position_values_at(
     has no price at that time.
     """
     holdings = await get_holdings_at_time(db, user_id, timestamp, currency)
+    await end_read(db)  # only read routes use this
     prices = await get_prices_at({api_id: str(data["type"]) for api_id, data in holdings.items()}, timestamp, currency,
                                  coin_ids=holding_coin_ids(holdings))
 
@@ -1009,7 +1113,9 @@ def calculate_timespans_for_portfolio_history(ranges: int):
 
     step = (end - start) / (points - 1)
 
-    timestamps = [start + (step * i) for i in range(points)]
+    # the last point is exactly `end`: step * (points - 1) can round to a few microseconds short of it, which left a
+    # trade logged in the same clock tick out of the "now" point
+    timestamps = [start + (step * i) for i in range(points - 1)] + [end]
 
     return timestamps, t
 
@@ -1034,9 +1140,10 @@ async def get_portfolio_value_history(
     result = await db.execute(
         select(Transaction)
         .where(Transaction.user_id == user_id, Transaction.created_at <= _naive_utc(now))
-        .order_by(Transaction.created_at.asc(), Transaction.id.asc())  # same order as get_holdings_at_time
+        .order_by(*LEDGER_ORDER)  # same order as get_holdings_at_time
     )
     transactions = result.scalars().all()  # read once and replayed below, instead of one query per point
+    await end_read(db)  # the rest is pricing; the trades loaded above stay usable
 
     data = []
     positions: dict[str, dict] = {}  # api_id -> {"avg_price", "qty", "type"}, as get_holdings_at_time builds them

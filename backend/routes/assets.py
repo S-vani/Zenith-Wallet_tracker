@@ -28,7 +28,8 @@ from backend.services.asset_services import (current_quantity, create_holding_fi
                                              get_portfolio_value_history, \
                                              get_all_conversion_rates, get_conversion_factor,
                                              rebuild_symbol_ledger, get_latest_stock_quotes,
-                                             get_position_values_at, get_buys_between, get_coingecko_history)
+                                             get_position_values_at, get_buys_between, get_coingecko_history,
+                                             end_read)
 
 load_dotenv()
 router = APIRouter()
@@ -87,6 +88,19 @@ async def check_symbol_limit(session: AsyncSession, user_id, api_id: str, ignore
     count = await session.execute(select(func.count()).select_from(trades.distinct().subquery()))
     if count.scalar_one() >= MAX_SYMBOLS_PER_USER:
         raise HTTPException(status_code=422, detail=TOO_MANY_SYMBOLS)
+
+
+# Every holdings / dashboard / chart request replays all of a user's trades, so one account can't grow without limit
+# (far more than anyone logs by hand; a script could otherwise fill the database and slow every page down).
+MAX_TRANSACTIONS_PER_USER = 20_000
+
+
+async def check_transaction_limit(session: AsyncSession, user_id) -> None:
+    """422 when the user already has MAX_TRANSACTIONS_PER_USER trades."""
+    count = await session.execute(select(func.count()).select_from(Transaction).where(Transaction.user_id == user_id))
+    if count.scalar_one() >= MAX_TRANSACTIONS_PER_USER:
+        raise HTTPException(status_code=422, detail=f"You can log up to {MAX_TRANSACTIONS_PER_USER:,} trades. "
+                                                    "Delete some older ones to add new trades.")
 
 
 @router.delete("/transactions/{trans_id}")
@@ -232,10 +246,11 @@ async def make_transaction(
     `created_at` says otherwise (backdated trades). The symbol's history is then replayed in date order: that sets
     the profit of every sell (used later to add up realized profit) and rejects the trade with a 409 if any point
     of the history would sell more than was owned, e.g. a backdated sell before the buy it needs. A new asset past
-    MAX_SYMBOLS_PER_USER different ones is a 422.
+    MAX_SYMBOLS_PER_USER different ones, or a trade past MAX_TRANSACTIONS_PER_USER, is a 422.
     """
     # Prices are stored in CAD and converted on the way out, so convert what the user typed (in their currency) to CAD.
     # The typed price and currency are kept too, so the trade keeps showing exactly what was typed.
+    await check_transaction_limit(session, current_user.id)
     await check_symbol_limit(session, current_user.id, data.api_id)
 
     rates = await get_all_conversion_rates()
@@ -286,6 +301,7 @@ async def get_current_holdings(
 
     this is a dictionary with all the current holdings that the user has
     """
+    await end_read(session)  # held since loading the user; the trades are read again after the exchange rates
     return await get_holdings_at_time_list(session, current_user.id, datetime.now(timezone.utc), current_user.currency)
 
 
@@ -305,10 +321,13 @@ async def portfolio_stats(
     now = datetime.now(timezone.utc)
     currency = current_user.currency
 
+    # The connection is given back before each wait on a price source (see end_read) and taken again for queries
+    await end_read(session)
     holdings = await get_holdings_at_time(session,
                                           current_user.id,
                                           now,
                                           currency)  # returns dict which maps api_id to avg_price, quantity and type
+    await end_read(session)
 
     curr_prices = await get_curr_holdings_prices(
         holdings,
@@ -379,6 +398,7 @@ async def get_price_history(
         # crypto: the CoinGecko id (from search or the trades), so CoinGecko charts that exact coin
         coin_id: Annotated[Optional[str], Query(max_length=80, pattern=r"^[a-z0-9-]+$")] = None,
 
+        session: AsyncSession = Depends(get_async_session),
         current_user: User = Depends(current_active_user)
 ):
     """
@@ -387,7 +407,11 @@ async def get_price_history(
     returns all the data needed to generate a graph of its price.
     `source` says where the prices came from; when the data covers less than was asked for (CoinGecko's free plan
     stops at one year, so "5Y" is really "1Y") `covered_range` and `note` say so.
+    Each user can ask PRICE_HISTORY_RATE_LIMIT times a minute (429 with Retry-After after that).
     """
+    _check_user_rate(_price_history_times, current_user.id, PRICE_HISTORY_RATE_LIMIT, PRICE_HISTORY_RATE_WINDOW,
+                     "You're loading charts very quickly. Please wait a moment and try again.")
+    await end_read(session)  # nothing else is read from the database; don't hold a connection while Yahoo answers
     try:
         data, s = await get_history_of_prices(symbol, type, range, current_user.currency)
     except Exception:  # unknown ticker or the price source is down
@@ -458,6 +482,12 @@ _stock_search_cache: dict[str, tuple[float, list[dict]]] = {}
 _crypto_search_cache: dict[str, tuple[float, list[dict]]] = {}
 _search_times: dict = {}  # {user id: deque of the times of their recent uncached searches}
 
+# Every chart request can reach Yahoo (and CoinGecko for coins Yahoo lacks), cached or not, so it's limited per user
+# too: plenty for flipping through ranges and holdings, not enough for a script to hammer the providers.
+PRICE_HISTORY_RATE_LIMIT = 60
+PRICE_HISTORY_RATE_WINDOW = 60  # seconds
+_price_history_times: dict = {}  # {user id: deque of the times of their recent /prices/history requests}
+
 
 def _cache_get(cache: dict, key: str, ttl: float):
     """The cached value for `key`, or None when it's missing or older than `ttl` seconds."""
@@ -478,22 +508,31 @@ def _cache_put(cache: dict, key: str, value) -> None:
         cache.pop(next(iter(cache)))  # least recently used
 
 
+def _check_user_rate(times_by_user: dict, user_id, limit: int, window: float, message: str) -> None:
+    """
+    Sliding-window limit per user, in memory: count one request, or raise a 429 (with Retry-After) when the user
+    already made `limit` in the last `window` seconds. `times_by_user` is {user id: deque of request times}.
+    """
+    now = time.monotonic()
+    recent = times_by_user.get(user_id)
+    if recent is None:
+        if len(times_by_user) >= 10_000:  # forget users with nothing left in their window, so this stays small
+            idle = [uid for uid, times in times_by_user.items() if not times or now - times[-1] >= window]
+            for uid in idle:
+                del times_by_user[uid]
+        recent = times_by_user[user_id] = deque()
+    while recent and now - recent[0] >= window:
+        recent.popleft()
+    if len(recent) >= limit:
+        retry = max(1, int(window - (now - recent[0])) + 1)  # when the oldest request leaves the window
+        raise HTTPException(status_code=429, detail=message, headers={"Retry-After": str(retry)})
+    recent.append(now)
+
+
 def _check_search_rate(user_id) -> None:
     """Count one new search for the user, or raise a 429 when they started too many in the last minute."""
-    now = time.monotonic()
-    recent = _search_times.get(user_id)
-    if recent is None:
-        if len(_search_times) >= 10_000:  # forget users who haven't searched in the last minute, so this stays small
-            idle = [uid for uid, times in _search_times.items() if not times or now - times[-1] >= SEARCH_RATE_WINDOW]
-            for uid in idle:
-                del _search_times[uid]
-        recent = _search_times[user_id] = deque()
-    while recent and now - recent[0] >= SEARCH_RATE_WINDOW:
-        recent.popleft()
-    if len(recent) >= SEARCH_RATE_LIMIT:
-        raise HTTPException(status_code=429,
-                            detail="You're searching very quickly. Please wait a minute and try again.")
-    recent.append(now)
+    _check_user_rate(_search_times, user_id, SEARCH_RATE_LIMIT, SEARCH_RATE_WINDOW,
+                     "You're searching very quickly. Please wait a minute and try again.")
 
 
 def clean_search_query(asset: str) -> str:
@@ -547,11 +586,13 @@ async def find_us_stock_symbols(query: str, user_id=None) -> list[dict]:
 
 @router.get("/assets/search/stock")
 async def search_assets_stocks(asset: Annotated[str, Query(max_length=200)],
-                               current_user: User = Depends(current_active_user)):
+                               current_user: User = Depends(current_active_user),
+                               session: AsyncSession = Depends(get_async_session)):
     """
     Search US stocks and ETFs. For example if asset is "AAP" this returns up to 6 items like AAPL, AAPD, etc. with
     their name, price and daily change in the user's currency. Matches come from TwelveData, prices from Yahoo (free).
     """
+    await end_read(session)  # the session only loaded the user; don't hold its connection while TwelveData answers
     asset = clean_search_query(asset).upper()
     if not asset:
         return []
@@ -632,10 +673,12 @@ async def find_coins(query: str, user_id) -> list[dict]:
 
 @router.get("/assets/search/crypto")
 async def search_assets_crypto(asset: Annotated[str, Query(max_length=200)],
-                               current_user: User = Depends(current_active_user)):
+                               current_user: User = Depends(current_active_user),
+                               session: AsyncSession = Depends(get_async_session)):
     """
     Use coingecko api to fetch crypto prices of assets, similar to the route above in format.
     """
+    await end_read(session)  # as above: no connection held while CoinGecko answers
     asset = clean_search_query(asset)
     if not asset:
         return []
@@ -737,7 +780,7 @@ async def require_current_password(user: User, password: str, user_manager: User
     check_reauth_allowed(user.id)  # a stolen token mustn't become a way to guess the password
     if not user.has_password:
         raise HTTPException(status_code=400, detail=NO_PASSWORD_MESSAGE)
-    if not user_manager.check_password(user, password):
+    if not await user_manager.check_password(user, password):
         record_reauth_failure(user.id)
         message = "Your current password is incorrect."
         if user.oauth_accounts:
@@ -802,7 +845,7 @@ async def change_password(
         raise HTTPException(status_code=400, detail=e.reason)
 
     user = await user_manager.sign_out_everywhere(
-        current_user, hashed_password=user_manager.password_helper.hash(body.new_password), has_password=True,
+        current_user, hashed_password=await user_manager.hash_password(body.new_password), has_password=True,
     )
     await send_notice_email(
         str(user.email), "Your Zenith password was changed",

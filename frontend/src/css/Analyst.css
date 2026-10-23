@@ -173,6 +173,23 @@
     color: #fde68a;
 }
 
+/* the short "not financial advice" line under the title; quieter than a notice, but always there */
+.analyst-advice-note {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: -0.4rem 0 0; /* sits with the header rather than a full gap below it */
+    font-size: 0.8rem;
+    color: var(--text-subtle);
+}
+
+.analyst-advice-note svg {
+    flex-shrink: 0;
+    width: 0.95rem;
+    height: 0.95rem;
+    color: #fcd34d;
+}
+
 .analyst-error {
     display: flex;
     align-items: center;

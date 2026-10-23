@@ -4,14 +4,17 @@ import {useUser} from "../context/UserContext.jsx";
 import {formatMoney, priceInputValue} from "../utils/format.js";
 import {showToast} from "../utils/toast.js";
 import TradeFields from "./TradeFields.jsx";
-import {isFutureInput, ledgerErrorMessage, toLocalInputValue, updatePayload} from "./tradeForm.js";
+import {
+    amountHint, isFutureInput, ledgerErrorMessage, parseDecimalInput, quantityInputValue, toLocalInputValue,
+    updatePayload,
+} from "./tradeForm.js";
 
 // Inline form inside an expanded trade: same fields as the add form, starting from the trade's values
 function TransactionEdit({transaction, onCancel, onSaved}) {
     const {currency} = useUser();
     const [initial] = useState(() => ({
         action: transaction.action,
-        quantity: String(transaction.quantity),
+        quantity: quantityInputValue(transaction.quantity), // never "1e-7", which the field can't take back
         price_of_one: priceInputValue(transaction.price_of_one),
         created_at: toLocalInputValue(transaction.created_at),
     }));
@@ -31,10 +34,13 @@ function TransactionEdit({transaction, onCancel, onSaved}) {
     };
 
     const changes = updatePayload(initial, form);
-    const quantityValid = Number(form.quantity) > 0;
-    const priceValid = Number(form.price_of_one) > 0;
+    const quantity = parseDecimalInput(form.quantity); // "1,5" or "1.5", same as the add form
+    const price = parseDecimalInput(form.price_of_one);
+    const quantityValid = quantity > 0;
+    const priceValid = price > 0;
+    const hint = amountHint(form.quantity, form.price_of_one);
     const dateInFuture = isFutureInput(form.created_at);
-    const total = Number(form.quantity) * Number(form.price_of_one);
+    const total = quantity * price; // NaN (not shown) while either is invalid
     const symbol = transaction.symbol.toUpperCase();
 
     const handleSubmit = async (e) => {
@@ -64,9 +70,7 @@ function TransactionEdit({transaction, onCancel, onSaved}) {
 
             {error && <p className="alert-error" role="alert">{error}</p>}
 
-            {(form.quantity !== "" && !quantityValid) || (form.price_of_one !== "" && !priceValid) ? (
-                <p className="create-hint">Quantity and price must both be greater than 0.</p>
-            ) : null}
+            {hint && <p className="create-hint">{hint}</p>}
             {dateInFuture && <p className="create-hint">The date can't be in the future.</p>}
 
             <div className="create-transaction-buttons">

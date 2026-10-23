@@ -454,3 +454,23 @@
     font-size: 0.85rem;
     color: var(--accent-soft);
 }
+
+/* privacy policy, terms and support links in a row, wrapping on narrow screens */
+.user-legal-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.25rem;
+}
+
+/* phones: each link is a full 44px tap target without changing the desktop layout */
+@media (max-width: 768px) {
+    .user-privacy-link {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+    }
+
+    .user-legal-links {
+        gap: 0 1.25rem;
+    }
+}

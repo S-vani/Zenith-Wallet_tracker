@@ -2,9 +2,11 @@ import asyncio
 import logging
 import os
 import uuid
+from dataclasses import dataclass
 from datetime import datetime, timezone
 import smtplib
 from email.mime.text import MIMEText
+from email.utils import formatdate, make_msgid, parseaddr
 
 from dotenv import load_dotenv
 from fastapi_users import BaseUserManager, UUIDIDMixin, exceptions, models
@@ -76,15 +78,37 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
 
     async def authenticate(self, credentials):
         # counts wrong passwords per email, so the login route can lock that account out for a while (ratelimit.py)
-        user = await super().authenticate(credentials)
+        user = await self._authenticate(credentials)
         if user is None:
             _ratelimit().record_login_failure(credentials.username)
         else:
             _ratelimit().clear_login_failures(credentials.username)
         return user
 
-    def check_password(self, user: User, password: str) -> bool:
-        verified, _ = self.password_helper.verify_and_update(password or "", user.hashed_password)
+    # Password hashing is deliberately slow (tens of ms of CPU). fastapi-users runs it on the event loop, which
+    # would stall every other request during a burst of logins, so the hot paths (login, re-entering the password,
+    # changing it) run it in a worker thread instead. Signup and reset (rate limited, rare) keep the library's code.
+    async def hash_password(self, password: str) -> str:
+        return await asyncio.to_thread(self.password_helper.hash, password)
+
+    async def _authenticate(self, credentials):
+        """BaseUserManager.authenticate with the hashing moved off the event loop."""
+        try:
+            user = await self.get_by_email(credentials.username)
+        except exceptions.UserNotExists:
+            await self.hash_password(credentials.password)  # same work as a real check, so timing reveals nothing
+            return None
+        verified, updated_hash = await asyncio.to_thread(
+            self.password_helper.verify_and_update, credentials.password, user.hashed_password)
+        if not verified:
+            return None
+        if updated_hash is not None:  # upgrade to a stronger hash, as the library does
+            await self.user_db.update(user, {"hashed_password": updated_hash})
+        return user
+
+    async def check_password(self, user: User, password: str) -> bool:
+        verified, _ = await asyncio.to_thread(self.password_helper.verify_and_update, password or "",
+                                              user.hashed_password)
         return verified
 
     async def sign_out_everywhere(self, user: User, **changes) -> User:
@@ -118,34 +142,87 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         await self.sign_out_everywhere(user, has_password=True)
 
 
-def _email_account():
-    return os.getenv("GMAIL_USER"), os.getenv("GMAIL_PASS")
+@dataclass(frozen=True)
+class EmailAccount:
+    host: str
+    port: int
+    user: str  # empty = the server doesn't need a login
+    password: str
+    sender: str  # the From header, e.g. "Zenith <noreply@zenithwalletracker.ca>"
 
 
-# Emails go out in the background so a request never waits on Gmail. That also makes /auth/forgot-password answer
-# as fast for an address with an account as for one without, so its timing doesn't reveal who has signed up.
+def _email_account() -> EmailAccount | None:
+    """
+    Where emails are sent from, or None when nothing is configured (local development: links are logged instead).
+    SMTP_HOST (+ SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM) works with any provider, so moving off a personal
+    Gmail needs no code change; without it the older GMAIL_USER / GMAIL_PASS settings send through Gmail as before.
+    """
+    host = (os.getenv("SMTP_HOST") or "").strip()
+    if host:
+        try:
+            port = int(os.getenv("SMTP_PORT") or 587)
+        except ValueError:
+            logging.getLogger("uvicorn.error").error("SMTP_PORT isn't a number, using 587")
+            port = 587
+        user = (os.getenv("SMTP_USER") or "").strip()
+        sender = (os.getenv("EMAIL_FROM") or "").strip() or user
+        if not sender:
+            logging.getLogger("uvicorn.error").error("SMTP_HOST is set but EMAIL_FROM is empty, no email is sent")
+            return None
+        return EmailAccount(host, port, user, os.getenv("SMTP_PASS") or "", sender)
+
+    gmail_user, gmail_pass = os.getenv("GMAIL_USER"), os.getenv("GMAIL_PASS")
+    if not gmail_user or not gmail_pass:
+        return None
+    return EmailAccount("smtp.gmail.com", 587, gmail_user, gmail_pass, gmail_user)
+
+
+# A failed send is tried again after these many seconds (a provider hiccup shouldn't lose a verification email)
+EMAIL_RETRY_DELAYS = (3, 10)
+
+# Emails go out in the background so a request never waits on the mail server. That also makes
+# /auth/forgot-password answer as fast for an address with an account as for one without, so its timing doesn't
+# reveal who has signed up.
 _pending_emails: set = set()
 
 
-def _send_in_background(to_address: str, subject: str, body: str) -> None:
-    sender, app_pass = _email_account()
+def _send_in_background(account: EmailAccount, to_address: str, subject: str, body: str) -> None:
     message = MIMEText(body)
     message["Subject"] = subject
-    message["From"] = sender
+    message["From"] = account.sender
     message["To"] = to_address
+    message["Date"] = formatdate(usegmt=True)
+    envelope_from = parseaddr(account.sender)[1] or account.sender  # the bare address of "Name <address>"
+    # other providers than Gmail don't always add these, and mail without them looks like spam
+    message["Message-ID"] = make_msgid(domain=envelope_from.rpartition("@")[2] or None)
 
     def send():
-        # smtplib is blocking, so it runs in a worker thread to keep the event loop free
-        with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as server:
-            server.starttls()
-            server.login(str(sender), str(app_pass))
-            server.sendmail(str(sender), to_address, message.as_string())
+        # smtplib is blocking, so it runs in a worker thread to keep the event loop free.
+        # Port 465 speaks TLS from the start; anything else (587) upgrades with STARTTLS.
+        if account.port == 465:
+            server = smtplib.SMTP_SSL(account.host, account.port, timeout=30)
+        else:
+            server = smtplib.SMTP(account.host, account.port, timeout=30)
+        with server:
+            if account.port != 465:
+                server.starttls()
+            if account.user:
+                server.login(account.user, account.password)
+            server.sendmail(envelope_from, to_address, message.as_string())
 
     async def run():
-        try:
-            await asyncio.to_thread(send)
-        except Exception:
-            logging.getLogger("uvicorn.error").exception("Couldn't send the \"%s\" email", subject)
+        for attempt in range(len(EMAIL_RETRY_DELAYS) + 1):
+            try:
+                await asyncio.to_thread(send)
+                return
+            except Exception as exc:
+                # no traceback: SMTP errors can quote the recipient's address, which doesn't belong in the logs
+                logging.getLogger("uvicorn.error").warning(
+                    "Couldn't send the \"%s\" email (attempt %d of %d): %s %s", subject, attempt + 1,
+                    len(EMAIL_RETRY_DELAYS) + 1, type(exc).__name__, getattr(exc, "smtp_code", ""))
+            if attempt < len(EMAIL_RETRY_DELAYS):
+                await asyncio.sleep(EMAIL_RETRY_DELAYS[attempt])
+        logging.getLogger("uvicorn.error").error("Gave up sending the \"%s\" email", subject)
 
     task = asyncio.get_running_loop().create_task(run())
     _pending_emails.add(task)  # keep a reference until it's done, or the task could be garbage collected
@@ -158,23 +235,23 @@ async def send_link_email(user, page: str, token: str, subject: str, intro: str)
     link = f"{frontend_url}/{page}?token={token}"
     user_email = str(user.email)
 
-    sender, app_pass = _email_account()
-    if not sender or not app_pass:
+    account = _email_account()
+    if account is None:
         # no email account configured (local development): log the link instead of sending an email
         label = "Verification" if page == "verify" else "Password reset"
         logging.getLogger("uvicorn.error").warning("%s link for %s: %s", label, user_email, link)
         return
 
-    _send_in_background(user_email, subject, f"{intro}\n\n{link}\n")
+    _send_in_background(account, user_email, subject, f"{intro}\n\n{link}\n")
 
 
 async def send_notice_email(to_address: str, subject: str, body: str) -> None:
     """A security notice without a link, e.g. to the old address after the email was changed."""
-    sender, app_pass = _email_account()
-    if not sender or not app_pass:
+    account = _email_account()
+    if account is None:
         logging.getLogger("uvicorn.error").warning("Security notice for %s: %s", to_address, subject)
         return
-    _send_in_background(to_address, subject, body)
+    _send_in_background(account, to_address, subject, body)
 
 
 class Transaction(Base):

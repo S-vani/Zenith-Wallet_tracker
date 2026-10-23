@@ -2,6 +2,7 @@ import {useEffect, useState} from "react";
 import {Link, useSearchParams} from "react-router-dom";
 import {resetPassword} from "../services/api.js";
 import usePageTitle from "../utils/usePageTitle.js";
+import OpenAppButton from "../components/OpenAppButton.jsx";
 import {readSavedToken, removeTokenFromAddressBar, saveToken} from "../Authentication/resetToken.js";
 import PasswordInput from "../Authentication/PasswordInput.jsx";
 
@@ -59,6 +60,7 @@ function ResetPasswordPage() {
                         <h1>Password changed</h1>
                         <p>You can now log in with your new password.</p>
                         <Link to="/login" className="auth-btn signup-btn large">Log in</Link>
+                        <OpenAppButton/>
                         <p className="verify-app-note">Using the Zenith iPhone app? Go back to the app and log in there.</p>
                     </>
                 ) : (

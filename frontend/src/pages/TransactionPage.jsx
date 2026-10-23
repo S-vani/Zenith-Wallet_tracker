@@ -81,7 +81,12 @@ function TransactionsPage() {
     if (loading && transactions.length === 0) {
         content = <div className="state-message"><div className="spinner"/>Loading transactions…</div>;
     } else if (error) {
-        content = <p className="alert-error" role="alert">{error}</p>;
+        content = (
+            <div className="alert-error alert-retry" role="alert">
+                <span>{error}</span>
+                <button type="button" className="btn" onClick={reload}>Try again</button>
+            </div>
+        );
     } else if (transactions.length === 0) {
         content = hasFilters ? (
             <div className="state-message">

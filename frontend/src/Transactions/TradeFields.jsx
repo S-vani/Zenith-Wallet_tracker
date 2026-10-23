@@ -1,4 +1,7 @@
-import {toLocalInputValue} from "./tradeForm.js";
+import {parseDecimalInput, toLocalInputValue} from "./tradeForm.js";
+
+// typed but not a number above 0 (an empty field isn't flagged; Save just stays disabled)
+const invalid = (text) => String(text ?? "").trim() !== "" && !(parseDecimalInput(text) > 0);
 
 // Buy/sell, quantity, price and date fields, shared by the add form and the edit form of a trade
 function TradeFields({form, onField, assetType, currency}) {
@@ -21,19 +24,23 @@ function TradeFields({form, onField, assetType, currency}) {
                 ))}
             </div>
 
+            {/* text + decimal keypad instead of type="number": WebKit drops "1,5" from a number field, which left
+                Save disabled with no hint for anyone whose phone uses a decimal comma (see parseDecimalInput) */}
             <div className="quantity-price-buy">
                 <label className="create-field">
                     <span>Quantity</span>
-                    <input className="create-transaction-input" name="quantity" type="number"
-                           inputMode="decimal" step="any" min="0" required
-                           placeholder="0" value={form.quantity}
+                    <input className="create-transaction-input" name="quantity" type="text"
+                           inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" autoComplete="off" spellCheck={false}
+                           required placeholder="0" value={form.quantity}
+                           aria-invalid={invalid(form.quantity)}
                            onChange={(e) => onField("quantity", e.target.value)}/>
                 </label>
                 <label className="create-field">
-                    <span>Price per {assetType === "stock" ? "share" : "coin"} ({currency})</span>
-                    <input className="create-transaction-input" name="price_of_one" type="number"
-                           inputMode="decimal" step="any" min="0" required
-                           placeholder="0.00" value={form.price_of_one}
+                    <span>Price per {assetType === "stock" ? "share" : "coin"}{currency ? ` (${currency})` : ""}</span>
+                    <input className="create-transaction-input" name="price_of_one" type="text"
+                           inputMode="decimal" pattern="[0-9]*[.,]?[0-9]*" autoComplete="off" spellCheck={false}
+                           required placeholder="0.00" value={form.price_of_one}
+                           aria-invalid={invalid(form.price_of_one)}
                            onChange={(e) => onField("price_of_one", e.target.value)}/>
                 </label>
             </div>

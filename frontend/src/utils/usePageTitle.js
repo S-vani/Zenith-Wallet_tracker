@@ -10,6 +10,8 @@ const PUBLIC_PAGES = {
     "/signup": "Create a free Zenith Wallet Tracker account and track your stocks and crypto in one place.",
     "/login": "Log in to Zenith Wallet Tracker to see your stock and crypto portfolio, holdings and returns.",
     "/privacy": "How Zenith Wallet Tracker handles your data, and why its market analysis is not financial advice.",
+    "/terms": "The terms of use for Zenith Wallet Tracker, the free stock and crypto portfolio tracker.",
+    "/support": "Help with Zenith Wallet Tracker: contact us, verify your email, reset your password, change currency or delete your account.",
 };
 
 function setMeta(selector, create, value) {

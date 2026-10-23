@@ -3,6 +3,7 @@ import {
     changeClass,
     formatMoney,
     formatPercent,
+    formatPrice,
     formatQuantity,
     formatSignedMoney,
     normalizeCurrency,
@@ -39,6 +40,13 @@ describe("formatMoney", () => {
 
     it.each(["", "usd", "GBP", null, undefined])("does not throw for currency %j", (currency) => {
         expect(() => formatMoney(10, currency)).not.toThrow();
+    });
+
+    it("shows a dash, not a guessed CA$, while the user's currency isn't known (null)", () => {
+        expect(formatMoney(1234.5, null)).toBe("—");
+        expect(formatPrice(0.0006, null)).toBe("—");
+        expect(formatSignedMoney(-12, null)).toBe("—");
+        expect(formatSignedMoney(12, null)).toBe("—");
     });
 
     it("normalizes lowercase, empty and unknown currencies", () => {

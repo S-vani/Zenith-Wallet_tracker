@@ -7,6 +7,7 @@ reports per hour, as can all users together (cache hits are free).
 """
 import asyncio
 import json
+import math
 import time
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
@@ -154,11 +155,15 @@ async def get_report(session: AsyncSession, user_id: str, symbol: str, asset_typ
     now = datetime.now(timezone.utc)
 
     existing = await _load(session, key)
+    # give the pooled connection back: what follows may wait on the asset's lock and on Yahoo / CoinGecko / Gemini
+    # for up to half a minute (rows already read stay usable: the session maker sets expire_on_commit=False)
+    await session.commit()
     if existing:
         report, created = existing
         age = now - created
         if refresh and age < REFRESH_COOLDOWN:
-            wait = int((REFRESH_COOLDOWN - age).total_seconds() // 60) + 1
+            # rounded up: exactly 5 minutes left (a refresh in the same clock tick as the report) is "5 min", not 6
+            wait = max(1, math.ceil((REFRESH_COOLDOWN - age).total_seconds() / 60))
             raise HTTPException(status_code=429,
                                 detail=f"This analysis was just updated. You can refresh it again in {wait} min.",
                                 headers={"Retry-After": str(int((REFRESH_COOLDOWN - age).total_seconds()))})
@@ -169,6 +174,7 @@ async def get_report(session: AsyncSession, user_id: str, symbol: str, asset_typ
         # another request may have generated it while we waited for the lock
         if not refresh:
             existing = await _load(session, key)
+            await session.commit()  # as above
             if existing and now - existing[1] < CACHE_TTL[asset_type]:
                 return _with_cache_info(existing[0], existing[1], cached=True)
 

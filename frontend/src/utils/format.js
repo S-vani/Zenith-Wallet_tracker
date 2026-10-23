@@ -8,8 +8,12 @@ export function normalizeCurrency(currency) {
     return SUPPORTED_CURRENCIES.includes(code) ? code : "CAD";
 }
 
+// The user context's currency is null until /user has loaded: show "—" rather than a guessed CA$ label
+export const UNKNOWN_MONEY = "—";
+
 // Format a number as money in the users currency, e.g. 1234.5 -> "$1,234.50" / "€1,234.50"
 export function formatMoney(value, currency = "CAD", options = {}) {
+    if (currency === null) return UNKNOWN_MONEY;
     currency = normalizeCurrency(currency);
     const key = `${currency}-${JSON.stringify(options)}`;
 
@@ -58,6 +62,7 @@ export function priceInputValue(value) {
 
 // Money with an explicit sign, used for gains and losses
 export function formatSignedMoney(value, currency = "CAD") {
+    if (currency === null) return UNKNOWN_MONEY; // no "+—"
     let n = Number(value) || 0;
     if (Math.abs(n) < 0.005) n = 0; // would round to $0.00, so don't show a sign
     return `${n > 0 ? "+" : n < 0 ? "−" : ""}${formatMoney(Math.abs(n), currency)}`;

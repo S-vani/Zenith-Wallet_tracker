@@ -22,7 +22,8 @@ function DashboardChart({entry, updating = false, currency, error}) {
 
     let body;
     if (error) {
-        body = <div className="state-message"><p className="alert-error" role="alert">{error}</p></div>;
+        // not role="alert": the page announces the error once, next to its Try again button
+        body = <div className="state-message"><p className="alert-error">{error}</p></div>;
     } else if (!entry) {
         body = (
             <div className="state-message">
