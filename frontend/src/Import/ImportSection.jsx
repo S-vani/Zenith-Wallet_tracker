@@ -162,8 +162,8 @@ function ImportSection() {
                 </li>
                 <li>Commissions and fees aren't imported: each trade keeps its quantity and unit price.</li>
                 <li>
-                    Prices in another currency are kept as entered and converted to CAD at today's exchange rate, the
-                    same as adding a trade by hand.
+                    Prices in another currency are kept as entered and converted to CAD at the exchange rate of each
+                    trade's date (today's rate if that one isn't available), the same as adding a trade by hand.
                 </li>
                 <li>Nothing is saved until you press Import and confirm.</li>
             </ul>

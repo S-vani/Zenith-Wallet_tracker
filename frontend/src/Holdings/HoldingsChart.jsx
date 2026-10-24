@@ -5,7 +5,7 @@ import {useUser} from "../context/UserContext.jsx";
 import useRefreshKey from "../native/useRefreshKey.js";
 import {formatMoney, formatPrice} from "../utils/format.js";
 import {
-    CHART_DOWN, CHART_UP, INITIAL_DIMENSION, TOOLTIP_STYLE, axisMoneyOptions, axisTicks, formatAxisTick,
+    CHART_DOWN, CHART_UP, INITIAL_DIMENSION, TOOLTIP_STYLE, axisMoneyOptions, axisTicks, formatAxisTick, niceAxis,
     priceChartSummary, tickUnit, tooltipDate,
 } from "../utils/chart.js";
 
@@ -54,7 +54,13 @@ function HoldingChart({symbol, type, coinId = null, initialRange = "1M", compact
     const gradientId = `holdingFill-${type}-${symbol}`;
     const intraday = shown?.range === "1D" || shown?.range === "1W";
     const unit = tickUnit(data);
-    const priceOptions = axisMoneyOptions(data.map((d) => d.price));
+    const prices = data.map((d) => d.price);
+    // round ticks a nice step apart (like the dashboard's), with no headroom so the line still fills the chart;
+    // the add-trade sheet's short chart gets fewer of them so the labels don't crowd
+    const nice = niceAxis(prices, compact ? 4 : 5);
+    // a tick step under 1e-6 (coins like PEPE) currently rounds every tick to 0, so those keep recharts' own axis
+    const yAxis = nice && nice.ticks.every((t, i) => i === 0 || t > nice.ticks[i - 1]) ? nice : null;
+    const priceOptions = yAxis ? axisMoneyOptions(yAxis.ticks, yAxis.step) : axisMoneyOptions(prices);
     const label = String(symbol).toUpperCase();
 
     const failed = error && (!shown || shown.range !== range);
@@ -94,7 +100,9 @@ function HoldingChart({symbol, type, coinId = null, initialRange = "1M", compact
                         tickMargin={10}
                     />
                     <YAxis
-                        domain={["auto", "auto"]}
+                        domain={yAxis?.domain ?? ["auto", "auto"]}
+                        ticks={yAxis?.ticks}
+                        interval={0}
                         tickFormatter={(v) => formatMoney(v, currency, priceOptions)}
                         axisLine={false}
                         tickLine={false}

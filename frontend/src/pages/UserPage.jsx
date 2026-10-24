@@ -10,6 +10,7 @@ import {useUser} from "../context/UserContext.jsx";
 import ConfirmDialog from "../components/ConfirmDialog.jsx";
 import usePageTitle from "../utils/usePageTitle.js";
 import {showToast} from "../utils/toast.js";
+import {passwordChecks, passwordRulesMet} from "../Authentication/passwordRules.js";
 
 function UserPage() {
     usePageTitle("Account");
@@ -383,7 +384,7 @@ function UserSettings({user, setUser}) {
                     />
                 </div>
 
-                <PasswordCard hasPassword={hasPassword}/>
+                <PasswordCard hasPassword={hasPassword} email={user.email}/>
 
                 {isNative && <SecurityCard/>}
 
@@ -469,30 +470,48 @@ function NoPasswordHint({action}) {
 }
 
 // Change password: current, new and confirm. Other devices are signed out; this one gets a fresh token.
-function PasswordCard({hasPassword}) {
+function PasswordCard({hasPassword, email}) {
     const empty = {current: "", next: "", confirm: ""};
     const [fields, setFields] = useState(empty);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
+    const [changed, setChanged] = useState(false);
+
+    // The button disables itself while saving (and stays disabled once the fields are cleared), which drops
+    // keyboard focus to <body>: focus moves to the confirmation on success, back to the current password on error.
+    const currentRef = useRef(null);
+    const changedMessageRef = useRef(null);
+    const focusAfterRender = useRef(null);
+
+    useEffect(() => {
+        const target = focusAfterRender.current;
+        if (!target) return;
+        focusAfterRender.current = null;
+        target.current?.focus();
+    });
 
     const setField = (name, value) => {
         setFields((prev) => ({...prev, [name]: value}));
         setError(null);
+        setChanged(false);
     };
 
     const mismatch = fields.confirm !== "" && fields.next !== fields.confirm;
-    const tooShort = fields.next !== "" && fields.next.length < 8;
+    const rulesMet = passwordRulesMet(fields.next, email);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSaving(true);
         setError(null);
+        setChanged(false);
         try {
             await changePassword(fields.current, fields.next);
             setFields(empty);
-            showToast("Password changed. Your other devices have been signed out.");
+            setChanged(true);
+            focusAfterRender.current = changedMessageRef;
         } catch (err) {
             setError(err.message);
+            focusAfterRender.current = currentRef; // usually a wrong current password
         } finally {
             setSaving(false);
         }
@@ -510,7 +529,7 @@ function PasswordCard({hasPassword}) {
                 <form className="user-password-form" onSubmit={handleSubmit}>
                     <div className="user-field">
                         <label className="user-field-label" htmlFor="password-current">Current password</label>
-                        <input id="password-current" className="user-field-input" type="password"
+                        <input id="password-current" ref={currentRef} className="user-field-input" type="password"
                                value={fields.current} onChange={(e) => setField("current", e.target.value)}
                                autoComplete="current-password" required/>
                     </div>
@@ -518,8 +537,9 @@ function PasswordCard({hasPassword}) {
                         <label className="user-field-label" htmlFor="password-new">New password</label>
                         <input id="password-new" className="user-field-input" type="password"
                                value={fields.next} onChange={(e) => setField("next", e.target.value)}
-                               autoComplete="new-password" maxLength={128} required/>
-                        {tooShort && <span className="user-field-hint error-hint">At least 8 characters.</span>}
+                               autoComplete="new-password" maxLength={128} aria-describedby="password-new-rules"
+                               required/>
+                        <PasswordChecklist password={fields.next} email={email}/>
                     </div>
                     <div className="user-field">
                         <label className="user-field-label" htmlFor="password-confirm">Confirm new password</label>
@@ -531,12 +551,45 @@ function PasswordCard({hasPassword}) {
 
                     {error && <p className="alert-error" role="alert">{error}</p>}
 
-                    <button className="btn btn-primary user-save-button" type="submit"
-                            disabled={saving || !fields.current || !fields.next || tooShort || mismatch
-                                || fields.next !== fields.confirm}>
-                        {saving ? "Changing…" : "Change password"}
-                    </button>
+                    <div className="user-save-row">
+                        <button className="btn btn-primary user-save-button" type="submit"
+                                disabled={saving || !fields.current || !rulesMet || mismatch
+                                    || fields.next !== fields.confirm}>
+                            {saving ? "Changing…" : "Change password"}
+                        </button>
+                        {/* takes focus after the change (screen readers read it then), so no toast is needed too */}
+                        {changed && (
+                            <p className="user-save-status" ref={changedMessageRef} tabIndex={-1}>
+                                <span aria-hidden="true">✓ </span>Password changed. Your other devices have been
+                                signed out.
+                            </p>
+                        )}
+                    </div>
                 </form>
+            )}
+        </div>
+    );
+}
+
+// Live checklist under the new password, the same as the sign-up form's (SignupForm's PasswordChecklist). The live
+// region is always in the page but stays empty until the user starts typing, so it doesn't nag up front.
+function PasswordChecklist({password, email}) {
+    return (
+        <div id="password-new-rules" className="password-rules" aria-live="polite">
+            {password && (
+                <>
+                    <ul className="password-rules-list">
+                        {passwordChecks(password, email).map((check) => (
+                            <li key={check.id} className={check.met ? "met" : undefined}>
+                                <span className="password-rules-icon" aria-hidden="true">{check.met ? "✓" : "○"}</span>
+                                {check.label}
+                                <span className="visually-hidden">{check.met ? " (done)" : " (not yet)"}</span>
+                            </li>
+                        ))}
+                    </ul>
+                    {/* only the server has the common-password list, so the checklist doesn't tick it off */}
+                    <p className="password-rules-note">Very common passwords are also refused.</p>
+                </>
             )}
         </div>
     );

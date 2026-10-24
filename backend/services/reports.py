@@ -38,8 +38,10 @@ REPORT_NOTES = [
     "the gain.",
     "Dates are in UTC (the time each trade was logged), so a trade made late in the evening can fall on the next "
     "day, or year.",
-    "Trades entered in USD or EUR were converted to CAD at the exchange rate of the day they were entered in "
-    "Zenith, not necessarily the trade-date rate CRA expects. Backdated foreign trades may differ.",
+    "Trades entered in USD or EUR are converted to CAD at the exchange rate of the trade date (Yahoo Finance's "
+    "latest daily close at that time), which can differ slightly from the Bank of Canada rate CRA accepts. If that "
+    "rate wasn't available when a trade was saved, or it was saved before Zenith used trade-date rates, the rate "
+    "of the day it was entered was used.",
     "Superficial losses are only flagged, never adjusted, and Zenith can't see accounts of your spouse or other "
     "affiliated persons.",
     "Not tax advice. Check these numbers against your broker's T5008 and other tax slips.",
@@ -223,8 +225,9 @@ def capital_gains(trades, year: int, now: datetime | None = None) -> dict:
 
         foreign = _foreign(t)
         if foreign:
-            notes.append(f"Entered in {foreign}: converted to CAD at the rate of the day it was entered in Zenith, "
-                         f"which may differ from the trade-date rate CRA expects.")
+            notes.append(f"Entered in {foreign}: converted to CAD at the exchange rate of the trade date (or of "
+                         f"the day it was entered, when that rate wasn't available). Check it against the Bank of "
+                         f"Canada rate for that day.")
         if acb_currencies:
             notes.append(f"Its ACB includes buys entered in {', '.join(acb_currencies)}, converted the same way.")
 

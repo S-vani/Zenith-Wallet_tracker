@@ -81,6 +81,7 @@ function HoldingsPage() {
                     <span>Position</span>
                     <span>Total value</span>
                     <span>Quantity</span>
+                    <span>Avg cost</span>
                     <span>Return</span>
                     <span>Return %</span>
                     <span/>

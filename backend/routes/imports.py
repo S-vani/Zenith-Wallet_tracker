@@ -3,6 +3,7 @@ CSV export and import of trades. Export is Zenith's own template; import reads t
 (Wealthsimple, Questrade) in two steps: a preview that saves nothing, then the import of the rows the user accepted,
 validated again here and saved all together or not at all. Parsing lives in backend/services/imports.py.
 """
+import asyncio
 from datetime import datetime, timezone
 from typing import Literal, Optional, Union
 
@@ -19,8 +20,8 @@ from backend.routes.assets import (MAX_SYMBOLS_PER_USER, MAX_TRANSACTIONS_PER_US
                                    _check_user_rate)
 from backend.schemas.assets import AccountType
 from backend.services import asset_services
-from backend.services.asset_services import (LEDGER_ORDER, as_quantity, end_read, get_conversion_factor,
-                                             rebuild_symbol_ledger, sell_tolerance)
+from backend.services.asset_services import (LEDGER_ORDER, as_quantity, cad_price_on, end_read, fx_history,
+                                             needs_trade_date_rate, rebuild_symbol_ledger, sell_tolerance)
 from backend.services.imports import (MAX_ROWS, FileError, ImportRow, RowError, clean_trade, export_row,
                                       mark_duplicates, parse_csv, summarize, template_csv, write_csv)
 
@@ -157,7 +158,8 @@ async def commit_import(
 ):
     """
     Save the rows the user accepted from the preview. Every row is validated again (the browser's copy is never
-    trusted), prices are stored like a manual trade (as typed, plus CAD at today's rate), and all rows go in one
+    trusted), prices are stored like a manual trade (as typed, plus CAD at the rate of the trade's date, see
+    to_cad_on_trade_date; one rate history per currency serves the whole file), and all rows go in one
     database transaction: if any symbol's history would sell more than was owned, nothing is saved (409 naming the
     symbol and line). MAX_TRANSACTIONS_PER_USER and MAX_SYMBOLS_PER_USER count the whole batch (422).
     """
@@ -176,9 +178,12 @@ async def commit_import(
             raise HTTPException(status_code=422, detail=f"Line {row.line}: {err}. Nothing was imported.")
         rows.append(row)
 
-    # rates first, while no connection is held (see end_read); nothing is written before this point
+    # rates first, while no connection is held (see end_read); nothing is written before this point. Backdated
+    # foreign rows use the rate of their own date: one Yahoo history per currency (fetched together) covers them all
     await end_read(session)
     rates = await asset_services.get_all_conversion_rates()
+    currencies = sorted({row.currency for row in rows if needs_trade_date_rate(row.currency, row.date)})
+    histories = dict(zip(currencies, await asyncio.gather(*(fx_history(code) for code in currencies))))
 
     count = await session.execute(select(func.count()).select_from(Transaction)
                                   .where(Transaction.user_id == current_user.id))
@@ -202,7 +207,7 @@ async def commit_import(
             api_id=row.symbol,  # what search would have given: the ticker, or a coin's lowercase symbol
             coin_id=row.coin_id if row.asset_type == "crypto" else None,
             # stored in CAD like every trade, kept as typed too so it never drifts with exchange rates
-            price_of_one=price / get_conversion_factor(rates, row.currency),
+            price_of_one=cad_price_on(price, row.currency, row.date, rates, histories.get(row.currency)),
             price_entered=price,
             currency_entered=row.currency,
             quantity=float(row.quantity),

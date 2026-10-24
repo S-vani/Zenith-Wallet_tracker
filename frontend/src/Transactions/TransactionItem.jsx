@@ -69,6 +69,8 @@ function TransactionItem({transaction, index, onChanged, onDeleted}) {
                         )}
                         <span className="transaction-date">{shortDate}</span>
                     </div>
+                    {/* on the row itself so the size of a trade shows without expanding it */}
+                    <span className="transaction-quantity">{formatQuantity(transaction.quantity)} {unit}</span>
                 </div>
 
                 <div className="transaction-right">

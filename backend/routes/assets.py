@@ -29,7 +29,7 @@ from backend.services.asset_services import (current_quantity, create_holding_fi
                                              get_all_conversion_rates, get_conversion_factor,
                                              rebuild_symbol_ledger, get_latest_stock_quotes,
                                              get_position_values_at, get_buys_between, get_coingecko_history,
-                                             end_read)
+                                             end_read, to_cad_on_trade_date)
 
 load_dotenv()
 router = APIRouter()
@@ -160,6 +160,22 @@ async def update_transaction_with_id(
     if updates.api_id and updates.api_id != old_api_id:
         await check_symbol_limit(session, current_user.id, updates.api_id, ignore_trade=transaction.id)
 
+    # The CAD price depends on the typed price, its currency and (for a backdated trade) the trade's date, so it's
+    # worked out again when any of them changes: a new price is typed in the user's currency, a new date re-converts
+    # the price as typed. Done before anything is changed: end_read commits, and nothing may be saved half-edited.
+    new_cad_price = None
+    when = updates.created_at or transaction.created_at
+    if updates.price_of_one:
+        typed = (updates.price_of_one, current_user.currency.upper())
+    elif updates.created_at and transaction.price_entered is not None and transaction.currency_entered:
+        typed = (float(transaction.price_entered), str(transaction.currency_entered).upper())
+    else:
+        typed = None  # older trades with only a CAD price have nothing to convert
+    if typed is not None:
+        await end_read(session)  # no connection held while the rates (maybe Yahoo's history) load
+        rates = await get_all_conversion_rates()
+        new_cad_price = await to_cad_on_trade_date(typed[0], typed[1], when, rates)
+
     # Check exactly what was sent in
     if updates.symbol:
         transaction.symbol = updates.symbol
@@ -168,11 +184,11 @@ async def update_transaction_with_id(
     if updates.asset_type:
         transaction.asset_type = updates.asset_type
     if updates.price_of_one:
-        rates = await get_all_conversion_rates()
-        transaction.price_of_one = updates.price_of_one / get_conversion_factor(rates, current_user.currency)
         # the new price was typed in the user's currency, keep it as typed so it doesn't drift with FX
         transaction.price_entered = updates.price_of_one
         transaction.currency_entered = current_user.currency.upper()
+    if new_cad_price is not None:
+        transaction.price_of_one = new_cad_price
     if updates.quantity:
         transaction.quantity = updates.quantity
     if updates.api_id:
@@ -254,12 +270,14 @@ async def make_transaction(
     MAX_SYMBOLS_PER_USER different ones, or a trade past MAX_TRANSACTIONS_PER_USER, is a 422.
     """
     # Prices are stored in CAD and converted on the way out, so convert what the user typed (in their currency) to CAD.
-    # The typed price and currency are kept too, so the trade keeps showing exactly what was typed.
+    # The typed price and currency are kept too, so the trade keeps showing exactly what was typed. A backdated trade
+    # in USD / EUR is converted at the rate of its own date (to_cad_on_trade_date), which the ACB report relies on.
     await check_transaction_limit(session, current_user.id)
     await check_symbol_limit(session, current_user.id, data.api_id)
 
+    await end_read(session)  # nothing written yet; don't hold a connection while the rates (maybe Yahoo's) load
     rates = await get_all_conversion_rates()
-    conversion = get_conversion_factor(rates, current_user.currency)
+    price_cad = await to_cad_on_trade_date(data.price_of_one, current_user.currency, data.created_at, rates)
 
     transaction = Transaction(
         action=data.action,
@@ -268,7 +286,7 @@ async def make_transaction(
         symbol=data.symbol,
         api_id=data.api_id,
         coin_id=data.coin_id if data.asset_type == "crypto" else None,
-        price_of_one=data.price_of_one / conversion,
+        price_of_one=price_cad,
         price_entered=data.price_of_one,
         currency_entered=current_user.currency.upper(),
         quantity=data.quantity,

@@ -698,6 +698,58 @@ async def _yahoo_series(ticker: str, period: str, interval: str) -> PriceSeries 
     return await _cached_series(("yahoo", ticker.upper(), period, interval), SERIES_CACHE_SECONDS[interval], fetch)
 
 
+# ---------------------------------------------------------------------------------------------------------------------
+# Trade-date exchange rates. A price typed in USD / EUR is stored in CAD too; for a backdated trade (e.g. a broker
+# import spanning years) the CAD amount uses the rate of the trade's own date, which the capital gains / ACB report
+# needs (CRA wants the rate of the day of the trade). One daily Yahoo history per currency, cached like any price
+# series, serves every date. When it's unavailable the current rate is used (the behaviour before this existed).
+# ---------------------------------------------------------------------------------------------------------------------
+FX_HISTORY_TICKERS = {"USD": "USDCAD=X", "EUR": "EURCAD=X"}  # closes are CAD per 1 unit of the currency
+TRADE_DATE_FX_AFTER = timedelta(days=1)  # trades newer than this simply use the current rate
+FX_HISTORY_PERIOD = "max"  # imports can reach back many years; still one request per currency
+
+
+def needs_trade_date_rate(currency: str | None, at: datetime | None, now: datetime | None = None) -> bool:
+    """True when a price typed in `currency` for a trade at `at` should use the rate of that date."""
+    if at is None or (currency or "").upper() not in FX_HISTORY_TICKERS:
+        return False
+    now = now or datetime.now(timezone.utc)
+    return now - _as_utc(at) > TRADE_DATE_FX_AFTER
+
+
+async def fx_history(currency: str) -> PriceSeries | None:
+    """Yahoo's daily history of CAD per 1 unit of `currency`, or None when it can't be had (the caller falls back)."""
+    ticker = FX_HISTORY_TICKERS.get((currency or "").upper())
+    if ticker is None:
+        return None
+    try:
+        return await _yahoo_series(ticker, FX_HISTORY_PERIOD, "1d")
+    except Exception as exc:
+        log.warning("Exchange rate history for %s is unavailable (%s), using the current rate", currency, exc)
+        return None
+
+
+def cad_price_on(price: float, currency: str | None, at: datetime | None, rates: dict,
+                 history: PriceSeries | None) -> float:
+    """
+    A price typed in `currency` as CAD: at the latest close of `history` known at the trade's time `at` when the
+    trade is backdated (see needs_trade_date_rate), otherwise, or with no usable close, at the current rate.
+    """
+    current = get_conversion_factor(rates, currency)  # units of the currency per 1 CAD
+    if history is not None and needs_trade_date_rate(currency, at):
+        rate = history.close_at(_as_utc(at))
+        # a close far from today's rate is a bad Yahoo row (USD/CAD and EUR/CAD never moved 2x in decades)
+        if rate is not None and math.isfinite(rate) and 0.5 < rate * current < 2:
+            return float(price) * rate
+    return float(price) / current
+
+
+async def to_cad_on_trade_date(price: float, currency: str | None, at: datetime | None, rates: dict) -> float:
+    """cad_price_on for one trade, fetching (or reusing the cached) rate history only when it's backdated."""
+    history = await fx_history(currency) if needs_trade_date_rate(currency, at) else None
+    return cad_price_on(price, currency, at, rates, history)
+
+
 async def _coingecko_series(symbol: str, range_code: str, coin_id: str | None = None) -> PriceSeries | None:
     """
     CoinGecko prices in CAD for coins Yahoo doesn't list (e.g. PEPE), same fallback as the /prices/history chart.

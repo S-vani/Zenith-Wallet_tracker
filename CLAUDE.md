@@ -128,6 +128,10 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
   Prices typed by the user are converted to CAD on create/update.
 - Quantities/prices are `Numeric(20, 10)` (SQLite hands them back as floats): compare with `as_quantity` /
   `sell_tolerance`, never raw floats. Quantity max is 1e9.
+- A USD/EUR trade dated more than a day back is converted to CAD at its own date's rate (Yahoo daily `USDCAD=X` /
+  `EURCAD=X`, one cached series per currency, latest close known at that time; `cad_price_on` in
+  `asset_services.py`) on create, edit and CSV import, falling back to the current rate when the history is missing
+  — the capital-gains report needs trade-date rates. Trades saved before this keep their entry-day rate.
 - Trades also keep `price_entered` + `currency_entered` (as typed). `price_in_currency` / `profit_in_currency` use
   them when the user's currency matches, so amounts never drift with FX; use these helpers for any new money sum.
 - Timestamps are stored as naive UTC; filters convert offset-aware input to UTC first.
@@ -186,7 +190,8 @@ unless billing is on), `MIN_IOS_APP_VERSION` (forced update; unset = off), `BACK
 Frontend: `frontend/.env` → `VITE_BACKEND_URL`; `frontend/.env.ios` for the app build.
 
 ## Deploying (server: `~/walletapp` as user `deploy`)
-`bash deploy/deploy.sh [tag]`: backs up the DB, checks out the release, `uv sync --frozen`, builds the website into
+`bash deploy/deploy.sh [tag]`: first checks the tools, write access to `/var/www/html` and the `SECRET` length
+(changes nothing if one fails), then backs up the DB, checks out the release, `uv sync --frozen`, builds the website into
 `/var/www/html`, restarts `walletapp-backend` and waits for `/health`, rolling back to the previous commit if it
 isn't healthy. One-time server setup (systemd unit with exactly one worker on 127.0.0.1, nightly backups kept 30
 days, 14-day logs, uptime monitor) and restore steps: `docs/deploy.md`. nginx rate limits, security headers, log

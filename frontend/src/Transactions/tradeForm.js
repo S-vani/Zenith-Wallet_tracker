@@ -77,8 +77,8 @@ export function createPayload(form, initialDate) {
     };
 }
 
-// Body for PUT /transactions/{id}: only what changed. Re-sending an unchanged price would convert an old trade's
-// price at today's exchange rate, and re-sending the date would drop its seconds.
+// Body for PUT /transactions/{id}: only what changed. Re-sending an unchanged price would make the server convert it
+// again (at the trade date's rate, or today's when that isn't available), and re-sending the date would drop its seconds.
 export function updatePayload(initial, form) {
     const changes = {};
     if (form.action !== initial.action) changes.action = form.action;

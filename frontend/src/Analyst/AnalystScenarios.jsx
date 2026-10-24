@@ -26,6 +26,14 @@ function AnalystScenarios({report, headingId}) {
                     </span>
                 )}
             </div>
+            {/* said up front, not only behind "How these ranges are calculated": bull/bear price ranges are the part
+                most easily read as a forecast (and the part App Review is most likely to ask about) */}
+            {hasRanges && (
+                <p className="analyst-muted-text">
+                    Ranges show how far the price has typically moved, based on past volatility. They aren't
+                    predictions or targets.
+                </p>
+            )}
 
             <div className="analyst-scenarios">
                 {scenarios.map((scenario) => {

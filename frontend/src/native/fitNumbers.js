@@ -3,7 +3,8 @@ import {isNative} from "./platform.js";
 // App only: big amounts (CA$98,765,432.10) shrink to fit their card, like a native label with "adjusts font size
 // to fit width", instead of breaking in the middle of the number. Native.css turns off the website's
 // break-anywhere wrapping for these; only an amount still too wide at the smallest size wraps (class fit-wrap).
-const SELECTOR = ".stat-value, .holding-item > span, .symbol-price, .symbol-change, .price-paid";
+const SELECTOR = ".stat-value, .holding-item > span, .holdings-totals-row > span, .symbol-price, .symbol-change, " +
+    ".price-paid";
 const MIN_SCALE = 0.6;
 
 const fitted = new WeakMap(); // element -> "text|width" it was last fitted for, so unchanged ones are skipped

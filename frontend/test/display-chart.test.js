@@ -89,3 +89,34 @@ describe("niceAxis", () => {
         expect(new Set(shown).size).toBe(shown.length);
     });
 });
+
+describe("niceAxis headroom", () => {
+    it("widens the range so two nearby lines don't fill the chart", () => {
+        // invested 21K vs value 25K: without headroom the axis is 21K-25K and the gap takes the full height
+        const tight = niceAxis([21000, 25000]);
+        const roomy = niceAxis([21000, 25000], 5, {headroom: 0.1});
+        const share = (axis) => 4000 / (axis.domain[1] - axis.domain[0]);
+        expect(share(roomy)).toBeLessThan(share(tight));
+        expect(share(roomy)).toBeLessThanOrEqual(0.5);
+        expect(roomy.domain[0]).toBeLessThanOrEqual(21000);
+        expect(roomy.domain[1]).toBeGreaterThanOrEqual(25000);
+    });
+
+    it("never goes below 0 for money that never did", () => {
+        expect(niceAxis([100, 2000], 5, {headroom: 0.1}).domain[0]).toBe(0);
+    });
+
+    it("leaves the axis unchanged without headroom", () => {
+        expect(niceAxis([21000, 25000], 5, {headroom: 0})).toEqual(niceAxis([21000, 25000]));
+    });
+});
+
+describe("niceAxis for sub-penny prices", () => {
+    it("keeps distinct ticks for a coin like PEPE", () => {
+        const axis = niceAxis([0.00001021, 0.00001093]);
+        expect(axis.domain[0]).toBeGreaterThan(0);
+        expect(new Set(axis.ticks).size).toBe(axis.ticks.length);
+        expect(axis.domain[0]).toBeLessThanOrEqual(0.00001021);
+        expect(axis.domain[1]).toBeGreaterThanOrEqual(0.00001093);
+    });
+});

@@ -1,11 +1,12 @@
 import HoldingsChart from "./HoldingsChart.jsx"
 import {useState} from "react";
 import {useUser} from "../context/UserContext.jsx";
-import {changeClass, formatMoney, formatPercent, formatQuantity, formatSignedMoney} from "../utils/format.js";
+import {changeClass, formatMoney, formatPercent, formatPrice, formatQuantity, formatSignedMoney} from "../utils/format.js";
+import {averageCost, isPriced} from "./holdingsTotals.js";
 
 // One unbreakable amount: on the website it shrinks with its cell by its length (--chars, see Holdings.css)
 // instead of wrapping between digits ("CA$479,158,262," / "703.04"). The app shrinks it with fitNumbers.js instead
-function Amount({text}) {
+export function Amount({text}) {
     return (
         <span className="cell-amount" style={{"--chars": text.length}}
               title={text.length > 14 ? text : undefined}>{text}</span>
@@ -17,10 +18,13 @@ function HoldingsItem({holding, index}) {
     const {currency} = useUser();
 
     // null current_price = no source has a price for it: show "—" instead of $0 / −100%
-    const priced = holding.current_price !== null && holding.current_price !== undefined;
+    const priced = isPriced(holding);
     const gain = priced ? holding.current_price - holding.price_paid : null;
     const gainPct = priced && holding.price_paid > 0 ? (gain / holding.price_paid) * 100 : null;
     const classReturn = `change-pct ${changeClass(gain)}`;
+    // per unit, so formatPrice: a tiny coin's average cost never shows as $0.00
+    const avgCost = averageCost(holding);
+    const avgCostText = avgCost === null ? "—" : formatPrice(avgCost, currency);
 
     return (
         <div className={`holding-item-wrapper${isOpen ? " open" : ""}`} style={{animationDelay: `${index * 60}ms`}}>
@@ -33,6 +37,8 @@ function HoldingsItem({holding, index}) {
                 <span className="holding-cell" data-label="Value"
                       title={priced ? undefined : "Price unavailable"}>{priced ? <Amount text={formatMoney(holding.current_price, currency)}/> : "—"}</span>
                 <span className="holding-cell" data-label="Quantity"><Amount text={formatQuantity(holding.quantity)}/></span>
+                {/* a desktop column; phones have no room in the 2-column card, so it's in the expanded panel there */}
+                <span className="holding-cell holding-avg-cost" data-label="Avg cost">{avgCost === null ? "—" : <Amount text={avgCostText}/>}</span>
                 <span className={`holding-cell ${classReturn}`} data-label="Return">{priced ? <Amount text={formatSignedMoney(gain, currency)}/> : "—"}</span>
                 <span className={`holding-cell ${classReturn}`} data-label="Return %">{priced ? <Amount text={formatPercent(gainPct)}/> : "—"}</span>
 
@@ -41,6 +47,10 @@ function HoldingsItem({holding, index}) {
 
             {isOpen && (
                 <div className="holding-chart-panel">
+                    <p className="holding-panel-avg-cost">
+                        Average cost <span className="holding-panel-amount">{avgCostText}</span>
+                        {" "}per {holding.type === "stock" ? "share" : "coin"}
+                    </p>
                     <HoldingsChart symbol={holding.symbol} type={holding.type} coinId={holding.coin_id}/>
                 </div>
             )}

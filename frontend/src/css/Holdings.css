@@ -10,9 +10,10 @@
 
 /* header and rows share the same columns so everything lines up */
 .table-header,
-.holding-item {
+.holding-item,
+.holdings-totals-row {
     display: grid;
-    grid-template-columns: 1.5fr 1fr 1fr 1fr 0.8fr 1.5rem;
+    grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr 0.8fr 1.5rem;
     align-items: center;
     gap: 1rem;
 }
@@ -65,7 +66,8 @@
     min-width: 0;
 }
 
-.holding-item > span {
+.holding-item > span,
+.holdings-totals-row > span {
     min-width: 0;
     overflow-wrap: anywhere;
 }
@@ -154,6 +156,56 @@ html:not(.native) .cell-amount {
     color: var(--text-subtle);
 }
 
+/* the totals row under the list: same columns as a holding, set apart by a stronger rule */
+.holdings-totals {
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.holdings-totals-row {
+    padding: 1.1rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.holdings-totals-label {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* the app's fitNumbers.js doesn't size these, so at least never break an amount between digits there */
+.holdings-totals .cell-amount {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.holdings-totals-note {
+    margin: 0;
+    padding: 0 1.5rem 1rem;
+    font-size: 0.8rem;
+    color: var(--text-subtle);
+}
+
+/* phones only: the average cost moves into the expanded panel (its row column is hidden there) */
+.holding-panel-avg-cost {
+    display: none;
+    margin: 0 0 0.75rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.holding-panel-amount {
+    font-weight: 700;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
 /* refreshing holdings keep the list on screen; a failed refresh shows this above it */
 .holdings-refresh-error {
     margin: 1rem 1.5rem 0;
@@ -206,10 +258,30 @@ html:not(.native) .cell-amount {
         display: none;
     }
 
-    .holding-item {
+    .holding-item,
+    .holdings-totals-row {
         grid-template-columns: 1fr 1fr;
         gap: 0.6rem 1rem;
         padding: 1rem 1.1rem;
+    }
+
+    /* the card keeps value, quantity, return, return % */
+    .holding-item .holding-avg-cost,
+    .holdings-totals-spacer,
+    .holdings-totals-row > span:last-child {
+        display: none;
+    }
+
+    .holding-panel-avg-cost {
+        display: block;
+    }
+
+    .holdings-totals-label {
+        grid-column: 1 / -1;
+    }
+
+    .holdings-totals-note {
+        padding: 0 1.1rem 1rem;
     }
 
     .position-column {

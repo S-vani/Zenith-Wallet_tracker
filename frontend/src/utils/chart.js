@@ -120,7 +120,10 @@ function decimalsFor(step) {
 function exactDecimals(step) {
     for (let d = 0; d <= 20; d++) {
         const scaled = step * 10 ** d;
-        if (Math.abs(scaled - Math.round(scaled)) < 1e-6 * Math.max(1, Math.abs(scaled))) return d;
+        const whole = Math.round(scaled);
+        // relative to the step itself: an absolute tolerance treated tiny steps (a PEPE axis, 0.0000005) as whole
+        // numbers, so every tick rounded to 0
+        if (whole !== 0 && Math.abs(scaled - whole) < 1e-9 * Math.abs(scaled)) return d;
     }
     return 20;
 }
@@ -137,13 +140,21 @@ export function niceStep(raw) {
 // Round y axis ticks for these values: recharts' "auto" domain gave labels like CA$7K / 13K / 20K / 26K. Returns
 // {domain: [low, high], ticks, step} with at most `maxTicks` ticks a nice step apart that cover every value, or null
 // without any finite value (then the chart keeps recharts' own axis). Never dips below 0 for values that don't.
-export function niceAxis(values, maxTicks = 5) {
+// `headroom` (a share of the largest value, e.g. 0.1) widens the range above and below the data before rounding, so
+// two lines a few percent apart (portfolio value vs invested) don't fill the chart from top to bottom.
+export function niceAxis(values, maxTicks = 5, {headroom = 0} = {}) {
     const numbers = (values ?? []).filter((v) => v !== null && v !== undefined && v !== "")
         .map(Number).filter(Number.isFinite);
     if (numbers.length === 0) return null;
 
     let min = Math.min(...numbers);
     let max = Math.max(...numbers);
+    if (headroom > 0) {
+        const pad = Math.max(Math.abs(min), Math.abs(max)) * headroom;
+        // money that never went below 0 shouldn't get a negative axis
+        min = min >= 0 ? Math.max(0, min - pad) : min - pad;
+        max += pad;
+    }
     if (min === max) {
         // a flat line: give it some room around the value (or 0 to 1 for all zeros)
         const pad = Math.abs(max) * 0.05 || 1;

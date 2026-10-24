@@ -462,3 +462,42 @@
     flex-wrap: wrap;
     gap: 0.6rem;
 }
+
+/* Change password: the live checklist under the new password. The same rules as in Signup.css, which only loads
+   with the sign-up page; empty until the user types. */
+.password-rules:empty {
+    display: none;
+}
+
+.password-rules-list {
+    list-style: none;
+    margin: 0.15rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.password-rules-list li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.45rem;
+}
+
+.password-rules-list li.met {
+    color: var(--positive);
+}
+
+.password-rules-icon {
+    width: 1rem;
+    flex-shrink: 0;
+    text-align: center;
+}
+
+.password-rules-note {
+    margin: 0.3rem 0 0;
+    font-size: 0.75rem;
+    color: var(--text-subtle);
+}

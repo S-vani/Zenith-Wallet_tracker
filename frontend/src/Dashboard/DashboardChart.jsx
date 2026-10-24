@@ -20,7 +20,9 @@ function DashboardChart({entry, updating = false, currency, error}) {
     const unit = tickUnit(data);
     const axisValues = data.flatMap((d) => (hasInvested ? [d.value, d.invested] : [d.value]));
     // round ticks a nice step apart (CA$0 / 10K / 20K / 30K), labelled with just the decimals that step needs
-    const yAxis = niceAxis(axisValues);
+    // with ~10% headroom around the data so the value and invested lines sit closer together instead of the gap
+    // between them filling the whole height (a tight axis made a 15% gain look enormous)
+    const yAxis = niceAxis(axisValues, 5, {headroom: 0.1});
     const valueOptions = yAxis ? axisMoneyOptions(yAxis.ticks, yAxis.step) : axisMoneyOptions(axisValues);
 
     let body;

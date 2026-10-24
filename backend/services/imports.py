@@ -610,7 +610,8 @@ def _questrade_row(row, cell, default_account, decimal_comma, now):
 # ---------------------------------------------------------------------------------------------------------------------
 SAME_PRICE = Decimal("0.0001")  # relative: the same trade, typed in the same currency
 # Relative, when the file and the saved trade are in different currencies: the CAD price was converted at the rate
-# of the day it was saved, which may be years apart. Symbol, action, time and quantity already have to match.
+# of the trade's date (or of the day it was saved), compared here at today's, which may be years apart. Symbol,
+# action, time and quantity already have to match.
 CROSS_CURRENCY_PRICE = Decimal("0.25")
 
 
