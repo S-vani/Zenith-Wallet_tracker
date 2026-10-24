@@ -9,7 +9,8 @@ node_modules/
 .claude/
 
 # CI test logs and JUnit reports (also produced when running the CI commands locally)
-reports/
+# root only: a bare "reports/" also hid frontend/src/Reports/ (git ignores case on Windows)
+/reports/
 
 # IDE settings and its scratch database (per machine)
 .idea/
