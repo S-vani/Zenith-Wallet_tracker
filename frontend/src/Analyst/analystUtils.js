@@ -36,12 +36,25 @@ export function formatRelativeTime(value, now = Date.now()) {
     if (!date) return "";
 
     const diff = Math.max(0, now - date.getTime()); // a slightly fast server clock shouldn't say "in 1 min"
-    if (diff < 45 * 1000) return "just now";
+    // anything under a minute is "just now": a report refreshed seconds ago shouldn't say "1 min ago"
+    if (diff < MINUTE) return "just now";
     // rounded down so "Updated 3 min ago" + "Refresh in 2 min" adds up to the 5 minute cooldown
     if (diff < HOUR) return `${Math.max(1, Math.floor(diff / MINUTE))} min ago`;
     if (diff < DAY) return `${Math.floor(diff / HOUR)} hr ago`;
     if (diff < 2 * DAY) return "yesterday";
     return `${Math.floor(diff / DAY)} days ago`;
+}
+
+// How far the device clock runs ahead of the server's, judged from a report the server has just generated
+// (cached false): it was made moments before it arrived, so if the device clock says it's older, the device is
+// fast. Shifting by this keeps "Updated just now" right after a refresh and makes the cooldown countdown never show
+// less time than is really left (generation time is included, so it errs on the long side). Cached reports can be
+// any age, so they give no clue (0). Capped so a broken timestamp can't hold the Refresh button for long.
+export function clockOffset(report, receivedAt = Date.now()) {
+    if (!report || report.cached !== false) return 0;
+    const generated = parseDate(report.generated_at);
+    if (!generated) return 0;
+    return Math.min(Math.max(0, receivedAt - generated.getTime()), 10 * MINUTE);
 }
 
 // Full timestamp for title attributes, e.g. "Oct 12, 2026, 2:05 PM"

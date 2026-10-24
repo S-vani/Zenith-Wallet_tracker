@@ -71,6 +71,13 @@ ol {
 }
 
 /* Actual css */
+/* always reserve the scrollbar's space on the viewport, so content doesn't jump ~8px sideways between pages that
+   scroll and pages that don't. Only html: body's overflow-x is propagated to the viewport, so body never becomes
+   a scroll container of its own and there's no second gutter. Overlay scrollbars (phones, the app) are unaffected */
+html {
+    scrollbar-gutter: stable;
+}
+
 body {
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;

@@ -3,7 +3,7 @@ import {AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer} from "recha
 import {formatMoney} from "../utils/format.js";
 import {
     CHART_DOWN, CHART_INVESTED, CHART_UP, INITIAL_DIMENSION, TOOLTIP_STYLE, axisMoneyOptions, axisTicks,
-    formatAxisTick, tickUnit, tooltipDate,
+    formatAxisTick, niceAxis, tickUnit, tooltipDate,
 } from "../utils/chart.js";
 import {dashboardChartSummary} from "./dashboardText.js";
 
@@ -18,7 +18,10 @@ function DashboardChart({entry, updating = false, currency, error}) {
     // card above (never the line's own start vs end, which deposits make look like a gain)
     const color = Number(entry?.stats?.curr_timeperiod) >= 0 ? CHART_UP : CHART_DOWN;
     const unit = tickUnit(data);
-    const valueOptions = axisMoneyOptions(data.flatMap((d) => (hasInvested ? [d.value, d.invested] : [d.value])));
+    const axisValues = data.flatMap((d) => (hasInvested ? [d.value, d.invested] : [d.value]));
+    // round ticks a nice step apart (CA$0 / 10K / 20K / 30K), labelled with just the decimals that step needs
+    const yAxis = niceAxis(axisValues);
+    const valueOptions = yAxis ? axisMoneyOptions(yAxis.ticks, yAxis.step) : axisMoneyOptions(axisValues);
 
     let body;
     if (error) {
@@ -61,7 +64,9 @@ function DashboardChart({entry, updating = false, currency, error}) {
                     />
                     <YAxis
                         width={76}
-                        domain={["auto", "auto"]}
+                        domain={yAxis?.domain ?? ["auto", "auto"]}
+                        ticks={yAxis?.ticks}
+                        interval={0}
                         tick={{fill: "#8b93a1", fontSize: 11}}
                         axisLine={false}
                         tickLine={false}

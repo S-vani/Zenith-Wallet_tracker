@@ -6,8 +6,8 @@ import {showToast} from "../utils/toast.js";
 import HoldingsChart from "../Holdings/HoldingsChart.jsx";
 import TradeFields from "./TradeFields.jsx";
 import {
-    amountHint, createPayload, isFutureInput, ledgerErrorMessage, parseDecimalInput, quantityInputValue,
-    toLocalInputValue,
+    amountHint, backdatedPriceHint, createPayload, isFutureInput, ledgerErrorMessage, parseDecimalInput,
+    quantityInputValue, toLocalInputValue,
 } from "./tradeForm.js";
 
 import "../css/Holdings.css";
@@ -16,6 +16,7 @@ function TransactionCreate({onClose, onCreated, data}) {
     const {currency} = useUser();
     // the date starts at "now"; it's only sent if the user changes it (see createPayload)
     const [initialDate] = useState(() => toLocalInputValue(new Date()));
+    const [prefilledPrice] = useState(() => priceInputValue(data.price));
     const [form, setForm] = useState({
         symbol: data.symbol,
         api_id: data.api_id,
@@ -23,7 +24,7 @@ function TransactionCreate({onClose, onCreated, data}) {
         asset_type: data.type,
         quantity: "",
         // start from the current market price, the user can change it to what they actually paid
-        price_of_one: priceInputValue(data.price),
+        price_of_one: prefilledPrice,
         action: "BUY",
         created_at: initialDate,
     });
@@ -53,6 +54,7 @@ function TransactionCreate({onClose, onCreated, data}) {
     const hint = amountHint(form.quantity, form.price_of_one);
     const dateInFuture = isFutureInput(form.created_at);
     const backdated = Boolean(form.created_at) && form.created_at !== initialDate;
+    const oldPriceHint = dateInFuture ? null : backdatedPriceHint(form, initialDate, prefilledPrice);
 
     const total = quantity * price; // NaN (not shown) while either is invalid
     // a heads-up before saving; the server still decides (a backdated sell is checked against that date instead)
@@ -120,6 +122,7 @@ function TransactionCreate({onClose, onCreated, data}) {
                     <p className="create-hint">That's more than the {formatQuantity(owned)} you own.</p>
                 )}
                 {dateInFuture && <p className="create-hint">The date can't be in the future.</p>}
+                {oldPriceHint && <p className="create-hint">{oldPriceHint}</p>}
 
                 <div className="create-transaction-buttons">
                     <button className="btn" type="button" onClick={onClose}>Cancel</button>

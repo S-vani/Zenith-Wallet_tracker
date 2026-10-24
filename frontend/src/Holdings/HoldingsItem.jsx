@@ -3,6 +3,15 @@ import {useState} from "react";
 import {useUser} from "../context/UserContext.jsx";
 import {changeClass, formatMoney, formatPercent, formatQuantity, formatSignedMoney} from "../utils/format.js";
 
+// One unbreakable amount: on the website it shrinks with its cell by its length (--chars, see Holdings.css)
+// instead of wrapping between digits ("CA$479,158,262," / "703.04"). The app shrinks it with fitNumbers.js instead
+function Amount({text}) {
+    return (
+        <span className="cell-amount" style={{"--chars": text.length}}
+              title={text.length > 14 ? text : undefined}>{text}</span>
+    );
+}
+
 function HoldingsItem({holding, index}) {
     const [isOpen, setIsOpen] = useState(false)
     const {currency} = useUser();
@@ -22,10 +31,10 @@ function HoldingsItem({holding, index}) {
                 </div>
 
                 <span className="holding-cell" data-label="Value"
-                      title={priced ? undefined : "Price unavailable"}>{priced ? formatMoney(holding.current_price, currency) : "—"}</span>
-                <span className="holding-cell" data-label="Quantity">{formatQuantity(holding.quantity)}</span>
-                <span className={`holding-cell ${classReturn}`} data-label="Return">{priced ? formatSignedMoney(gain, currency) : "—"}</span>
-                <span className={`holding-cell ${classReturn}`} data-label="Return %">{priced ? formatPercent(gainPct) : "—"}</span>
+                      title={priced ? undefined : "Price unavailable"}>{priced ? <Amount text={formatMoney(holding.current_price, currency)}/> : "—"}</span>
+                <span className="holding-cell" data-label="Quantity"><Amount text={formatQuantity(holding.quantity)}/></span>
+                <span className={`holding-cell ${classReturn}`} data-label="Return">{priced ? <Amount text={formatSignedMoney(gain, currency)}/> : "—"}</span>
+                <span className={`holding-cell ${classReturn}`} data-label="Return %">{priced ? <Amount text={formatPercent(gainPct)}/> : "—"}</span>
 
                 <span className="expand-icon" aria-hidden="true">▾</span>
             </button>

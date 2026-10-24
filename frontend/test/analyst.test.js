@@ -54,7 +54,8 @@ describe("parseDate", () => {
 describe("formatRelativeTime", () => {
     it.each([
         [10 * 1000, "just now"],
-        [50 * 1000, "1 min ago"],
+        [50 * 1000, "just now"],
+        [61 * 1000, "1 min ago"],
         [3 * 60 * 1000, "3 min ago"],
         [59 * 60 * 1000, "59 min ago"],
         [2 * 3600 * 1000 + 5 * 60 * 1000, "2 hr ago"],

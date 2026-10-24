@@ -27,12 +27,15 @@ const TOO_MANY_REQUESTS = "Too many attempts. Please wait a few minutes and try 
 // Only the app sends this header; "Log out of all devices" can still revoke those tokens.
 const APP_CLIENT_HEADERS = isNative ? {"X-Zenith-Client": "ios-app"} : {};
 
+// localStorage key of the login token; UserContext also watches it for sign-ins/outs in other tabs
+export const TOKEN_KEY = "token";
+
 export function getToken() {
-    return localStorage.getItem("token");
+    return localStorage.getItem(TOKEN_KEY);
 }
 
 export function logout() {
-    localStorage.removeItem("token");
+    localStorage.removeItem(TOKEN_KEY);
     keepInKeychain(null); // the iOS app also keeps the token in the Keychain; no-op on the website
     forgetAll(); // and the app's offline copy of the portfolio screens
     resetLockOnSignOut(); // and the app's Face ID lock, which belongs to this sign in; no-op on the website
@@ -339,7 +342,7 @@ export function googleSignInUrl(next = "/dashboard") {
 }
 
 export function saveToken(token) {
-    localStorage.setItem("token", token);
+    localStorage.setItem(TOKEN_KEY, token);
     keepInKeychain(token);
 }
 

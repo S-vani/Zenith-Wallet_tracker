@@ -6,6 +6,7 @@ import GoogleButton from "./GoogleButton.jsx";
 import {showToast} from "../utils/toast.js";
 import {isNative} from "../native/platform.js";
 import {LegalLinks} from "../components/LegalLayout.jsx";
+import {passwordChecks} from "./passwordRules.js";
 
 function SignupForm({onSubmit}) {
     const [form, setForm] = useState({
@@ -137,8 +138,10 @@ function SignupForm({onSubmit}) {
                             onChange={handleChange}
                             autoComplete="new-password"
                             minLength={8}
+                            aria-describedby="password-rules"
                             required
                         />
+                        <PasswordChecklist password={form.password} email={form.email}/>
                     </div>
 
                     <div className="signup-field">
@@ -172,6 +175,30 @@ function SignupForm({onSubmit}) {
                 <LegalLinks/>
             </div>
         </main>
+    );
+}
+
+// Live checklist under the password field. The live region is always in the page (a region added together with
+// its text often isn't announced), but it stays empty until the user starts typing, so it doesn't nag up front.
+function PasswordChecklist({password, email}) {
+    return (
+        <div id="password-rules" className="password-rules" aria-live="polite">
+            {password && (
+                <>
+                    <ul className="password-rules-list">
+                        {passwordChecks(password, email).map((check) => (
+                            <li key={check.id} className={check.met ? "met" : undefined}>
+                                <span className="password-rules-icon" aria-hidden="true">{check.met ? "✓" : "○"}</span>
+                                {check.label}
+                                <span className="visually-hidden">{check.met ? " (done)" : " (not yet)"}</span>
+                            </li>
+                        ))}
+                    </ul>
+                    {/* only the server has the common-password list, so the checklist doesn't tick it off */}
+                    <p className="password-rules-note">Very common passwords are also refused when you sign up.</p>
+                </>
+            )}
+        </div>
     );
 }
 

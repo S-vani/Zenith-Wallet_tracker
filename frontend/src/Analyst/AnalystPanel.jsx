@@ -20,9 +20,13 @@ import "../css/Analyst.css";
 // keeps working while the report is generated.
 function AnalystPanel({symbol, type, coinId, label}) {
     const titleId = useId();
-    const {loading, report, error, refreshing, refreshError, retry, refresh} = useAnalystReport({symbol, type, coinId});
+    const {
+        loading, report, error, refreshing, refreshError, clockOffset, retry, refresh,
+    } = useAnalystReport({symbol, type, coinId});
 
-    const refreshAt = parseDate(report?.refresh_available_at)?.getTime() ?? null;
+    // server times moved onto the device clock, so a fast device clock can't make the cooldown look shorter
+    const serverRefreshAt = parseDate(report?.refresh_available_at)?.getTime() ?? null;
+    const refreshAt = serverRefreshAt === null ? null : serverRefreshAt + clockOffset;
     const now = useNow(15000, refreshAt);
 
     const ticker = String(label || symbol).toUpperCase();
@@ -83,7 +87,7 @@ function AnalystPanel({symbol, type, coinId, label}) {
                             <span className="analyst-meta-item">
                                 Updated{" "}
                                 <time dateTime={report.generated_at} title={formatTimestamp(report.generated_at)}>
-                                    {formatRelativeTime(report.generated_at, now)}
+                                    {formatRelativeTime(report.generated_at, now - clockOffset)}
                                 </time>
                             </span>
                         )}
@@ -158,8 +162,13 @@ function RefreshButton({refreshing, countdown, onRefresh}) {
     if (refreshing) text = "Refreshing…";
     else if (coolingDown) text = `Refresh in ${countdown}`;
 
+    const unavailable = refreshing || coolingDown;
+
+    // aria-disabled instead of disabled: a disabled button drops keyboard focus to <body> the moment it's clicked,
+    // so keyboard and screen reader users would lose their place. This one keeps focus and ignores clicks instead
     return (
-        <button type="button" className="btn analyst-refresh" onClick={onRefresh} disabled={refreshing || coolingDown}
+        <button type="button" className="btn analyst-refresh" aria-disabled={unavailable || undefined}
+                onClick={unavailable ? undefined : onRefresh}
                 title={coolingDown ? `A new analysis can be requested in ${countdown}` : "Generate a fresh analysis"}>
             {refreshing ? (
                 <span className="spinner analyst-refresh-spinner" aria-hidden="true"/>

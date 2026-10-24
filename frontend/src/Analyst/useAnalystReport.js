@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useState} from "react";
 import {getAnalystReport} from "../services/api.js";
 import {showToast} from "../utils/toast.js";
-import {analystRequestKey, createLatestRequestTracker, fetchLatest} from "./analystUtils.js";
+import {analystRequestKey, clockOffset, createLatestRequestTracker, fetchLatest} from "./analystUtils.js";
 
 // Loads the analyst report for one asset and handles manual refreshes.
 // Stale responses can't leak in: every new request aborts the previous one, a response that arrives anyway is
@@ -10,7 +10,7 @@ import {analystRequestKey, createLatestRequestTracker, fetchLatest} from "./anal
 export default function useAnalystReport({symbol, type, coinId}) {
     const key = analystRequestKey({symbol, type, coinId});
     const [tracker] = useState(createLatestRequestTracker);
-    const [result, setResult] = useState(null); // {key, report, error}
+    const [result, setResult] = useState(null); // {key, report, error, offset}
     const [refreshing, setRefreshing] = useState(null); // key of the asset being refreshed
     const [refreshError, setRefreshError] = useState(null); // {key, message}
 
@@ -21,7 +21,7 @@ export default function useAnalystReport({symbol, type, coinId}) {
 
     useEffect(() => {
         load().then((res) => {
-            if (res.status === "ok") setResult({key, report: res.data, error: null});
+            if (res.status === "ok") setResult({key, report: res.data, error: null, offset: clockOffset(res.data)});
             else if (res.status === "error") setResult({key, report: null, error: res.error.message});
         });
         return () => tracker.cancel();
@@ -31,7 +31,7 @@ export default function useAnalystReport({symbol, type, coinId}) {
     const retry = useCallback(async () => {
         setResult(null);
         const res = await load();
-        if (res.status === "ok") setResult({key, report: res.data, error: null});
+        if (res.status === "ok") setResult({key, report: res.data, error: null, offset: clockOffset(res.data)});
         else if (res.status === "error") setResult({key, report: null, error: res.error.message});
     }, [load, key]);
 
@@ -42,13 +42,13 @@ export default function useAnalystReport({symbol, type, coinId}) {
         const res = await load(true);
         // "superseded": the asset changed or the panel closed, so the response is dropped
         if (res.status === "ok") {
-            setResult({key, report: res.data, error: null});
+            setResult({key, report: res.data, error: null, offset: clockOffset(res.data)});
         } else if (res.status === "error" && res.error.status === 429) {
             // refreshed too recently (maybe in another tab): say so briefly and show the newest saved report,
             // whose refresh_available_at drives the button's countdown
             showToast(res.error.message, {type: "error"});
             const latest = await load(false);
-            if (latest.status === "ok") setResult({key, report: latest.data, error: null});
+            if (latest.status === "ok") setResult({key, report: latest.data, error: null, offset: clockOffset(latest.data)});
         } else if (res.status === "error") {
             setRefreshError({key, message: res.error.message, status: res.error.status});
         }
@@ -61,6 +61,7 @@ export default function useAnalystReport({symbol, type, coinId}) {
         loading: !current,
         report: current?.report ?? null,
         error: current?.error ?? null,
+        clockOffset: current?.offset ?? 0, // ms the device clock runs ahead of the server (see clockOffset)
         refreshing: refreshing === key,
         refreshError: refreshError?.key === key ? refreshError : null,
         retry,

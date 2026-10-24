@@ -435,3 +435,30 @@
         gap: 0 1.25rem;
     }
 }
+
+/* Save changes + the "Changes saved." confirmation that takes focus after saving */
+.user-save-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1rem;
+}
+
+.user-save-status {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--positive);
+    border-radius: 0.25rem;
+}
+
+.user-save-status:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+}
+
+/* Cancel / Update email side by side */
+.user-email-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}

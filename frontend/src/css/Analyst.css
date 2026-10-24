@@ -139,6 +139,17 @@
     min-height: 2.5rem;
 }
 
+/* aria-disabled (not disabled, so it keeps keyboard focus): same quiet look as Global.css's .btn:disabled */
+.btn.analyst-refresh[aria-disabled="true"],
+.btn.analyst-refresh[aria-disabled="true"]:hover {
+    cursor: not-allowed;
+    background: #121a2b;
+    border-color: rgba(255, 255, 255, 0.07);
+    color: #6b7790;
+    box-shadow: none;
+    transform: none;
+}
+
 .analyst-refresh svg {
     width: 1rem;
     height: 1rem;

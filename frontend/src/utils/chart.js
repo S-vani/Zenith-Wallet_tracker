@@ -116,25 +116,83 @@ function decimalsFor(step) {
     return Math.max(0, Math.ceil(-Math.log10(step) - 1e-9));
 }
 
+// Decimals a tick step really has (2.5 → 1, 0.25 → 2, 500 → 0), allowing for floating point noise
+function exactDecimals(step) {
+    for (let d = 0; d <= 20; d++) {
+        const scaled = step * 10 ** d;
+        if (Math.abs(scaled - Math.round(scaled)) < 1e-6 * Math.max(1, Math.abs(scaled))) return d;
+    }
+    return 20;
+}
+
+// The smallest "nice" step (1, 2, 2.5 or 5 × 10^n) of at least `raw`
+export function niceStep(raw) {
+    if (!(raw > 0) || !Number.isFinite(raw)) return 1;
+    const power = 10 ** Math.floor(Math.log10(raw));
+    const fraction = raw / power;
+    const mantissa = [1, 2, 2.5, 5, 10].find((m) => fraction <= m * (1 + 1e-9));
+    return mantissa * power;
+}
+
+// Round y axis ticks for these values: recharts' "auto" domain gave labels like CA$7K / 13K / 20K / 26K. Returns
+// {domain: [low, high], ticks, step} with at most `maxTicks` ticks a nice step apart that cover every value, or null
+// without any finite value (then the chart keeps recharts' own axis). Never dips below 0 for values that don't.
+export function niceAxis(values, maxTicks = 5) {
+    const numbers = (values ?? []).filter((v) => v !== null && v !== undefined && v !== "")
+        .map(Number).filter(Number.isFinite);
+    if (numbers.length === 0) return null;
+
+    let min = Math.min(...numbers);
+    let max = Math.max(...numbers);
+    if (min === max) {
+        // a flat line: give it some room around the value (or 0 to 1 for all zeros)
+        const pad = Math.abs(max) * 0.05 || 1;
+        min = min >= 0 ? Math.max(0, min - pad) : min - pad;
+        max += pad;
+    }
+
+    const count = Math.max(2, maxTicks);
+    let step = niceStep((max - min) / (count - 1));
+    let low = Math.floor(min / step) * step;
+    let high = Math.ceil(max / step) * step;
+    // rounding the ends outwards can add a tick; step up until they fit
+    while (Math.round((high - low) / step) + 1 > count) {
+        step = niceStep(step * 1.01);
+        low = Math.floor(min / step) * step;
+        high = Math.ceil(max / step) * step;
+    }
+
+    // rounded to the step's decimals so floating point noise (0.30000000000000004) never reaches a label
+    const decimals = Math.min(20, exactDecimals(step));
+    const clean = (v) => Number(v.toFixed(decimals)) || 0; // || 0: no "-0"
+    const ticks = [];
+    for (let i = 0; i <= Math.round((high - low) / step); i++) ticks.push(clean(low + i * step));
+    return {domain: [ticks[0], ticks[ticks.length - 1]], ticks, step};
+}
+
 // formatMoney options for a y axis showing these values: every tick gets the same number of decimals, and enough of
 // them that neighbouring ticks never read the same (a stablecoin moving between CA$1.405 and CA$1.415 needs 3).
 // Big values use compact labels (CA$114.5K) unless the range is too narrow for them to differ.
-export function axisMoneyOptions(values) {
+// `tickStep` is the exact distance between ticks when the axis has fixed ones (niceAxis): a 2.5K step then keeps
+// its decimal ("CA$7.5K", never "CA$8K").
+export function axisMoneyOptions(values, tickStep) {
     const numbers = (values ?? []).map(Number).filter(Number.isFinite);
     if (numbers.length === 0) return {minimumFractionDigits: 0, maximumFractionDigits: 0};
 
+    const exact = tickStep > 0;
+    const places = exact ? exactDecimals : decimalsFor;
     const max = Math.max(...numbers.map(Math.abs));
-    const spread = Math.max(...numbers) - Math.min(...numbers);
-    const step = spread / 4; // recharts draws about five ticks
+    const spread = exact ? tickStep : Math.max(...numbers) - Math.min(...numbers);
+    const step = exact ? tickStep : spread / 4; // recharts draws about five ticks
 
     if (max >= 10_000) {
         const unit = max >= 1e12 ? 1e12 : max >= 1e9 ? 1e9 : max >= 1e6 ? 1e6 : 1e3;
-        const digits = spread > 0 ? decimalsFor(step / unit) : 1;
+        const digits = spread > 0 ? places(step / unit) : 1;
         if (digits <= 1) return {notation: "compact", minimumFractionDigits: 0, maximumFractionDigits: digits};
         // compact labels would all read "CA$114k", so show the full amount instead
     }
 
-    const digits = spread > 0 ? decimalsFor(step) : (max >= 1 ? 2 : decimalsFor(max / 1000));
+    const digits = spread > 0 ? places(step) : (max >= 1 ? 2 : decimalsFor(max / 1000));
     // whole dollars, or at least cents ("CA$766.50", never "CA$766.5")
     const decimals = digits === 0 ? 0 : Math.min(12, Math.max(2, digits));
     return {minimumFractionDigits: decimals, maximumFractionDigits: decimals};

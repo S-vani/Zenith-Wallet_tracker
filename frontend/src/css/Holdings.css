@@ -70,6 +70,21 @@
     overflow-wrap: anywhere;
 }
 
+/* website: amounts never break between digits. Each stays on one line and shrinks with its cell by its length
+   (--chars, set in HoldingsItem; ~0.6em per character), with an ellipsis (full amount in its title) only past the
+   smallest size. The app shrinks them with fitNumbers.js instead (html.native), so it's left alone */
+html:not(.native) .holding-cell {
+    container-type: inline-size;
+}
+
+html:not(.native) .cell-amount {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: clamp(0.7rem, calc(100cqi / (var(--chars, 10) * 0.6)), 1em);
+}
+
 .position-symbol {
     font-weight: 700;
     font-size: 1.05rem;

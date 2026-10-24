@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {Link, useNavigate} from "react-router-dom";
 import "../css/User.css"
 
@@ -49,11 +49,32 @@ function UserSettings({user, setUser}) {
     // Accounts made with Google have no password of their own until they set one through "Forgot password"
     const hasPassword = user.hasPassword !== false;
 
+    // A disabled button drops keyboard focus to <body>, and Save / Update / Delete all disable themselves while
+    // they work, so these refs put focus somewhere sensible afterwards.
+    const saveButtonRef = useRef(null);
+    const savedMessageRef = useRef(null);
+    const emailInputRef = useRef(null);
+    const emailPasswordRef = useRef(null);
+    const deleteButtonRef = useRef(null);
+    const deletePasswordRef = useRef(null);
+    // The element to focus once the next render is on screen: the target may not exist (or may still be disabled)
+    // until then. Set only by handlers that also change state, so a render always follows.
+    const focusAfterRender = useRef(null);
+    const [saved, setSaved] = useState(false);
+
+    useEffect(() => {
+        const target = focusAfterRender.current;
+        if (!target) return;
+        focusAfterRender.current = null;
+        target.current?.focus();
+    });
+
     const setInformation = (info, change) => {
         setForm((prev) => ({
             ...prev,
             [info]: change
         }))
+        setSaved(false);
     }
 
     const profileChanged = form.name.trim() !== user.name || form.currency !== user.currency;
@@ -63,15 +84,28 @@ function UserSettings({user, setUser}) {
         e.preventDefault();
         setSaving(true);
         setSaveError(null);
+        setSaved(false);
         try {
             const updated = await putUserInfo({name: form.name.trim(), currency: form.currency});
             setUser(updated);
-            showToast("Changes saved");
+            // the Save button is disabled again now (nothing changed), so focus moves to the confirmation
+            // (which screen readers then read) instead of falling to the page
+            setSaved(true);
+            focusAfterRender.current = savedMessageRef;
         } catch (err) {
             setSaveError(err.message);
+            focusAfterRender.current = saveButtonRef;
         } finally {
             setSaving(false);
         }
+    };
+
+    // Undo an email edit: back to the saved address, and focus stays in the field rather than on the vanished form
+    const cancelEmailChange = () => {
+        setInformation("email", user.email);
+        setEmailPassword("");
+        setEmailError(null);
+        emailInputRef.current?.focus();
     };
 
     // Changing the email unverifies the account, so the user is signed out until they confirm the new address
@@ -89,6 +123,7 @@ function UserSettings({user, setUser}) {
         } catch (err) {
             setEmailError(err.message);
             setSendingVerification(false);
+            emailPasswordRef.current?.focus(); // usually a wrong password; the button was disabled while sending
         }
     };
 
@@ -124,11 +159,20 @@ function UserSettings({user, setUser}) {
     const [deleting, setDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState(null);
 
+    // Cancel (or Escape) closes the confirmation and hands focus back to the "Delete account…" button that opened it
     const cancelDelete = () => {
         setConfirmingDelete(false);
         setDeleteText("");
         setDeletePassword("");
         setDeleteError(null);
+        focusAfterRender.current = deleteButtonRef;
+    };
+
+    const handleDeleteKeyDown = (e) => {
+        if (e.key !== "Escape" || deleting) return;
+        e.preventDefault();
+        e.stopPropagation();
+        cancelDelete();
     };
 
     const handleDelete = async (e) => {
@@ -143,6 +187,7 @@ function UserSettings({user, setUser}) {
         } catch (err) {
             setDeleteError(err.message);
             setDeleting(false);
+            deletePasswordRef.current?.focus(); // usually a wrong password; the button was disabled while deleting
         }
     };
 
@@ -210,10 +255,18 @@ function UserSettings({user, setUser}) {
 
                     <div className="user-divider"/>
 
-                    <button className="btn btn-success user-save-button" type="submit"
-                            disabled={!profileChanged || saving || !form.name.trim()}>
-                        {saving ? "Saving…" : "Save changes"}
-                    </button>
+                    <div className="user-save-row">
+                        <button className="btn btn-success user-save-button" type="submit" ref={saveButtonRef}
+                                disabled={!profileChanged || saving || !form.name.trim()}>
+                            {saving ? "Saving…" : "Save changes"}
+                        </button>
+                        {/* takes focus after saving (screen readers read it then), so no toast is needed too */}
+                        {saved && (
+                            <p className="user-save-status" ref={savedMessageRef} tabIndex={-1}>
+                                <span aria-hidden="true">✓ </span>Changes saved.
+                            </p>
+                        )}
+                    </div>
                 </form>
 
                 <div className="user-card">
@@ -232,6 +285,7 @@ function UserSettings({user, setUser}) {
                         <label className="user-field-label" htmlFor="user-email">Email address</label>
                         <input
                             id="user-email"
+                            ref={emailInputRef}
                             className="user-field-input"
                             type="email"
                             value={form.email}
@@ -254,6 +308,7 @@ function UserSettings({user, setUser}) {
                                 <label className="user-field-label" htmlFor="email-password">Current password</label>
                                 <input
                                     id="email-password"
+                                    ref={emailPasswordRef}
                                     className="user-field-input"
                                     type="password"
                                     value={emailPassword}
@@ -265,16 +320,25 @@ function UserSettings({user, setUser}) {
                                     required
                                 />
                             </div>
-                            <button
-                                className="btn btn-primary"
-                                type="submit"
-                                disabled={sendingVerification || !form.email.includes("@") || !emailPassword}
-                            >
-                                {sendingVerification ? "Sending…" : "Update email"}
-                            </button>
+                            <div className="user-email-actions">
+                                <button type="button" className="btn" onClick={cancelEmailChange}
+                                        disabled={sendingVerification}>
+                                    Cancel
+                                </button>
+                                <button
+                                    className="btn btn-primary"
+                                    type="submit"
+                                    disabled={sendingVerification || !form.email.includes("@") || !emailPassword}
+                                >
+                                    {sendingVerification ? "Sending…" : "Update email"}
+                                </button>
+                            </div>
                         </form>
                     ) : (
-                        <NoPasswordHint action="change your email"/>
+                        <div className="verify-row">
+                            <NoPasswordHint action="change your email"/>
+                            <button type="button" className="btn" onClick={cancelEmailChange}>Cancel</button>
+                        </div>
                     ))}
 
                     {emailError && <p className="alert-error" role="alert">{emailError}</p>}
@@ -340,11 +404,12 @@ function UserSettings({user, setUser}) {
                     {!hasPassword ? (
                         <NoPasswordHint action="delete your account"/>
                     ) : !confirmingDelete ? (
-                        <button className="btn user-delete-button" onClick={() => setConfirmingDelete(true)}>
+                        <button className="btn user-delete-button" ref={deleteButtonRef}
+                                onClick={() => setConfirmingDelete(true)}>
                             Delete account…
                         </button>
                     ) : (
-                        <form className="user-delete-confirm" onSubmit={handleDelete}>
+                        <form className="user-delete-confirm" onSubmit={handleDelete} onKeyDown={handleDeleteKeyDown}>
                             <label className="user-field-label" htmlFor="delete-confirm">
                                 Type <strong>DELETE</strong> to confirm
                             </label>
@@ -362,6 +427,7 @@ function UserSettings({user, setUser}) {
                             <label className="user-field-label" htmlFor="delete-password">Current password</label>
                             <input
                                 id="delete-password"
+                                ref={deletePasswordRef}
                                 className="user-field-input"
                                 type="password"
                                 value={deletePassword}

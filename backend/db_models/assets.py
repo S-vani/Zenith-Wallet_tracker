@@ -8,8 +8,10 @@ import smtplib
 from email.mime.text import MIMEText
 from email.utils import formatdate, make_msgid, parseaddr
 
+import jwt
 from dotenv import load_dotenv
 from fastapi_users import BaseUserManager, UUIDIDMixin, exceptions, models
+from fastapi_users.jwt import decode_jwt, generate_jwt
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTableUUID, SQLAlchemyBaseOAuthAccountTableUUID
 from sqlalchemy import Boolean, Column, String, DateTime, ForeignKey, Integer, Numeric, false, true
 from sqlalchemy.dialects.postgresql import UUID
@@ -86,8 +88,8 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         return user
 
     # Password hashing is deliberately slow (tens of ms of CPU). fastapi-users runs it on the event loop, which
-    # would stall every other request during a burst of logins, so the hot paths (login, re-entering the password,
-    # changing it) run it in a worker thread instead. Signup and reset (rate limited, rare) keep the library's code.
+    # would stall every other request on the single worker during a burst, so every path that hashes here (login,
+    # re-entering the password, changing it, signup, forgot/reset password) runs it in a worker thread instead.
     async def hash_password(self, password: str) -> str:
         return await asyncio.to_thread(self.password_helper.hash, password)
 
@@ -110,6 +112,75 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         verified, _ = await asyncio.to_thread(self.password_helper.verify_and_update, password or "",
                                               user.hashed_password)
         return verified
+
+    # create / forgot_password / reset_password / _update below are fastapi-users 15.0's own code with only the
+    # hashing moved to a thread (see above). Same checks, errors and hooks; keep them in step when upgrading it.
+    async def create(self, user_create, safe: bool = False, request: Request | None = None) -> User:
+        await self.validate_password(user_create.password, user_create)
+        if await self.user_db.get_by_email(user_create.email) is not None:
+            raise exceptions.UserAlreadyExists()
+        user_dict = user_create.create_update_dict() if safe else user_create.create_update_dict_superuser()
+        user_dict["hashed_password"] = await self.hash_password(user_dict.pop("password"))
+        created_user = await self.user_db.create(user_dict)
+        await self.on_after_register(created_user, request)
+        return created_user
+
+    async def forgot_password(self, user: User, request: Request | None = None) -> None:
+        if not user.is_active:
+            raise exceptions.UserInactive()
+        token_data = {
+            "sub": str(user.id),
+            # a hash of the current hash: the link stops working once the password changes
+            "password_fgpt": await self.hash_password(user.hashed_password),
+            "aud": self.reset_password_token_audience,
+        }
+        token = generate_jwt(token_data, self.reset_password_token_secret,
+                             self.reset_password_token_lifetime_seconds)
+        await self.on_after_forgot_password(user, token, request)
+
+    async def reset_password(self, token: str, password: str, request: Request | None = None) -> User:
+        try:
+            data = decode_jwt(token, self.reset_password_token_secret, [self.reset_password_token_audience])
+        except jwt.PyJWTError:
+            raise exceptions.InvalidResetPasswordToken()
+        try:
+            user_id = data["sub"]
+            password_fingerprint = data["password_fgpt"]
+        except KeyError:
+            raise exceptions.InvalidResetPasswordToken()
+        try:
+            parsed_id = self.parse_id(user_id)
+        except exceptions.InvalidID:
+            raise exceptions.InvalidResetPasswordToken()
+
+        user = await self.get(parsed_id)
+        valid_password_fingerprint, _ = await asyncio.to_thread(
+            self.password_helper.verify_and_update, user.hashed_password, password_fingerprint)
+        if not valid_password_fingerprint:
+            raise exceptions.InvalidResetPasswordToken()
+        if not user.is_active:
+            raise exceptions.UserInactive()
+
+        updated_user = await self._update(user, {"password": password})
+        await self.on_after_reset_password(user, request)
+        return updated_user
+
+    async def _update(self, user: User, update_dict: dict) -> User:
+        validated_update_dict = {}
+        for field, value in update_dict.items():
+            if field == "email" and value != user.email:
+                try:
+                    await self.get_by_email(value)
+                    raise exceptions.UserAlreadyExists()
+                except exceptions.UserNotExists:
+                    validated_update_dict["email"] = value
+                    validated_update_dict["is_verified"] = False
+            elif field == "password" and value is not None:
+                await self.validate_password(value, user)
+                validated_update_dict["hashed_password"] = await self.hash_password(value)
+            else:
+                validated_update_dict[field] = value
+        return await self.user_db.update(user, validated_update_dict)
 
     async def sign_out_everywhere(self, user: User, **changes) -> User:
         """Bump token_version, so every token issued so far stops working, together with any other changes."""

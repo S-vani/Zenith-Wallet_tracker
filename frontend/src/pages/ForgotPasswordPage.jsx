@@ -2,10 +2,14 @@ import {useState} from "react";
 import {Link} from "react-router-dom";
 import {forgotPassword} from "../services/api.js";
 import usePageTitle from "../utils/usePageTitle.js";
+import {isNative} from "../native/platform.js";
+import {LegalLinks} from "../components/LegalLayout.jsx";
 
 import "../css/Home.css"
 import "../css/Auth.css"
 import "../css/Login.css"
+
+const BrandLink = isNative ? "div" : Link;
 
 // Step 1 of resetting a password: email a one-hour reset link. The answer is the same whether or not the
 // email has an account, so this page can't be used to find out who uses Zenith.
@@ -32,7 +36,14 @@ function ForgotPasswordPage() {
     };
 
     return (
-        <main className="verify-page" id="main-content" tabIndex={-1}>
+        <main className="verify-page forgot-page" id="main-content" tabIndex={-1}>
+            {/* same brand as log in / sign up; in the app "/" only bounces back to log in, so it isn't a link there */}
+            <BrandLink className="home-brand" {...(isNative ? {} : {to: "/"})}>
+                <img className="brand-mark" src="/zenith-logo.svg" alt="" width="32" height="32"/>
+                <span className="brand-name">Zenith&nbsp;<span
+                    className="brand-accent">{isNative ? "Portfolio Tracker" : "Wallet Tracker"}</span></span>
+            </BrandLink>
+
             <div className="login-form-card verify-card">
                 {sent ? (
                     <>
@@ -63,6 +74,7 @@ function ForgotPasswordPage() {
                         <Link to="/login" className="auth-legal-link">Back to log in</Link>
                     </>
                 )}
+                <LegalLinks/>
             </div>
         </main>
     );

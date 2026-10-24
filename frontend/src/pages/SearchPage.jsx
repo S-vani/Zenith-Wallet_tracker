@@ -112,7 +112,7 @@ function SearchPage() {
                 <div className="search-intro">
                     <strong>Find a {searchSymbol.type === "stock" ? "stock or ETF" : "coin"}</strong>
                     <p>
-                        Search by ticker or name, then tap a result to open its price chart and a Market Analyst
+                        Search by ticker or name, then select a result to open its price chart and a Market Analyst
                         report.
                     </p>
                     <div className="search-examples" role="group" aria-label="Example searches">

@@ -12,6 +12,15 @@ const RANGE_LABELS = {
 // `loading`: the selected range's return is still loading. `valueLoading`: nothing has loaded yet; the portfolio
 // value doesn't depend on the range, so it stays on screen while another range loads. `unavailable`: nothing could
 // be loaded, so both cards show "—" (the page shows the error and a Try again button) instead of shimmering forever.
+// The amount as one unbreakable piece: on the website it shrinks with its card by its length (--chars, see
+// Dashboard.css) instead of wrapping between digits. The app shrinks it with fitNumbers.js instead
+function Amount({text}) {
+    return (
+        <span className="stat-amount" style={{"--chars": text.length}}
+              title={text.length > 16 ? text : undefined}>{text}</span>
+    );
+}
+
 function DashboardStats({stats, loading, valueLoading = loading, unavailable = false, currency, range}) {
     const change = stats.curr_timeperiod;
     // the backend's base: value at the start of the period + money put in (all time: cost of every buy).
@@ -32,7 +41,7 @@ function DashboardStats({stats, loading, valueLoading = loading, unavailable = f
                     ) : valueLoading ? (
                         <span className="skeleton stat-skeleton"/>
                     ) : (
-                        <div className="stat-value">{formatMoney(stats.value, currency)}</div>
+                        <div className="stat-value"><Amount text={formatMoney(stats.value, currency)}/></div>
                     )}
                 </div>
 
@@ -44,7 +53,7 @@ function DashboardStats({stats, loading, valueLoading = loading, unavailable = f
                         <span className="skeleton stat-skeleton"/>
                     ) : (
                         <div className={`stat-value ${changeClass(change)}`}>
-                            {formatSignedMoney(change, currency)}
+                            <Amount text={formatSignedMoney(change, currency)}/>
                             {changePct !== null && (
                                 <span className="stat-pct">{formatPercent(changePct)}</span>
                             )}

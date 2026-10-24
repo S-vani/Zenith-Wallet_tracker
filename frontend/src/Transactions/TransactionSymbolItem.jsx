@@ -21,7 +21,11 @@ function TransactionSymbolItem({data, onSub, selected = false}) {
 
                 <div className="symbol-cell">
                     {data.image && <img className="symbol-image" src={data.image} alt=""/>}
-                    <span className="symbol-text" title={data.symbol}>{data.symbol}</span>
+                    {/* the name tells apart tickers like "SHOP" vs "SHOP.TO", or coins that share a symbol */}
+                    <span className="symbol-names">
+                        <span className="symbol-text" title={data.symbol}>{data.symbol}</span>
+                        {data.name && <span className="symbol-name" title={data.name}>{data.name}</span>}
+                    </span>
                 </div>
 
                 <div className={`symbol-price${price.length > 15 ? " long" : ""}`} title={price}>

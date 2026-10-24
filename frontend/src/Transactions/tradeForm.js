@@ -1,4 +1,7 @@
-// Pure helpers shared by the add and edit trade forms (tested in test/tradeForm.test.js)
+// Pure helpers shared by the add and edit trade forms and the trade details (tested in test/tradeForm.test.js and
+// test/transactions-helpers.test.js)
+
+import {formatMoney, formatPrice} from "../utils/format.js";
 
 const pad = (n) => String(n).padStart(2, "0");
 
@@ -101,4 +104,33 @@ export function ledgerErrorMessage(err, {mode, symbol = "", action = "BUY", back
     }
     if (action === "SELL") return `You can't sell more ${name} than you own.`;
     return `Saving this would leave your ${name} history selling more than you owned at the time.`;
+}
+
+// The add form prefills the current price. Once the user moves the date to another day and leaves that price
+// untouched, it's almost certainly not what they paid then (we don't look up old prices), so say so.
+export function backdatedPriceHint(form, initialDate, prefilledPrice) {
+    if (!prefilledPrice || form.price_of_one !== prefilledPrice) return null;
+    if (!form.created_at || form.created_at.slice(0, 10) === String(initialDate ?? "").slice(0, 10)) return null;
+    const date = new Date(form.created_at);
+    if (Number.isNaN(date.getTime())) return null;
+    const day = date.toLocaleString(undefined, {month: "short", day: "numeric", year: "numeric"});
+    const what = form.action === "SELL" ? "what you sold for" : "what you paid";
+    return `This is the current price — enter ${what} on ${day}.`;
+}
+
+// formatMoney shortens amounts from 1e12 ("CA$97.5T") so they fit rows and cards; the expanded trade details have
+// room for the exact figure, which is what opening them is for.
+export function fullMoney(value, currency) {
+    return formatMoney(value, currency, {notation: "standard"});
+}
+
+export function fullPrice(value, currency) {
+    return Math.abs(Number(value)) >= 1e12 ? fullMoney(value, currency) : formatPrice(value, currency);
+}
+
+export function fullSignedMoney(value, currency) {
+    if (currency === null) return fullMoney(value, currency); // "—", not "+—"
+    let n = Number(value) || 0;
+    if (Math.abs(n) < 0.005) n = 0; // would round to $0.00, so don't show a sign
+    return `${n > 0 ? "+" : n < 0 ? "−" : ""}${fullMoney(Math.abs(n), currency)}`;
 }

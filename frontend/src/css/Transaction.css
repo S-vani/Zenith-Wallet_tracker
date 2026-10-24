@@ -14,7 +14,10 @@
     align-items: start;
 }
 
+/* the sidebar comes first in the DOM (it's above the list on phones); on wide screens it goes back to the right */
 .transactions-list-section {
+    grid-column: 1;
+    grid-row: 1;
     min-width: 0;
     transition: opacity 0.2s ease;
 }
@@ -151,7 +154,15 @@
 }
 
 .transaction-row > span:first-child {
+    flex-shrink: 0;
     color: var(--text-muted);
+}
+
+/* the details show exact amounts, which can be very long ("CA$97,500,000,000,000.00"): wrap rather than overflow */
+.transaction-row > span:last-child {
+    min-width: 0;
+    text-align: right;
+    overflow-wrap: anywhere;
 }
 
 .transaction-row.total {
@@ -233,6 +244,8 @@
 
 /* right column: the add button sits on top of the filter panel at the same width */
 .transactions-sidebar {
+    grid-column: 2;
+    grid-row: 1;
     position: sticky;
     top: 1.5rem;
     display: flex;
@@ -415,6 +428,7 @@
     border: 1px solid #13213a;
     border-radius: 1.5rem;
     padding: 1.75rem;
+    padding-top: 0; /* the sticky header carries the top padding, so it sticks flush to the top edge */
 
     box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.6);
 
@@ -425,7 +439,20 @@
     animation: fadeIn 0.25s ease;
 }
 
+/* stays at the top while the sheet scrolls, so the title and × (and the discard question) never scroll away */
 .modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 2; /* above the price chart's label */
+    padding: 1.75rem 0 0.75rem;
+    margin-bottom: -0.75rem; /* keep the box's usual gap below it */
+    background: #050e1c;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.modal-header-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -433,6 +460,29 @@
 
 .modal-header h2 {
     font-size: 1.4rem;
+}
+
+/* "Discard this trade?" after a tap on the backdrop or Esc */
+.discard-confirm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.06);
+    animation: fadeIn 0.2s ease;
+}
+
+.discard-confirm p {
+    font-weight: 700;
+}
+
+.discard-confirm-buttons {
+    display: flex;
+    gap: 0.6rem;
 }
 
 .transaction-create-close-button {
@@ -539,6 +589,23 @@
     gap: 0.5rem;
     font-weight: 700;
     min-width: 0;
+}
+
+/* ticker with the company / coin name under it */
+.symbol-names {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.symbol-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--text-muted);
 }
 
 .symbol-text {
@@ -695,10 +762,15 @@
         grid-template-columns: 1fr;
     }
 
-    /* button and filters move above the list */
+    /* button and filters sit above the list, in DOM order */
+    .transactions-sidebar,
+    .transactions-list-section {
+        grid-column: auto;
+        grid-row: auto;
+    }
+
     .transactions-sidebar {
         position: static;
-        order: -1;
     }
 
     .filter-form {
@@ -718,7 +790,20 @@
         max-height: 92vh;
         max-height: 92dvh; /* follows the visible area as mobile browser bars show/hide */
         border-radius: 1.25rem 1.25rem 0 0;
-        padding: 1.25rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom));
+        padding: 0 1.25rem calc(1.25rem + env(safe-area-inset-bottom));
+    }
+
+    .modal-header {
+        padding-top: 1.25rem;
+    }
+
+    .discard-confirm-buttons {
+        flex: 1;
+    }
+
+    .discard-confirm-buttons .btn {
+        flex: 1;
+        min-height: 2.75rem;
     }
 
     .quantity-price-buy {
@@ -779,13 +864,20 @@
     color: var(--text-muted);
 }
 
-.chart-wrapper.compact {
-    height: 15rem;
+/* The wrapper grows with its header and the plot keeps a fixed height. A fixed wrapper height left the plot
+   whatever the header didn't use: on phones the range buttons wrap and it was squashed to ~60px. */
+.create-chart .chart-wrapper.compact {
+    height: auto;
+}
+
+.create-chart .chart-wrapper.compact .chart-body {
+    flex: none;
+    height: 10rem;
 }
 
 @media (max-width: 640px) {
-    .chart-wrapper.compact {
-        height: 12rem;
+    .create-chart .chart-wrapper.compact .chart-body {
+        height: 8.5rem;
     }
 
     .create-chart-label {

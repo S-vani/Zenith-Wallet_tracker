@@ -3,7 +3,8 @@ import {searchCrypto, searchStock} from "../services/api.js";
 import TransactionSymbolList from "./TransactionSymbolList.jsx";
 import TransactionSymbolItem from "./TransactionSymbolItem.jsx";
 
-function TransactionSymbolSearch({onSub}) {
+// onQueryChange lets the dialog know something was typed, so closing it by accident asks first
+function TransactionSymbolSearch({onSub, onQueryChange}) {
     const [type, setType] = useState("stock")
     const [symbol, setSymbol] = useState("");
     const [results, setResults] = useState(null);
@@ -18,11 +19,16 @@ function TransactionSymbolSearch({onSub}) {
         setSelectedSymbol(selected)
     }
 
+    const changeQuery = (text) => {
+        setSymbol(text);
+        onQueryChange?.(text);
+    };
+
     const changeType = (newType) => {
         searchId.current += 1;
         setLoading(false);
         setType(newType);
-        setSymbol("");  // a stock ticker typed before the switch isn't a coin (and vice versa)
+        changeQuery("");  // a stock ticker typed before the switch isn't a coin (and vice versa)
         setResults(null);
         setError(null);
     };
@@ -58,14 +64,15 @@ function TransactionSymbolSearch({onSub}) {
             </div>
 
             <form className="symbol-search-form" onSubmit={handleSubmit} role="search">
+                {/* placeholder short enough to fit beside the Search button at 375px; the label says what's searched */}
                 <input
                     className="symbol-search-input"
                     name="symbol"
                     type="search"
                     aria-label={`Search ${type} symbols`}
-                    placeholder={type === "stock" ? "Search stocks, e.g. AAPL, NVDA" : "Search crypto, e.g. BTC, ETH"}
+                    placeholder={type === "stock" ? "e.g. AAPL, SHOP.TO" : "e.g. BTC, ETH"}
                     value={symbol}
-                    onChange={(e) => setSymbol(e.target.value)}
+                    onChange={(e) => changeQuery(e.target.value)}
                     autoComplete="off"
                     autoFocus
                 />

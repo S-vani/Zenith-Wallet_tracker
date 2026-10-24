@@ -170,9 +170,11 @@ button.hero-link-btn {
     flex-shrink: 0;
 }
 
+/* baseline, not center: on narrow screens the labels wrap onto different numbers of lines, and centring the
+   columns then left the values ("Free", "3", "0") at different heights */
 .hero-stats {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     gap: 1.5rem;
     margin-top: 1.5rem;
     padding-top: 1.5rem;
@@ -204,6 +206,7 @@ button.hero-link-btn {
 }
 
 .hero-stat-divider {
+    align-self: center; /* an empty box has no baseline of its own */
     width: 1px;
     height: 2rem;
     background: rgba(255, 255, 255, 0.08);

@@ -1,24 +1,26 @@
 import {useEffect, useRef, useState} from "react";
 import {deleteTransaction} from "../services/api.js";
 import {useUser} from "../context/UserContext.jsx";
-import {changeClass, formatMoney, formatPrice, formatQuantity, formatSignedMoney} from "../utils/format.js";
+import {changeClass, formatMoney, formatQuantity} from "../utils/format.js";
 import {showToast} from "../utils/toast.js";
 import TransactionEdit from "./TransactionEdit.jsx";
-import {ledgerErrorMessage} from "./tradeForm.js";
+import {fullMoney, fullPrice, fullSignedMoney, ledgerErrorMessage} from "./tradeForm.js";
 
-function TransactionItem({transaction, index, onChanged}) {
+function TransactionItem({transaction, index, onChanged, onDeleted}) {
     const [expanded, setExpanded] = useState(false);
     const [mode, setMode] = useState("view"); // "view" | "edit" | "delete" (asking to confirm)
     const [deleting, setDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState(null);
     const {currency} = useUser();
+    const rowButtonRef = useRef(null);
     const editButtonRef = useRef(null);
-    const leftMode = useRef(false); // back from edit/delete: put focus back on the Edit button, not the page top
+    // back from edit/delete: where focus goes ("edit" button or the trade "row"), rather than the page top
+    const returnFocus = useRef(null);
 
     useEffect(() => {
-        if (mode === "view" && leftMode.current) {
-            leftMode.current = false;
-            editButtonRef.current?.focus();
+        if (mode === "view" && returnFocus.current) {
+            (returnFocus.current === "row" ? rowButtonRef : editButtonRef).current?.focus();
+            returnFocus.current = null;
         }
     }, [mode]);
 
@@ -30,9 +32,9 @@ function TransactionItem({transaction, index, onChanged}) {
     const isBuy = transaction.action === "BUY";
     const shortDate = created.toLocaleDateString(undefined, {month: "short", day: "numeric", year: "numeric"});
 
-    const showMode = (next) => {
+    const showMode = (next, focusTarget = "edit") => {
         setDeleteError(null);
-        leftMode.current = next === "view";
+        returnFocus.current = next === "view" ? focusTarget : null;
         setMode(next);
     };
 
@@ -42,7 +44,7 @@ function TransactionItem({transaction, index, onChanged}) {
         try {
             await deleteTransaction(transaction.id);
             showToast(`${isBuy ? "Buy" : "Sell"} of ${transaction.symbol.toUpperCase()} deleted`);
-            onChanged();
+            onDeleted(); // reloads the list and moves focus off this row, which is about to disappear
         } catch (err) {
             setDeleteError(ledgerErrorMessage(err, {mode: "delete", symbol: transaction.symbol}));
             setDeleting(false);
@@ -52,7 +54,8 @@ function TransactionItem({transaction, index, onChanged}) {
     return (
         <div className={`transaction-item-wrapper${expanded ? " open" : ""}`}
              style={{animationDelay: `${Math.min(index, 15) * 40}ms`}}>
-            <button className="transaction-item" onClick={() => setExpanded(!expanded)} aria-expanded={expanded}>
+            <button className="transaction-item" ref={rowButtonRef} onClick={() => setExpanded(!expanded)}
+                    aria-expanded={expanded}>
                 <div className="transaction-left">
                     <span className="transaction-symbol">
                         {transaction.symbol}
@@ -109,28 +112,35 @@ function TransactionItem({transaction, index, onChanged}) {
 
                     <div className="transaction-row">
                         <span>Price per {transaction.asset_type === "stock" ? "share" : "coin"}</span>
-                        <span>{formatPrice(transaction.price_of_one, currency)}</span>
+                        <span>{fullPrice(transaction.price_of_one, currency)}</span>
                     </div>
 
                     <div className="divider"/>
 
+                    {/* exact amounts here (the row above may shorten huge ones to "CA$97.5T") */}
                     <div className="transaction-row total">
                         <span>{isBuy ? "Total cost" : "Total proceeds"}</span>
-                        <span>{formatMoney(total, currency)}</span>
+                        <span>{fullMoney(total, currency)}</span>
                     </div>
 
                     {!isBuy && (
                         <div className="transaction-row total">
                             <span>Realized profit</span>
                             <span className={changeClass(transaction.profit)}>
-                                {formatSignedMoney(transaction.profit, currency)}
+                                {fullSignedMoney(transaction.profit, currency)}
                             </span>
                         </div>
                     )}
 
                     {mode === "delete" ? (
+                        // Esc = "Keep it", back on the trade's row (the list has no dialog of its own to close)
                         <div className="transaction-delete-confirm" role="group"
-                             aria-label={`Delete this ${isBuy ? "buy" : "sell"}?`}>
+                             aria-label={`Delete this ${isBuy ? "buy" : "sell"}?`}
+                             onKeyDown={(e) => {
+                                 if (e.key !== "Escape" || deleting) return;
+                                 e.stopPropagation();
+                                 showMode("view", "row");
+                             }}>
                             <p>
                                 Delete this {isBuy ? "buy" : "sell"} of {formatQuantity(transaction.quantity)} {unit}
                                 {" "}from {shortDate}? Your holdings and returns will be recalculated. This can't be

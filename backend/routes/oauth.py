@@ -142,7 +142,7 @@ async def google_callback(
             password_replaced = bool(existing_user.has_password)
             await user_manager.sign_out_everywhere(
                 existing_user,
-                hashed_password=user_manager.password_helper.hash(secrets.token_urlsafe(32)),
+                hashed_password=await user_manager.hash_password(secrets.token_urlsafe(32)),  # off the event loop
                 has_password=False,
             )
 

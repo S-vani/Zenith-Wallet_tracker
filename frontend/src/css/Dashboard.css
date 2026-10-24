@@ -114,13 +114,26 @@
     }
 }
 
-/* very large amounts wrap inside the card instead of widening the page */
+/* very large amounts stay inside the card instead of widening the page */
 .stat-card {
     min-width: 0;
 }
 
 .stat-value {
     overflow-wrap: anywhere;
+}
+
+/* website: an amount never breaks between digits ("CA$479,158,262," / "703.04"). It stays on one line and shrinks
+   with the card by its length (--chars, set in DashboardStats; ~0.6em per character of bold tabular digits), down to
+   a floor that still fits ~28 characters in a 320px wide card. The app shrinks amounts with fitNumbers.js instead
+   (html.native), so it's left alone */
+html:not(.native) .stat-card {
+    container-type: inline-size;
+}
+
+html:not(.native) .stat-amount {
+    white-space: nowrap;
+    font-size: clamp(0.95rem, calc(100cqi / (var(--chars, 12) * 0.6)), 1em);
 }
 
 /* holdings with no price right now: said under the cards, since the totals leave them out */
