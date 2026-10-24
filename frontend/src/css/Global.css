@@ -173,6 +173,23 @@ button:disabled {
     margin-top: 0.35rem;
 }
 
+/* a row of links to related pages under a page's title (e.g. Transactions → Import, Tax report) */
+.page-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1.25rem;
+    margin-top: 0.5rem;
+}
+
+.page-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px; /* tap target */
+    color: #93c5fd; /* the light link blue used on dark cards */
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
 /* Loading / empty / error messages shared by every page */
 .state-message {
     display: flex;

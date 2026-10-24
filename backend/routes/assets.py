@@ -18,7 +18,7 @@ from backend.authentication.schemas import ChangeEmail, ChangePassword, ConfirmP
 from backend.db.database import get_async_session
 from backend.db_models.assets import Transaction, User, UserManager, send_notice_email
 from backend.ratelimit import check_email_cooldown, check_reauth_allowed, record_reauth_failure
-from backend.schemas.assets import CreateTransaction, UpdateTransaction, UpdateUserInfo
+from backend.schemas.assets import AccountFilter, CreateTransaction, UpdateTransaction, UpdateUserInfo
 from backend.services.asset_services import (current_quantity, create_holding_filter, \
                                              turn_list_to_dict, calculate_profit_for_one_transaction,
                                              get_curr_holdings_prices, \
@@ -185,6 +185,8 @@ async def update_transaction_with_id(
         transaction.coin_id = None  # only coins have a CoinGecko id
     if updates.created_at:
         transaction.created_at = updates.created_at  # already naive UTC and not in the future (schema)
+    if "account_type" in updates.model_fields_set:
+        transaction.account_type = updates.account_type  # an explicit null clears it; left out keeps it
 
     await session.flush()
 
@@ -206,6 +208,8 @@ async def return_holdings_with_filter(
         action: Optional[Literal["BUY", "SELL"]] = Query(None),
         start_date: Optional[datetime] = Query(None),
         end_date: Optional[datetime] = Query(None),
+        # one of ACCOUNT_TYPES, or "UNSET" for trades with no account
+        account_type: Optional[AccountFilter] = Query(None),
 
         session: AsyncSession = Depends(get_async_session),
         current_user: User = Depends(current_active_user),
@@ -221,10 +225,11 @@ async def return_holdings_with_filter(
                 "api_ids": str(trans.api_id),
                 "price_of_one": float(trans.price_of_one),
                 "quantity": float(trans.quantity),
+                "account_type": "TFSA" | ... | None,
                 "created_at": trans.created_at.isoformat()
     Prices and profits are in the user's currency: as typed when typed in that currency, otherwise from CAD.
     """
-    query = create_holding_filter(current_user.id, symbol, action, start_date, end_date)
+    query = create_holding_filter(current_user.id, symbol, action, start_date, end_date, account_type)
 
     result = await session.execute(query.order_by(Transaction.created_at.desc()))
     result = result.scalars().all()
@@ -267,6 +272,7 @@ async def make_transaction(
         price_entered=data.price_of_one,
         currency_entered=current_user.currency.upper(),
         quantity=data.quantity,
+        account_type=data.account_type,
         user_id=current_user.id
     )
     if data.created_at is not None:

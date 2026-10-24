@@ -230,6 +230,13 @@ app.include_router(fastapi_users.get_verify_router(UserRead), prefix="/auth", ta
 app.include_router(fastapi_users.get_reset_password_router(), prefix="/auth", tags=["auth"], dependencies=rate_limited)
 app.include_router(oauth_router)
 app.include_router(analyst_router)
+from backend.routes.allocation import router as allocation_router  # noqa: E402 - GET /portfolio/allocation
+app.include_router(allocation_router)
+from backend.routes.reports import router as reports_router  # noqa: E402 - Canadian capital gains report
+app.include_router(reports_router)
+# CSV import/export; before user_router, whose GET /transactions/{trans_id} would otherwise catch /transactions/export
+from backend.routes.imports import router as imports_router  # noqa: E402
+app.include_router(imports_router)
 app.include_router(user_router)
 
 if __name__ == "__main__":

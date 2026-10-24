@@ -15,7 +15,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db_models.assets import Transaction
-from backend.schemas.assets import CreateTransaction
+from backend.schemas.assets import ACCOUNT_UNSET, CreateTransaction
 import logging
 import time
 
@@ -855,10 +855,12 @@ def create_holding_filter(
         symbol: str | None = None,
         action: str | None = None,
         start_date: datetime | None = None,
-        end_date: datetime | None = None
+        end_date: datetime | None = None,
+        account_type: str | None = None,
 ):
     """
-    create a query for the backend to use to query the database
+    create a query for the backend to use to query the database. `account_type` is one of ACCOUNT_TYPES, or
+    ACCOUNT_UNSET for trades with no account set
     """
     query = select(Transaction).where(Transaction.user_id == user_id)
 
@@ -876,6 +878,11 @@ def create_holding_filter(
 
     if action:
         query = query.where(Transaction.action == action)
+
+    if account_type == ACCOUNT_UNSET:
+        query = query.where(Transaction.account_type.is_(None))
+    elif account_type:
+        query = query.where(Transaction.account_type == account_type)
 
     if start_date:
         query = query.where(Transaction.created_at >= start_date)
@@ -1000,6 +1007,7 @@ def turn_list_to_dict(lst, conversion: float = 1.0, currency: str | None = None)
                 "coin_id": getattr(trans, "coin_id", None),
                 "price_of_one": price_in_currency(trans, currency, conversion),
                 "quantity": float(as_quantity(trans.quantity)),
+                "account_type": getattr(trans, "account_type", None),  # None = not set
                 "created_at": trans.created_at.replace(tzinfo=timezone.utc).isoformat()
             }
         )

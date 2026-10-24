@@ -1,4 +1,5 @@
 import {useEffect, useRef, useState} from "react";
+import {Link} from "react-router-dom";
 import {getTransactions} from "../services/api";
 import useRefreshKey from "../native/useRefreshKey.js";
 import TransactionList from "../Transactions/TransactionList";
@@ -10,7 +11,7 @@ import useDialog from "../Transactions/useDialog.js";
 
 import '../css/Transaction.css'
 
-const EMPTY_FILTERS = {symbol: "", action: "", start_date: "", end_date: ""};
+const EMPTY_FILTERS = {symbol: "", action: "", account_type: "", start_date: "", end_date: ""};
 
 function TransactionsPage() {
     usePageTitle("Transactions");
@@ -159,6 +160,11 @@ function TransactionsPage() {
                 {/* tabIndex -1: where focus lands after deleting the last trade */}
                 <h1 className="page-headers" ref={headingRef} tabIndex={-1}>Transactions</h1>
                 <p className="page-subtitle">Every buy and sell you've logged.</p>
+                {/* the bulk tools live on their own pages; linked here because this is where trades are managed */}
+                <nav className="page-links" aria-label="More for your trades">
+                    <Link to="/import">Import &amp; export CSV</Link>
+                    <Link to="/reports">Capital gains report</Link>
+                </nav>
             </header>
 
             <div className="transactions-layout">

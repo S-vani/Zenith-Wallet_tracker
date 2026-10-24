@@ -1,0 +1,145 @@
+/* Dashboard "Allocation" card (Dashboard/AllocationCard.jsx): tabs, a donut and its legend */
+.allocation-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+    padding: 1.25rem 1.5rem;
+    border-radius: 1.25rem;
+    background: linear-gradient(145deg, rgba(30, 36, 51, 0.6), rgba(22, 27, 40, 0.6));
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.allocation-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+}
+
+.allocation-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.allocation-total {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+/* four tabs don't fit on one line in a 320px wide card, so they wrap instead of overflowing the page */
+.allocation-tabs {
+    flex-wrap: wrap;
+    align-self: flex-start;
+    max-width: 100%;
+}
+
+.allocation-tabs button {
+    flex: 1 1 auto;
+}
+
+.allocation-figure {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.allocation-body {
+    display: grid;
+    grid-template-columns: minmax(9rem, 13rem) minmax(0, 1fr);
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.allocation-donut {
+    width: 100%;
+    aspect-ratio: 1;
+}
+
+.allocation-legend {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+/* swatch, name, amount, share; the name carries the meaning, the colour only links it to the donut */
+.allocation-legend li {
+    display: grid;
+    grid-template-columns: 0.75rem minmax(0, 1fr) auto auto;
+    align-items: baseline;
+    column-gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.9rem;
+}
+
+.allocation-legend li:last-child {
+    border-bottom: none;
+}
+
+.allocation-swatch {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 0.2rem;
+    align-self: center;
+}
+
+.allocation-label {
+    color: var(--text);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.allocation-value {
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.allocation-pct {
+    color: var(--text);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    min-width: 3.5rem;
+}
+
+.allocation-state {
+    padding: 2rem 1rem;
+}
+
+@media (max-width: 640px) {
+    .allocation-card {
+        padding: 1rem;
+    }
+
+    /* the donut goes above its legend */
+    .allocation-body {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1rem;
+    }
+
+    .allocation-donut {
+        max-width: 11rem;
+        margin: 0 auto;
+    }
+}
+
+/* narrow phones: the amount moves under the name so long names and amounts never squeeze each other */
+@media (max-width: 420px) {
+    .allocation-legend li {
+        grid-template-columns: 0.75rem minmax(0, 1fr) auto;
+        row-gap: 0.15rem;
+    }
+
+    .allocation-value {
+        grid-column: 2 / 4;
+        grid-row: 2;
+        text-align: left;
+        overflow-wrap: anywhere;
+    }
+}

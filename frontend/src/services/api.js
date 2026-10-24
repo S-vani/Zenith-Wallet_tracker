@@ -5,6 +5,7 @@ import {resetLockOnSignOut} from "../native/biometric.js";
 import {isNative} from "../native/platform.js";
 import {appVersionHeaders} from "../native/appVersion.js";
 import {requireUpdate, updateMessageFrom} from "../native/updateRequired.js";
+import {forgetLastAccount} from "../utils/accounts.js";
 
 const BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -39,6 +40,7 @@ export function logout() {
     keepInKeychain(null); // the iOS app also keeps the token in the Keychain; no-op on the website
     forgetAll(); // and the app's offline copy of the portfolio screens
     resetLockOnSignOut(); // and the app's Face ID lock, which belongs to this sign in; no-op on the website
+    forgetLastAccount(); // and the add form's remembered account, which was this person's
 }
 
 function getAuthHeaders() {
@@ -59,6 +61,7 @@ const FIELD_LABELS = {
     price_of_one: "Price",
     asset_type: "Asset type",
     created_at: "Date",
+    account_type: "Account",
 };
 
 // Turn a FastAPI/pydantic validation error into something a person can read
@@ -221,6 +224,9 @@ export async function getTransactions(filters = {}) {
     if (filters.action) {
         params.append("action", filters.action)
     }
+    if (filters.account_type) {
+        params.append("account_type", filters.account_type) // a type, or ACCOUNT_UNSET for trades without one
+    }
     if (filters.start_date) {
         params.append("start_date", startOfDay(filters.start_date))
     }
@@ -253,6 +259,62 @@ export async function deleteTransaction(id) {
         method: "DELETE",
         fallbackError: "Couldn't delete this trade. Please try again.",
     });
+}
+
+// CSV import, step 1: what each row of the file would become (nothing is saved). `csv` is the file's text.
+export async function previewImport(csv, format = "auto", defaultAccountType = null) {
+    return request("/transactions/import/preview", {
+        method: "POST",
+        body: JSON.stringify({csv, format, default_account_type: defaultAccountType}),
+        fallbackError: "Couldn't read this file. Please try again.",
+    });
+}
+
+// Step 2: save the rows the user accepted, all or none. A 409 names the symbol and line that would oversell.
+export async function commitImport(rows) {
+    return request("/transactions/import", {
+        method: "POST",
+        body: JSON.stringify({rows}),
+        fallbackError: "Couldn't import these trades. Nothing was saved.",
+    });
+}
+
+// The export and the template are CSV, not JSON, so they skip request()'s JSON parsing (and the app's offline copy).
+// Resolves to {filename, text}. Content-Disposition isn't readable cross-origin (CORS doesn't expose it), so the
+// file is named here, the same way the server names it.
+async function requestCsv(path, filename, fallbackError) {
+    let res;
+    try {
+        res = await fetch(`${BASE_URL}${path}`, {headers: {...getAuthHeaders(), ...appVersionHeaders()}});
+    } catch {
+        throw new Error("Can't reach the server. Check your connection and try again.");
+    }
+    if (res.status === 426) {
+        throw await updateRequiredError(res);
+    }
+    if (res.status === 401 || res.status === 403) {
+        logout();
+        window.dispatchEvent(new Event("auth:expired"));
+        throw new Error("Your session has expired. Please log in again.");
+    }
+    if (!res.ok) {
+        const error = new Error(await errorMessage(res, fallbackError));
+        error.status = res.status;
+        throw error;
+    }
+    return {filename, text: await res.text()};
+}
+
+export async function exportTradesCsv(today = new Date()) {
+    const pad = (n) => String(n).padStart(2, "0");
+    const day = `${today.getUTCFullYear()}-${pad(today.getUTCMonth() + 1)}-${pad(today.getUTCDate())}`;
+    return requestCsv("/transactions/export", `zenith-trades-${day}.csv`,
+        "Couldn't export your trades. Please try again.");
+}
+
+export async function getImportTemplate() {
+    return requestCsv("/transactions/import/template", "zenith-import-template.csv",
+        "Couldn't download the template. Please try again.");
 }
 
 export async function getDashboardStats(time_span) {
@@ -297,6 +359,45 @@ export async function getPortfolioHistory(range) {
     return request(`/portfolio/history?range=${encodeURIComponent(range)}`, {
         fallbackError: "Failed to load portfolio chart."
     });
+}
+
+// Today's value split by asset type, account, holding and listing currency (the dashboard's Allocation card)
+export async function getPortfolioAllocation() {
+    return request("/portfolio/allocation", {fallbackError: "Couldn't load your allocation."});
+}
+
+// Capital gains (Canada): the years with taxable sales, newest first
+export async function getCapitalGainsYears() {
+    const data = await request("/reports/capital-gains/years", {fallbackError: "Couldn't load your tax years."});
+    return data?.years ?? [];
+}
+
+// One calendar year's taxable sales with proceeds, ACB and gain, always in CAD
+export async function getCapitalGainsReport(year) {
+    return request(`/reports/capital-gains?year=${encodeURIComponent(year)}`, {
+        fallbackError: "Couldn't load your capital gains report.",
+    });
+}
+
+// The same report as CSV text: {filename, text}. Not through request(), which reads every answer as JSON
+export async function getCapitalGainsCsv(year) {
+    const fallback = "Couldn't download the CSV. Please try again.";
+    let res;
+    try {
+        res = await fetch(`${BASE_URL}/reports/capital-gains.csv?year=${encodeURIComponent(year)}`, {
+            headers: {Authorization: `Bearer ${getToken()}`, ...appVersionHeaders()},
+        });
+    } catch (err) {
+        throw new Error("Can't reach the server. Check your connection and try again.", {cause: err});
+    }
+    if (res.status === 426) throw await updateRequiredError(res);
+    if (res.status === 401 || res.status === 403) {
+        logout();
+        window.dispatchEvent(new Event("auth:expired"));
+        throw new Error("Your session has expired. Please log in again.");
+    }
+    if (!res.ok) throw new Error(await errorMessage(res, fallback));
+    return {filename: `zenith-capital-gains-${year}.csv`, text: await res.text()};
 }
 
 export async function loginAuthentication(form) {

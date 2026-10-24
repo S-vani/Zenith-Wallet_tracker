@@ -3,6 +3,7 @@ import {createTransaction, getHoldings} from "../services/api.js";
 import {useUser} from "../context/UserContext.jsx";
 import {formatMoney, formatQuantity, priceInputValue} from "../utils/format.js";
 import {showToast} from "../utils/toast.js";
+import {loadLastAccount, saveLastAccount} from "../utils/accounts.js";
 import HoldingsChart from "../Holdings/HoldingsChart.jsx";
 import TradeFields from "./TradeFields.jsx";
 import {
@@ -27,6 +28,8 @@ function TransactionCreate({onClose, onCreated, data}) {
         price_of_one: prefilledPrice,
         action: "BUY",
         created_at: initialDate,
+        // the last account saved from this browser: a batch of trades usually comes from one account
+        account_type: loadLastAccount() ?? "",
     });
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
@@ -73,6 +76,7 @@ function TransactionCreate({onClose, onCreated, data}) {
 
         try {
             await createTransaction(createPayload(form, initialDate));
+            saveLastAccount(form.account_type); // "Not set" forgets it
             showToast(`${form.action === "BUY" ? "Buy" : "Sell"} of ${data.symbol.toUpperCase()} saved`);
             onCreated();
         } catch (err) {

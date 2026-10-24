@@ -1,4 +1,5 @@
 import {useEffect, useState} from "react";
+import {ACCOUNT_TYPES, ACCOUNT_UNSET} from "../utils/accounts.js";
 
 function TransactionFilter({filters, onFiltered}) {
     // the symbol box is debounced so we don't hit the api on every keystroke
@@ -60,6 +61,26 @@ function TransactionFilter({filters, onFiltered}) {
                         <option value="">All</option>
                         <option value="BUY">Buy</option>
                         <option value="SELL">Sell</option>
+                    </select>
+                </div>
+
+                <div className="filter-group">
+                    <label className="filter-label" htmlFor="filter-account">
+                        Account
+                    </label>
+
+                    <select
+                        id="filter-account"
+                        className="filter-select"
+                        name="account_type"
+                        value={filters.account_type}
+                        onChange={handleChange}
+                    >
+                        <option value="">All</option>
+                        {ACCOUNT_TYPES.map(({value, label}) => (
+                            <option key={value} value={value}>{label}</option>
+                        ))}
+                        <option value={ACCOUNT_UNSET}>Not set</option>
                     </select>
                 </div>
 

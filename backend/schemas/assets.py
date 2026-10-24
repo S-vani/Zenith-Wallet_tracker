@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from fastapi_users import schemas
 import uuid
-from typing import Literal, Optional
+from typing import Literal, Optional, get_args
 
 from datetime import datetime, timedelta, timezone
 
@@ -38,6 +38,16 @@ OLDEST_DATE = datetime(1970, 1, 1)
 
 def _strip(value):
     return value.strip() if isinstance(value, str) else value
+
+
+# The (Canadian) account a trade was made in. The one list of allowed values: the transaction schemas, the
+# /transactions filter, CSV import and the tax report all use it. None/NULL = not set (older trades, people who
+# don't track accounts); tax maths treats that like NON_REGISTERED, but it's stored as "not set", not guessed.
+AccountType = Literal["TFSA", "RRSP", "FHSA", "RESP", "NON_REGISTERED"]
+ACCOUNT_TYPES: tuple[str, ...] = get_args(AccountType)
+# the /transactions filter value that matches trades with no account set
+ACCOUNT_UNSET = "UNSET"
+AccountFilter = Literal[AccountType, Literal["UNSET"]]
 
 
 # CoinGecko ids look like "bitcoin" or "usd-coin" (same rule as the analyst's coin_id); it goes into their url paths
@@ -80,6 +90,8 @@ class CreateTransaction(BaseModel):
     coin_id: Optional[str] = Field(default=None, max_length=80, pattern=COIN_ID_PATTERN)
     # when the trade happened; left out means now. Lets people log older trades
     created_at: Optional[datetime] = None
+    # TFSA, RRSP, ... or null = not set (older app versions don't send it)
+    account_type: Optional[AccountType] = None
 
     @field_validator("symbol", "api_id", mode="before")
     @classmethod
@@ -106,6 +118,8 @@ class UpdateTransaction(BaseModel):
     api_id: Optional[str] = Field(default=None, min_length=1, max_length=64)
     coin_id: Optional[str] = Field(default=None, max_length=80, pattern=COIN_ID_PATTERN)
     created_at: Optional[datetime] = None
+    # left out = unchanged, null = clear it (see the PUT route)
+    account_type: Optional[AccountType] = None
 
     @field_validator("symbol", "api_id", mode="before")
     @classmethod

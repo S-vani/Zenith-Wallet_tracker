@@ -27,9 +27,11 @@ const HoldingsPage = lazy(() => import("./pages/HoldingsPage.jsx"));
 const TransactionPage = lazy(() => import("./pages/TransactionPage.jsx"));
 const SearchPage = lazy(() => import("./pages/SearchPage.jsx"));
 const UserPage = lazy(() => import("./pages/UserPage.jsx"));
+const ReportsPage = lazy(() => import("./pages/ReportsPage.jsx"));
 const PrivacyPage = lazy(() => import("./pages/PrivacyPage.jsx"));
 const TermsPage = lazy(() => import("./pages/TermsPage.jsx"));
 const SupportPage = lazy(() => import("./pages/SupportPage.jsx"));
+const ImportPage = lazy(() => import("./pages/ImportPage.jsx"));
 
 // shown while a page's code loads; the hidden text tells screen readers what the spinner means
 const pageFallback = (
@@ -100,6 +102,8 @@ function App({lockEnabled = false}) {
                 <Route path="/transactions" element={<TransactionPage/>}/>
                 <Route path="/search" element={<SearchPage/>}/>
                 <Route path="/user" element={<UserPage/>}/>
+                <Route path="/import" element={<ImportPage/>}/>
+                <Route path="/reports" element={<ReportsPage/>}/>
             </Route>
 
             <Route path="*" element={<NotFoundPage/>}/>

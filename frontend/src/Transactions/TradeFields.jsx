@@ -1,9 +1,10 @@
 import {parseDecimalInput, toLocalInputValue} from "./tradeForm.js";
+import {ACCOUNT_TYPES} from "../utils/accounts.js";
 
 // typed but not a number above 0 (an empty field isn't flagged; Save just stays disabled)
 const invalid = (text) => String(text ?? "").trim() !== "" && !(parseDecimalInput(text) > 0);
 
-// Buy/sell, quantity, price and date fields, shared by the add form and the edit form of a trade
+// Buy/sell, quantity, price, date and account fields, shared by the add form and the edit form of a trade
 function TradeFields({form, onField, assetType, currency}) {
     // native picker (a wheel on phones); max blocks future dates where browsers support it, the form checks too
     const maxDate = toLocalInputValue(new Date());
@@ -45,12 +46,26 @@ function TradeFields({form, onField, assetType, currency}) {
                 </label>
             </div>
 
-            <label className="create-field">
-                <span>Date &amp; time</span>
-                <input className="create-transaction-input trade-date-input" name="created_at" type="datetime-local"
-                       max={maxDate} value={form.created_at}
-                       onChange={(e) => onField("created_at", e.target.value)}/>
-            </label>
+            {/* date and account share a row where there's room and wrap on small phones, so the optional account
+                adds as little as possible to an already long sheet */}
+            <div className="trade-date-account">
+                <label className="create-field trade-date-field">
+                    <span>Date &amp; time</span>
+                    <input className="create-transaction-input trade-date-input" name="created_at"
+                           type="datetime-local" max={maxDate} value={form.created_at}
+                           onChange={(e) => onField("created_at", e.target.value)}/>
+                </label>
+                <label className="create-field trade-account-field">
+                    <span>Account</span>
+                    <select className="filter-select" name="account_type" value={form.account_type ?? ""}
+                            onChange={(e) => onField("account_type", e.target.value)}>
+                        <option value="">Not set</option>
+                        {ACCOUNT_TYPES.map(({value, label}) => (
+                            <option key={value} value={value}>{label}</option>
+                        ))}
+                    </select>
+                </label>
+            </div>
         </>
     );
 }

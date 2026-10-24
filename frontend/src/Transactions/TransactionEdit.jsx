@@ -17,6 +17,7 @@ function TransactionEdit({transaction, onCancel, onSaved}) {
         quantity: quantityInputValue(transaction.quantity), // never "1e-7", which the field can't take back
         price_of_one: priceInputValue(transaction.price_of_one),
         created_at: toLocalInputValue(transaction.created_at),
+        account_type: transaction.account_type ?? "", // "" = the "Not set" option
     }));
     const [form, setForm] = useState(initial);
     const [saving, setSaving] = useState(false);

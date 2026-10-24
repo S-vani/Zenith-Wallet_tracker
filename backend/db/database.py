@@ -52,6 +52,8 @@ ADDED_COLUMNS = {
         ("currency_entered", "VARCHAR", None),
         # the CoinGecko id of a crypto trade (nullable: older trades only have the ticker)
         ("coin_id", "VARCHAR", None),
+        # TFSA / RRSP / ... (nullable: older trades have no account set)
+        ("account_type", "VARCHAR", None),
     ],
     "user": [
         # bumped to sign out every device (password reset/change, email change, "log out of all devices")

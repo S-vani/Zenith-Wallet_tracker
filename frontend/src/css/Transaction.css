@@ -108,6 +108,19 @@
     background: rgba(239, 68, 68, 0.12);
 }
 
+/* the account a trade was made in (TFSA, RRSP...): quieter than buy/sell, it's a label, not a direction */
+.account-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: none; /* "Non-registered", not "Non-Registered" (the row capitalizes) */
+    padding: 0.1rem 0.45rem;
+    border-radius: 0.4rem;
+    border: 1px solid #1b2a44;
+    color: #c7d2e6;
+    white-space: nowrap;
+}
+
 .transaction-date {
     color: var(--text-subtle);
 }
@@ -722,6 +735,23 @@
     gap: 0.4rem;
 }
 
+/* date + optional account on one row when both fit, otherwise the account wraps under the date */
+.trade-date-account {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.trade-date-field {
+    flex: 1 1 12rem;
+    min-width: 0;
+}
+
+.trade-account-field {
+    flex: 1 1 9rem;
+    min-width: 0;
+}
+
 .create-field > span {
     font-size: 0.75rem;
     font-weight: 600;
@@ -963,6 +993,7 @@
 
 @media (max-width: 768px) {
     .action-badge,
+    .account-badge,
     .filter-label,
     .symbol-type {
         font-size: 0.75rem;

@@ -2,6 +2,7 @@
 // test/transactions-helpers.test.js)
 
 import {formatMoney, formatPrice} from "../utils/format.js";
+import {normalizeAccountType} from "../utils/accounts.js";
 
 const pad = (n) => String(n).padStart(2, "0");
 
@@ -57,10 +58,12 @@ export function quantityInputValue(value) {
 
 // Body for POST /transactions. The date is only sent when the user changed it, so an untouched form is dated
 // "now" by the server at the moment it's saved. A coin also sends its CoinGecko id from search, since several
-// coins can share a ticker and the server would otherwise price the most popular one.
+// coins can share a ticker and the server would otherwise price the most popular one. The account is only sent
+// when one is picked ("Not set" = left out, which the server stores as null).
 export function createPayload(form, initialDate) {
     const changedDate = form.created_at && form.created_at !== initialDate;
     const coinId = form.asset_type === "crypto" && form.coin_id ? form.coin_id : null;
+    const account = normalizeAccountType(form.account_type);
     return {
         symbol: form.symbol,
         api_id: form.api_id,
@@ -69,6 +72,7 @@ export function createPayload(form, initialDate) {
         quantity: parseDecimalInput(form.quantity),
         price_of_one: parseDecimalInput(form.price_of_one),
         ...(coinId ? {coin_id: coinId} : {}),
+        ...(account ? {account_type: account} : {}),
         ...(changedDate ? {created_at: localInputToIso(form.created_at)} : {}),
     };
 }
@@ -83,6 +87,9 @@ export function updatePayload(initial, form) {
     if (form.created_at && form.created_at !== initial.created_at) {
         changes.created_at = localInputToIso(form.created_at);
     }
+    // null clears it on the server (switching to "Not set")
+    const account = normalizeAccountType(form.account_type);
+    if (account !== normalizeAccountType(initial.account_type)) changes.account_type = account;
     return changes;
 }
 

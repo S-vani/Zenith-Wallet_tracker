@@ -11,7 +11,7 @@ const PREFIX = "offline:";
 const SCOPE_KEY = "offline-scope";
 const INDEX_KEY = "offline-index"; // least recently used first
 const MAX_ENTRIES = 40;
-const CACHED = ["/dashboard", "/portfolio/history", "/holdings", "/transactions", "/user", "/prices/history"];
+const CACHED = ["/dashboard", "/portfolio/history", "/portfolio/allocation", "/holdings", "/transactions", "/user", "/prices/history"];
 // screens with endless variants (every chart range of every symbol, every filter) keep only their latest few
 const LIMITS = {"/prices/history": 8, "/transactions": 5};
 const USER_PATHS = ["/user", "/user/information"]; // replies that are the user's profile

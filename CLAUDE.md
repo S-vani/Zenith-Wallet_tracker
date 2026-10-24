@@ -29,6 +29,22 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
     `/prices/history` 60/min/user, both via `_check_user_rate` with Retry-After), user info/email, `DELETE /user`
     (account deletion: transactions + OAuth links + user, required by the app stores). At most 20,000 trades per
     user (`MAX_TRANSACTIONS_PER_USER`). `routes/oauth.py` — Google sign-in. `routes/analyst.py` — `GET /analyst`.
+  - Trades carry an optional `account_type` (`TFSA`/`RRSP`/`FHSA`/`RESP`/`NON_REGISTERED`, null = not set; the one
+    list is `AccountType`/`ACCOUNT_TYPES` in `schemas/assets.py`, `utils/accounts.js` on the frontend; `GET
+    /transactions?account_type=…|UNSET`). Holdings, the ledger and the oversell check stay per symbol across accounts.
+  - `routes/imports.py` + `services/imports.py` — `GET /transactions/export` (CSV of every trade, Zenith template,
+    formula-injection guarded), `GET /transactions/import/template`, `POST /transactions/import/preview` (parses
+    Zenith / Wealthsimple activities / Questrade activity CSVs, ≤ 2 MB / 5000 rows, flags errors and duplicates,
+    saves nothing) and `POST /transactions/import` (re-validates, all-or-nothing insert, ledger replay, 409 on
+    oversell); 10 of each per user per hour. Its router must be included before `user_router` in `main.py`, or
+    `/transactions/{trans_id}` swallows `/transactions/export`.
+  - `routes/reports.py` + `services/reports.py` — Canadian capital-gains / ACB report (`/reports/capital-gains`,
+    `/years`, `.csv`): only `NON_REGISTERED`/null trades, ACB pooled per security across years in CAD (stored
+    `price_of_one`), superficial-loss flags (a buy in any account within 30 days, still held), oversold sales
+    flagged, never adjusted; informational 50% inclusion line; no price/FX calls.
+  - `routes/allocation.py` + `services/allocation.py` — `GET /portfolio/allocation` (by asset type, account, holding,
+    listing currency) priced exactly like `/holdings`; per-account quantities via `replay_accounts` (a sell takes
+    from its own account, then "not set", then the largest, never negative).
   - `services/asset_services.py` — pricing (yfinance), FX conversion (open.er-api, 1 h cache; the last good rates are served if a refresh fails, 503 only with none), holdings math,
     `rebuild_symbol_ledger` (replays a symbol's buys/sells; used by PUT/DELETE to keep history valid). Ledger
     replays sort by `LEDGER_ORDER` (time, then BUY before SELL, so same-tick trades can't oversell). Every yfinance
@@ -45,7 +61,10 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
     bar into sessionStorage, `Authentication/resetToken.js`) → `/auth/reset-password`.
 - `frontend/` — React 19 + Vite + recharts. `src/services/api.js` is the only place that calls the backend
   (`request()` adds the token, maps errors to readable messages, logs out on 401/403).
-  - `pages/` (one per route), `Dashboard/`, `Holdings/`, `Transactions/`, `Search/`, `Analyst/`, `Authentication/`.
+  - `pages/` (one per route), `Dashboard/` (incl. the Allocation card), `Holdings/`, `Transactions/`, `Search/`,
+    `Analyst/`, `Authentication/`, `Import/` (`/import`, "Import & export"), `Reports/` (`/reports`, capital gains);
+    both new pages are linked under the Transactions title. CSV downloads use a text fetch in `api.js`
+    (`request()` is JSON-only); in the iOS app they go through the share sheet.
     `pages/PrivacyPage.jsx` (`/privacy`, public) is the privacy policy + "not financial advice" disclaimer the app
     stores require — update it whenever the app starts collecting or sending data somewhere new. `/terms` (Terms of
     Use, incl. the CoinGecko clause its API terms require) and `/support` (App Store Connect's Support URL) share

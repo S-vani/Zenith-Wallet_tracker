@@ -3,6 +3,7 @@ import {Link} from "react-router-dom";
 import {getDashboardStats, getPortfolioHistory} from "../services/api.js";
 import DashboardStats from "../Dashboard/DashboardStats.jsx";
 import DashboardChart from "../Dashboard/DashboardChart.jsx";
+import AllocationCard from "../Dashboard/AllocationCard.jsx";
 import {dashboardKey, readDashboardCache, writeDashboardCache} from "../Dashboard/dashboardCache.js";
 import {useUser} from "../context/UserContext.jsx";
 import usePageTitle from "../utils/usePageTitle.js";
@@ -150,6 +151,9 @@ function DashboardPage() {
             {/* the error and its Try again button are above, so the chart only says it couldn't load */}
             <DashboardChart entry={shown} updating={pending && !!shown} currency={currency}
                             error={failed ? "Your portfolio history couldn't be loaded." : null}/>
+
+            {/* loads on its own (it's the same for every range); the account error is already shown above */}
+            <AllocationCard currency={currency} unavailable={!currency && Boolean(userError)}/>
         </div>
     );
 }

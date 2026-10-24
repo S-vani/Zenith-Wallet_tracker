@@ -1,0 +1,372 @@
+/* Import & export page (/import) */
+
+.import-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    padding: 1.5rem;
+    min-width: 0;
+
+    background: linear-gradient(145deg, #070b14, #05070d);
+    border: 0.1rem solid #0f1725;
+    border-radius: 1.25rem;
+    box-shadow: 0 0 0 0.05rem #070b12, 0 0.5rem 2.5rem #000000cc;
+}
+
+.import-card-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.import-text {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.import-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 1rem;
+}
+
+.import-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    min-width: 0;
+}
+
+.import-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.import-select {
+    width: 100%;
+    height: 2.75rem;
+    padding: 0 2.25rem 0 0.9rem;
+    border-radius: 0.75rem;
+    border: 1px solid #1b2a44;
+    color: var(--text);
+    font-size: 0.95rem;
+    cursor: pointer;
+    appearance: none;
+    /* the arrow is drawn here because appearance: none removes the native one */
+    background: linear-gradient(45deg, transparent 50%, #9aa0a6 50%) calc(100% - 1.15rem) 50% / 0.35rem 0.35rem no-repeat,
+    linear-gradient(135deg, #9aa0a6 50%, transparent 50%) calc(100% - 0.8rem) 50% / 0.35rem 0.35rem no-repeat,
+    linear-gradient(180deg, #0b1220, #070b14);
+}
+
+.import-select:focus-visible {
+    outline: none;
+    border-color: #3b5b94;
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.18);
+}
+
+.import-select option {
+    background: #05070d;
+    color: var(--text);
+}
+
+/* the file picker: a big target that also takes a dropped file */
+.import-drop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 1.75rem 1rem;
+    text-align: center;
+    cursor: pointer;
+
+    border: 2px dashed #22355a;
+    border-radius: 1rem;
+    background: rgba(59, 130, 246, 0.04);
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.import-drop:hover,
+.import-drop.is-dragging {
+    border-color: var(--accent);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+/* the real input is visually hidden inside the label, so show its keyboard focus on the box */
+.import-drop:focus-within {
+    border-color: var(--accent-soft);
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
+}
+
+.import-drop.is-busy {
+    cursor: progress;
+    opacity: 0.7;
+}
+
+.import-drop-title {
+    font-weight: 700;
+    color: var(--accent-soft);
+}
+
+.import-drop-sub {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    overflow-wrap: anywhere;
+}
+
+.import-notes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding-left: 1.1rem;
+    list-style: disc;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.import-notes strong {
+    color: var(--text);
+}
+
+.import-result {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+    outline: none;
+}
+
+.import-result-head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.import-result-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text);
+    overflow-wrap: anywhere;
+}
+
+.import-stale {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.import-done {
+    outline: none;
+}
+
+.import-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.import-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-width: 0;
+}
+
+.import-filter {
+    align-self: flex-start;
+}
+
+.import-table-wrap {
+    max-height: 32rem;
+    overflow: auto;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+}
+
+.import-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.import-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--surface-2);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: left;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.6rem 0.75rem;
+    white-space: nowrap;
+}
+
+.import-table td {
+    padding: 0.6rem 0.75rem;
+    border-top: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: top;
+}
+
+.import-row.is-error td {
+    background: rgba(248, 113, 113, 0.04);
+}
+
+.import-row.is-duplicate td {
+    background: rgba(245, 158, 11, 0.04);
+}
+
+.import-cell-include input {
+    width: 1.15rem;
+    height: 1.15rem;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+.import-cell-trade {
+    white-space: nowrap;
+}
+
+.import-action {
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-right: 0.4rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 0.35rem;
+}
+
+.import-action.is-buy {
+    color: #86efac;
+    background: rgba(34, 197, 94, 0.12);
+}
+
+.import-action.is-sell {
+    color: #fca5a5;
+    background: rgba(239, 68, 68, 0.12);
+}
+
+.import-symbol {
+    font-weight: 700;
+}
+
+.import-currency {
+    color: var(--text-subtle);
+    font-size: 0.75rem;
+}
+
+.import-cell-status {
+    min-width: 12rem;
+}
+
+.import-status {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.import-status.is-ok {
+    color: #86efac;
+}
+
+.import-status.is-duplicate {
+    color: #fcd34d;
+}
+
+.import-status.is-error {
+    color: #fca5a5;
+}
+
+.import-message {
+    display: block;
+    margin-top: 0.2rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+
+/* phones: one card per row, each value labelled (the header row is hidden) */
+@media (max-width: 640px) {
+    .import-card {
+        padding: 1.1rem;
+    }
+
+    .import-table-wrap {
+        max-height: none;
+        overflow: visible;
+        border: none;
+    }
+
+    .import-table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+    }
+
+    .import-table,
+    .import-table tbody,
+    .import-table tr,
+    .import-table td {
+        display: block;
+    }
+
+    .import-table tr {
+        margin-bottom: 0.75rem;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+    }
+
+    .import-row.is-error {
+        background: rgba(248, 113, 113, 0.04);
+    }
+
+    .import-row.is-duplicate {
+        background: rgba(245, 158, 11, 0.04);
+    }
+
+    .import-table td,
+    .import-row.is-error td,
+    .import-row.is-duplicate td {
+        /* a cell can hold several pieces (BUY + symbol, status + message): they flow after the label */
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        column-gap: 0.5rem;
+        padding: 0.3rem 0;
+        border: none;
+        background: none;
+    }
+
+    .import-table td::before {
+        content: attr(data-label);
+        flex: 0 0 5.5rem;
+        color: var(--text-subtle);
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .import-cell-status {
+        min-width: 0;
+    }
+
+    .import-message {
+        flex-basis: 100%;
+    }
+
+    .import-cell-trade {
+        white-space: normal;
+    }
+
+    .import-buttons .btn {
+        flex: 1 1 100%;
+    }
+}

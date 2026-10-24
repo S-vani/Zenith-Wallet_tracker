@@ -1,0 +1,334 @@
+/* ---------- Tax report (pages/ReportsPage.jsx, Reports/*) ---------- */
+
+.reports-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.reports-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem;
+}
+
+.reports-year {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-subtle);
+}
+
+.reports-year select {
+    min-height: 2.75rem;
+    min-width: 7rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.625rem;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 1rem;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.reports-toolbar .btn {
+    min-height: 2.75rem;
+}
+
+.reports-year select:focus-visible,
+.reports-table-wrap:focus-visible {
+    outline: 2px solid var(--accent-soft);
+    outline-offset: 2px;
+}
+
+.reports-disclaimer {
+    line-height: 1.5;
+}
+
+.reports-section-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+}
+
+.reports-muted {
+    color: var(--text-muted);
+}
+
+.reports-link {
+    color: var(--accent-soft);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+/* totals */
+.reports-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0.75rem;
+}
+
+.reports-total {
+    background: linear-gradient(145deg, #1e2433, #161b28);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.reports-total.is-main {
+    border-color: var(--accent-border);
+}
+
+.reports-total-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-subtle);
+}
+
+.reports-total-value {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+}
+
+.reports-total-value.positive {
+    color: var(--positive);
+}
+
+.reports-total-value.negative {
+    color: var(--negative);
+}
+
+.reports-inclusion {
+    margin-top: 0.75rem;
+    color: var(--text);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.reports-warning-summary {
+    line-height: 1.5;
+}
+
+/* sales table */
+.reports-table-wrap {
+    overflow-x: auto;
+    background: linear-gradient(145deg, #1e2433, #161b28);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 1.25rem;
+}
+
+.reports-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.reports-table th,
+.reports-table td {
+    padding: 0.85rem 1rem;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.reports-table thead th {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-subtle);
+    border-bottom-color: rgba(255, 255, 255, 0.07);
+    white-space: nowrap;
+}
+
+.reports-table tbody tr:last-child th,
+.reports-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.reports-table tbody tr.has-warning {
+    background: rgba(245, 158, 11, 0.04);
+}
+
+.reports-table .num {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.reports-table .nowrap {
+    white-space: nowrap;
+}
+
+.reports-symbol {
+    font-weight: 700;
+    color: var(--text);
+    font-size: inherit;
+    overflow-wrap: anywhere;
+}
+
+.reports-notes-cell {
+    min-width: 16rem;
+    max-width: 26rem;
+}
+
+.reports-sale-notes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--text-muted);
+}
+
+.reports-flags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.reports-flag {
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid var(--border-strong);
+    color: var(--text);
+}
+
+.reports-flag-oversold {
+    color: #fca5a5;
+    border-color: rgba(248, 113, 113, 0.4);
+}
+
+.reports-flag-superficial {
+    color: #fcd34d;
+    border-color: rgba(245, 158, 11, 0.45);
+}
+
+.reports-flag-foreign {
+    color: var(--accent-soft);
+    border-color: var(--accent-border);
+}
+
+/* phone cards: hidden until the table no longer fits */
+.reports-sale-cards {
+    display: none;
+}
+
+.reports-sale-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: linear-gradient(145deg, #1e2433, #161b28);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: var(--radius);
+    min-width: 0;
+}
+
+.reports-sale-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.25rem 0.75rem;
+    font-size: 0.85rem;
+}
+
+.reports-sale-head .reports-symbol {
+    font-size: 1rem;
+}
+
+.reports-sale-figures {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem 1rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.reports-sale-figures dt {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-subtle);
+}
+
+.reports-sale-figures dd {
+    color: var(--text);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.reports-sale-figures dd.positive {
+    color: var(--positive);
+}
+
+.reports-sale-figures dd.negative {
+    color: var(--negative);
+}
+
+/* explanations */
+.reports-about ul {
+    list-style: disc;
+    padding-left: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    line-height: 1.55;
+}
+
+.reports-empty p {
+    max-width: 34rem;
+    line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+    .reports-table-wrap {
+        display: none;
+    }
+
+    .reports-sale-cards {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .reports-toolbar {
+        width: 100%;
+    }
+
+    .reports-toolbar .btn {
+        flex: 1 1 auto;
+    }
+}
+
+@media (max-width: 380px) {
+    .reports-cards-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .reports-sale-figures {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

@@ -344,6 +344,9 @@ class Transaction(Base):
     # Crypto only: the CoinGecko id picked in search (e.g. "bitcoin"). Different coins can share a ticker, so this
     # asks CoinGecko for exactly that coin instead of the most popular one with the symbol. Empty on older trades.
     coin_id = Column(String, nullable=True)
+    # The account the trade was made in: one of ACCOUNT_TYPES (backend/schemas/assets.py), or NULL = not set.
+    # Holdings and the ledger stay per symbol across accounts; this only labels and filters trades.
+    account_type = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user = relationship("User", back_populates="transactions")

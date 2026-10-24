@@ -4,7 +4,7 @@ import {CONTACT_EMAIL} from "../utils/contact.js";
 import LegalLayout from "../components/LegalLayout.jsx";
 
 // Shown publicly and required by the app stores. Keep it in step with what the app actually collects and sends.
-const EFFECTIVE_DATE = "October 22, 2026";
+const EFFECTIVE_DATE = "October 24, 2026";
 
 const SECTIONS = [
     ["disclaimer", "Not financial advice"],
@@ -96,9 +96,15 @@ function PrivacyPage() {
                 </p>
                 <h3>Portfolio information</h3>
                 <p>
-                    The transactions you log (symbol, buy or sell, quantity, price and date) are stored so we
-                    can calculate your holdings, returns and charts. Zenith does not connect to your bank or
-                    brokerage, and we never ask for account numbers.
+                    The transactions you log (symbol, buy or sell, quantity, price, date and, if you choose, the
+                    account type such as TFSA or RRSP) are stored so we can calculate your holdings, returns,
+                    charts and capital-gains report. Zenith does not connect to your bank or brokerage, and we
+                    never ask for account numbers.
+                </p>
+                <p>
+                    If you import a CSV file, it is sent to our server only to read the trades in it. The file
+                    itself isn't kept: only the trades you choose to import are saved, like trades you type in.
+                    Exports are created on request and sent straight to you.
                 </p>
                 <h3>Technical information</h3>
                 <p>

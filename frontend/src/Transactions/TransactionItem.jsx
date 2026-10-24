@@ -3,6 +3,7 @@ import {deleteTransaction} from "../services/api.js";
 import {useUser} from "../context/UserContext.jsx";
 import {changeClass, formatMoney, formatQuantity} from "../utils/format.js";
 import {showToast} from "../utils/toast.js";
+import {accountLabel} from "../utils/accounts.js";
 import TransactionEdit from "./TransactionEdit.jsx";
 import {fullMoney, fullPrice, fullSignedMoney, ledgerErrorMessage} from "./tradeForm.js";
 
@@ -63,6 +64,9 @@ function TransactionItem({transaction, index, onChanged, onDeleted}) {
                     <div className="asset-action">
                         <span className={`action-badge ${isBuy ? "buy" : "sell"}`}>{isBuy ? "Buy" : "Sell"}</span>
                         <span>{transaction.asset_type}</span>
+                        {transaction.account_type && (
+                            <span className="account-badge">{accountLabel(transaction.account_type)}</span>
+                        )}
                         <span className="transaction-date">{shortDate}</span>
                     </div>
                 </div>

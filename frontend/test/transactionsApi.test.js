@@ -90,6 +90,20 @@ describe("getPriceHistory", () => {
     });
 });
 
+describe("getTransactions", () => {
+    it("passes the account filter, including UNSET for trades without one", async () => {
+        fetchMock.mockResolvedValue(respond(200, []));
+        await api.getTransactions({symbol: "", action: "BUY", account_type: "TFSA"});
+        await api.getTransactions({account_type: "UNSET"});
+        await api.getTransactions({account_type: ""});
+        expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+            `${BASE}/transactions?action=BUY&account_type=TFSA`,
+            `${BASE}/transactions?account_type=UNSET`,
+            `${BASE}/transactions?`,
+        ]);
+    });
+});
+
 describe("createTransaction", () => {
     it("shows the symbol limit's message as is (it's not a ledger conflict)", async () => {
         fetchMock.mockResolvedValue(respond(422, {detail: "You can track up to 200 different assets."}));
