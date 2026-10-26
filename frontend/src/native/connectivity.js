@@ -73,8 +73,11 @@ export function whenRequestsSettle() {
 }
 
 // How long a request may take before the app gives up and shows saved data. The market analyst gathers a lot of
-// data on the server, so it gets longer. 0 = no limit, which is what the website keeps.
+// data on the server, and a CSV import of thousands of rows can take a while to check and save (the import also
+// sends an id, so a retry after a timeout never imports twice), so they get longer. 0 = no limit, which is what
+// the website keeps.
 export function requestTimeout(path) {
     if (!isNative) return 0;
+    if (path.startsWith("/transactions/import")) return 120000;
     return path.startsWith("/analyst") ? 45000 : 12000;
 }

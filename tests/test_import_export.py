@@ -22,6 +22,9 @@ def fresh_rate_limits(monkeypatch):
     # the per-user import limits live in memory; each test starts with none used
     monkeypatch.setattr(import_routes, "_preview_times", {})
     monkeypatch.setattr(import_routes, "_import_times", {})
+    monkeypatch.setattr(import_routes, "_commit_attempts", {})
+    monkeypatch.setattr(import_routes, "_finished_imports", {})
+    monkeypatch.setattr(importer, "_tsx_cache", {})  # TSX listing lookups, cached per ticker
 
 
 def preview(client, owner, text, fmt="auto", default_account_type=None, expect=200):
@@ -84,11 +87,11 @@ def test_zenith_template_rows():
     parsed = parse_csv(ZENITH)
     assert parsed.format == "zenith" and parsed.skipped_non_trades == 0
     apple, btc, sell = [row.as_json() for row in parsed.rows]
-    assert apple == {"line": 2, "date": "2024-01-05T15:30:00+00:00", "action": "BUY", "asset_type": "stock",
-                     "symbol": "AAPL", "quantity": 10.0, "price": 150.25, "currency": "USD", "account_type": "TFSA",
-                     "coin_id": None, "status": "ok", "message": None}
-    # a day without a time is stored at noon UTC: the same calendar day across Canada
-    assert btc["date"] == "2024-02-01T12:00:00+00:00"
+    assert apple == {"line": 2, "date": "2024-01-05T15:30:00+00:00", "date_only": False, "action": "BUY",
+                     "asset_type": "stock", "symbol": "AAPL", "quantity": 10.0, "price": 150.25, "currency": "USD",
+                     "account_type": "TFSA", "coin_id": None, "status": "ok", "message": None}
+    # a day without a time is stored at the end of the trading day (21:00 UTC): the same calendar day across Canada
+    assert btc["date"] == "2024-02-01T21:00:00+00:00" and btc["date_only"]
     assert (btc["symbol"], btc["asset_type"], btc["coin_id"]) == ("btc", "crypto", "bitcoin")
     assert sell["date"] == "2024-03-01T10:00:00+00:00" and sell["account_type"] is None
 
@@ -136,7 +139,7 @@ def test_questrade_rows():
     shop, abc, dlr, sell, ry = parsed.rows
     assert all(row.status == "ok" for row in parsed.rows)
     # "12:00:00 AM" is just the day
-    assert shop.date == datetime(2024, 1, 9, 12) and shop.date_only
+    assert shop.date == datetime(2024, 1, 9, 21) and shop.date_only
     assert (shop.symbol, shop.account_type, shop.price) == ("SHOP.TO", "TFSA", Decimal("100"))
     assert abc.symbol == "ABC.V"  # Questrade's TSX Venture suffix is .VN, Yahoo's is .V
     assert (dlr.symbol, dlr.currency, dlr.account_type) == ("DLR-U.TO", "USD", "NON_REGISTERED")
@@ -209,8 +212,8 @@ def test_numbers_and_dates():
     assert parse_number("", "x") is None
     assert parse_trade_date("2024-03-01T10:00:00-05:00")[0] == datetime(2024, 3, 1, 15)
     assert parse_trade_date("2024-02-17 03:15:00 PM")[0] == datetime(2024, 2, 17, 15, 15)
-    assert parse_trade_date("17/02/2024") == (datetime(2024, 2, 17, 12), True)
-    # today's date alone is noon UTC, which may not have happened yet: never stored in the future
+    assert parse_trade_date("17/02/2024") == (datetime(2024, 2, 17, 21), True)
+    # today's date alone is 21:00 UTC, which may not have happened yet: never stored in the future
     now = datetime(2024, 6, 1, 8, 0)
     assert parse_trade_date("2024-06-01", now=now) == (now, True)
 
@@ -315,7 +318,7 @@ def test_round_trip_into_a_new_account(client, make_user, db, buy, sell):
     target = make_user(currency="CAD")
     result = preview(client, target, text)
     assert result["summary"]["ok"] == 3
-    assert commit(client, target, result["rows"]) == {"imported": 3}
+    assert commit(client, target, result["rows"]) == {"imported": 3, "skipped_duplicates": 0}
 
     def key(row):
         return (row["created_at"], row["action"], row["symbol"], row["quantity"], row["account_type"],
@@ -442,18 +445,36 @@ def test_preview_limits(client, user):
     assert res.status_code == 422
 
 
-def test_rate_limits(client, user, make_user):
-    for _ in range(import_routes.IMPORT_RATE_LIMIT):
+def test_rate_limits(client, user, make_user, monkeypatch):
+    assert import_routes.PREVIEW_RATE_LIMIT >= 30  # every option change on the page is a new preview
+    monkeypatch.setattr(import_routes, "PREVIEW_RATE_LIMIT", 3)
+    for _ in range(3):
         preview(client, user, ZENITH)
     res = client.post("/transactions/import/preview", headers=user.headers, json={"csv": ZENITH})
     assert res.status_code == 429 and int(res.headers["retry-after"]) > 0
+    assert "previewed" in res.json()["detail"]  # not "imported": nothing was
     preview(client, make_user(), ZENITH)  # per user
 
-    rows = [dict(row) for row in preview(client, make_user(), ZENITH)["rows"]]
-    for _ in range(import_routes.IMPORT_RATE_LIMIT):
-        client.post("/transactions/import", headers=user.headers, json={"rows": []})
-    res = client.post("/transactions/import", headers=user.headers, json={"rows": rows})
-    assert res.status_code == 429
+    # refused imports (409, 422) don't use up the imports, only the (higher) attempt limit
+    monkeypatch.setattr(import_routes, "IMPORT_RATE_LIMIT", 2)
+    importer_user = make_user()
+    oversell = [{"line": 2, "date": "2024-01-02", "action": "SELL", "asset_type": "stock", "symbol": "NVDA",
+                 "quantity": 1, "price": 10, "currency": "USD"}]
+    for _ in range(3):
+        assert client.post("/transactions/import", headers=importer_user.headers,
+                           json={"rows": oversell}).status_code == 409
+        assert client.post("/transactions/import", headers=importer_user.headers, json={"rows": []}).status_code == 422
+    for day in (1, 2):
+        commit(client, importer_user, [dict(oversell[0], action="BUY", date=f"2024-01-0{day}")])
+    res = client.post("/transactions/import", headers=importer_user.headers,
+                      json={"rows": [dict(oversell[0], action="BUY", date="2024-01-03")]})
+    assert res.status_code == 429 and "imported" in res.json()["detail"]
+
+    monkeypatch.setattr(import_routes, "COMMIT_ATTEMPT_LIMIT", 2)
+    spammer = make_user()
+    for _ in range(2):
+        client.post("/transactions/import", headers=spammer.headers, json={"rows": oversell})
+    assert client.post("/transactions/import", headers=spammer.headers, json={"rows": oversell}).status_code == 429
 
 
 def test_other_users_data_is_never_touched(client, make_user, buy):
@@ -479,9 +500,9 @@ def test_broker_files_through_the_api(client, user):
     ws = preview(client, user, WEALTHSIMPLE, default_account_type="NON_REGISTERED")
     assert ws["format_detected"] == "wealthsimple"
     assert ws["summary"] == {"ok": 5, "duplicate": 0, "error": 0, "skipped_non_trades": 2}
-    assert commit(client, user, ws["rows"]) == {"imported": 5}
+    assert commit(client, user, ws["rows"]) == {"imported": 5, "skipped_duplicates": 0}
 
     qt = preview(client, user, QUESTRADE, fmt="questrade")
     assert qt["summary"] == {"ok": 5, "duplicate": 0, "error": 0, "skipped_non_trades": 2}
-    assert commit(client, user, qt["rows"]) == {"imported": 5}
+    assert commit(client, user, qt["rows"]) == {"imported": 5, "skipped_duplicates": 0}
     assert len(trades(client, user)) == 10

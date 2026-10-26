@@ -5,7 +5,10 @@ import {ACCOUNT_TYPES} from "../utils/accounts.js";
 import {showToast} from "../utils/toast.js";
 import ConfirmDialog from "../components/ConfirmDialog.jsx";
 import ImportPreview from "./ImportPreview.jsx";
-import {FORMAT_OPTIONS, fileProblem, formatLabel, importButtonLabel, plural, rowsToImport, summaryText} from "./importHelpers.js";
+import {
+    FORMAT_OPTIONS, commitRows, fileProblem, formatLabel, importButtonLabel, importedText, newImportId, plural,
+    rowsToImport, summaryText,
+} from "./importHelpers.js";
 
 // Pick a CSV, see what every row would become (nothing is saved yet), then import the ready rows in one go.
 function ImportSection() {
@@ -13,8 +16,10 @@ function ImportSection() {
     const [format, setFormat] = useState("auto");
     const [defaultAccount, setDefaultAccount] = useState("");
     const [file, setFile] = useState(null); // {name, text}
-    const [preview, setPreview] = useState(null); // the server's answer, plus the options it was made with
-    const [included, setIncluded] = useState(() => new Set()); // duplicate lines the user ticked
+    // the server's answer, plus the options it was made with and the id its import is sent with (a retry of the
+    // same import, e.g. after the app timed out, returns the first answer instead of importing twice)
+    const [preview, setPreview] = useState(null);
+    const [toggled, setToggled] = useState(() => new Set()); // lines ticked or unticked from their default
     const [filter, setFilter] = useState("all");
     const [busy, setBusy] = useState(null); // "reading" | "previewing" | "importing"
     const [error, setError] = useState(null);
@@ -29,8 +34,8 @@ function ImportSection() {
         setError(null);
         try {
             const data = await previewImport(text, chosenFormat, account || null);
-            setPreview({...data, format: chosenFormat, account});
-            setIncluded(new Set());
+            setPreview({...data, format: chosenFormat, account, importId: newImportId()});
+            setToggled(new Set());
             setFilter("all");
             // the result appears below the file picker: take keyboard and screen reader users there
             requestAnimationFrame(() => resultRef.current?.focus());
@@ -63,7 +68,7 @@ function ImportSection() {
     };
 
     const toggle = (line) => {
-        setIncluded((current) => {
+        setToggled((current) => {
             const next = new Set(current);
             if (next.has(line)) next.delete(line);
             else next.add(line);
@@ -71,13 +76,13 @@ function ImportSection() {
         });
     };
 
-    const selected = preview ? rowsToImport(preview.rows, included) : [];
+    const selected = preview ? rowsToImport(preview.rows, toggled) : [];
     const stale = Boolean(preview && file && (preview.format !== format || preview.account !== defaultAccount));
 
     const startOver = () => {
         setFile(null);
         setPreview(null);
-        setIncluded(new Set());
+        setToggled(new Set());
         setError(null);
     };
 
@@ -86,8 +91,8 @@ function ImportSection() {
         setBusy("importing");
         setError(null);
         try {
-            const result = await commitImport(selected);
-            showToast(`Imported ${plural(result.imported, "trade")}`);
+            const result = await commitImport(commitRows(selected), preview.importId);
+            showToast(importedText(result));
             setImported(result.imported);
             startOver();
             requestAnimationFrame(() => doneRef.current?.focus());
@@ -196,7 +201,7 @@ function ImportSection() {
                     </div>
 
                     {preview.rows.length > 0 && (
-                        <ImportPreview rows={preview.rows} included={included} onToggle={toggle}
+                        <ImportPreview rows={preview.rows} toggled={toggled} onToggle={toggle}
                                        filter={filter} onFilterChange={setFilter}/>
                     )}
 

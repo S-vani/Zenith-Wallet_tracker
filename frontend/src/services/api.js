@@ -271,10 +271,12 @@ export async function previewImport(csv, format = "auto", defaultAccountType = n
 }
 
 // Step 2: save the rows the user accepted, all or none. A 409 names the symbol and line that would oversell.
-export async function commitImport(rows) {
+// `rows` are what commitRows() makes; `importId` (one per preview) makes a retry return the first answer instead of
+// importing twice. Resolves to {imported, skipped_duplicates}.
+export async function commitImport(rows, importId = null) {
     return request("/transactions/import", {
         method: "POST",
-        body: JSON.stringify({rows}),
+        body: JSON.stringify(importId ? {rows, import_id: importId} : {rows}),
         fallbackError: "Couldn't import these trades. Nothing was saved.",
     });
 }

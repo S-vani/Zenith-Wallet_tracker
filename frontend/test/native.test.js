@@ -605,6 +605,10 @@ describe("requests in the app", () => {
         const {requestTimeout} = await import("../src/native/connectivity.js");
         expect(requestTimeout("/holdings")).toBe(12000);
         expect(requestTimeout("/analyst?symbol=AAPL&type=stock")).toBeGreaterThan(12000);
+        // a big CSV import can take a while to check and save
+        expect(requestTimeout("/transactions/import")).toBeGreaterThan(45000);
+        expect(requestTimeout("/transactions/import/preview")).toBeGreaterThan(45000);
+        expect(requestTimeout("/transactions")).toBe(12000);
     });
 
     it("don't save a reply that arrives after signing out", async () => {
