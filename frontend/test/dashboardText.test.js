@@ -54,7 +54,7 @@ describe("dashboardChartSummary", () => {
         expect(dashboardChartSummary(chart, "day", "CAD")).toMatch(/^Portfolio value over the past day: /);
         expect(dashboardChartSummary(chart, "week", "CAD")).toMatch(/^Portfolio value over the past week: /);
         expect(dashboardChartSummary(chart, "month", "CAD")).toMatch(/^Portfolio value over the past month: /);
-        expect(dashboardChartSummary(chart, "all", "CAD")).toMatch(/^Portfolio value since you joined: /);
+        expect(dashboardChartSummary(chart, "all", "CAD")).toMatch(/^Portfolio value since your first trade: /);
     });
 
     it("leaves the invested part out for charts saved before it existed", () => {

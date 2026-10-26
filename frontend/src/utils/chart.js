@@ -20,7 +20,7 @@ export const RANGE_PHRASES = {
     "1M": "over the past month",
     "1Y": "over the past year",
     "5Y": "over the past 5 years",
-    All: "since you joined",
+    All: "since your first trade",
 };
 
 // Avoids recharts' "width(-1) and height(-1)" warning on the first render
