@@ -1,5 +1,5 @@
 import {changeClass} from "../utils/format.js";
-import {cad, inclusionLine, signedCad} from "./reportUtils.js";
+import {cad, inclusionLine, signedCad, superficialLossesNote} from "./reportUtils.js";
 
 // The year's totals as cards, then the informational 50% inclusion line
 function ReportTotals({totals, year}) {
@@ -22,6 +22,9 @@ function ReportTotals({totals, year}) {
                     </div>
                 ))}
             </dl>
+            {superficialLossesNote(totals) && (
+                <p className="reports-inclusion">Losses: {superficialLossesNote(totals)}</p>
+            )}
             <p className="reports-inclusion">
                 {inclusionLine(totals)} <span className="reports-muted">For information only, not tax advice.</span>
             </p>

@@ -24,8 +24,23 @@ export function saleFlags(sale) {
     const flags = [];
     if (sale?.oversold) flags.push({kind: "oversold", label: "Check account types"});
     if (sale?.superficial_loss) flags.push({kind: "superficial", label: "Possible superficial loss"});
+    if (sale?.acb_may_rise) flags.push({kind: "acb", label: "ACB may be too low"});
+    if (sale?.interlisted) flags.push({kind: "interlisted", label: "Also listed elsewhere"});
     if (sale?.foreign_currency) flags.push({kind: "foreign", label: "Foreign currency"});
     return flags;
+}
+
+// The line under the Losses card when some of them are flagged as possibly superficial (still counted in them)
+export function superficialLossesNote(totals) {
+    const amount = Number(totals?.possibly_superficial) || 0;
+    if (amount <= 0) return null;
+    return `Includes up to ${cad(amount)} of possibly superficial losses, which CRA may deny (see the flagged sales).`;
+}
+
+// A sale's trade date, plus its settlement date when that's another day (it decides the tax year)
+export function saleDates(sale) {
+    if (!sale?.settlement_date || sale.settlement_date === sale.date) return sale?.date ?? "";
+    return `${sale.date} (settles ${sale.settlement_date})`;
 }
 
 // "Shares", "coins" etc. aren't known for every asset, so the label only names the security
@@ -49,7 +64,7 @@ export function inclusionLine(totals) {
 
 // How many sales carry each warning, for the summary above the table
 export function warningCounts(sales) {
-    const counts = {oversold: 0, superficial: 0, foreign: 0};
+    const counts = {oversold: 0, superficial: 0, acb: 0, interlisted: 0, foreign: 0};
     for (const sale of sales ?? []) {
         for (const {kind} of saleFlags(sale)) counts[kind] += 1;
     }

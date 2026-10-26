@@ -12,6 +12,7 @@ from fastapi import HTTPException, Depends, APIRouter, Query
 from fastapi_users import exceptions
 from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.exc import StaleDataError
 
 from backend.authentication.authentication import auth_backend, current_active_user, get_user_manager
 from backend.authentication.cleanup import delete_users
@@ -31,7 +32,8 @@ from backend.services.asset_services import (current_quantity, create_holding_fi
                                              rebuild_symbol_ledger, get_latest_stock_quotes,
                                              get_position_values_at, get_buys_between, get_coingecko_history,
                                              end_read, to_cad_on_trade_date, get_ticker_currency,
-                                             get_native_to_cad_factor)
+                                             get_native_to_cad_factor, ACCOUNT_OVERSOLD,
+                                             account_shortfalls, account_oversell_added)
 from backend.services.imports import CANADIAN_SUFFIXES, listed_symbol, yahoo_class_share
 
 load_dotenv()
@@ -131,13 +133,17 @@ async def delete_transaction_with_id(
         raise HTTPException(status_code=404, detail="Transaction not found")
 
     symbol = result.symbol
+    before = await account_shortfalls(session, current_user.id, {symbol})
     await session.delete(result)
     await session.flush()
 
-    # e.g. deleting the buy behind a sell would leave a negative position
+    # e.g. deleting the buy behind a sell would leave a negative position, overall or in the sell's account
     if not await rebuild_symbol_ledger(session, current_user.id, symbol):
         await session.rollback()
         raise HTTPException(status_code=409, detail=OVERSOLD_AFTER_DELETE)
+    if account_oversell_added(before, await account_shortfalls(session, current_user.id, {symbol})):
+        await session.rollback()
+        raise HTTPException(status_code=409, detail=ACCOUNT_OVERSOLD)
 
     await session.commit()
 
@@ -178,6 +184,21 @@ async def update_transaction_with_id(
         await end_read(session)  # no connection held while the rates (maybe Yahoo's history) load
         rates = await get_all_conversion_rates()
         new_cad_price = await to_cad_on_trade_date(typed[0], typed[1], when, rates)
+        # end_read let go of the row: it may have been deleted (another tab, a sign out everywhere + account
+        # deletion) while the rates loaded. Load it again so that's a 404, not a failed UPDATE (StaleDataError, 500)
+        reloaded = await session.execute(
+            select(Transaction)
+            .where(Transaction.user_id == current_user.id, Transaction.id == trans_id)
+            .execution_options(populate_existing=True)
+        )
+        transaction = reloaded.scalars().first()
+        if transaction is None:
+            raise HTTPException(status_code=404, detail="Transaction not found")
+        old_symbol = transaction.symbol
+        old_api_id = transaction.api_id
+
+    new_symbol = updates.symbol or transaction.symbol
+    before = await account_shortfalls(session, current_user.id, {old_symbol, new_symbol})
 
     # Check exactly what was sent in
     if updates.symbol:
@@ -207,16 +228,26 @@ async def update_transaction_with_id(
     if "account_type" in updates.model_fields_set:
         transaction.account_type = updates.account_type  # an explicit null clears it; left out keeps it
 
-    await session.flush()
+    try:
+        await session.flush()
 
-    # replay the affected symbols: no selling more than owned (at any point in time, so moving a trade's date is
-    # checked too), and sell profits follow the edited prices
-    for symbol in {old_symbol, transaction.symbol}:
-        if not await rebuild_symbol_ledger(session, current_user.id, symbol):
+        # replay the affected symbols: no selling more than owned (at any point in time, so moving a trade's date is
+        # checked too), and sell profits follow the edited prices
+        for symbol in {old_symbol, transaction.symbol}:
+            if not await rebuild_symbol_ledger(session, current_user.id, symbol):
+                await session.rollback()
+                raise HTTPException(status_code=409, detail=OVERSOLD)
+        # nor more than a sell's own account held (see account_split for the rule that keeps older data editable)
+        after = await account_shortfalls(session, current_user.id, {old_symbol, transaction.symbol})
+        if account_oversell_added(before, after):
             await session.rollback()
-            raise HTTPException(status_code=409, detail=OVERSOLD)
+            raise HTTPException(status_code=409, detail=ACCOUNT_OVERSOLD)
 
-    await session.commit()
+        await session.commit()
+    except StaleDataError:
+        # deleted between loading it and saving (a very narrow window now, but still not a 500)
+        await session.rollback()
+        raise HTTPException(status_code=404, detail="Transaction not found")
     await session.refresh(transaction)
     return transaction
 
@@ -277,6 +308,7 @@ async def make_transaction(
     # in USD / EUR is converted at the rate of its own date (to_cad_on_trade_date), which the ACB report relies on.
     await check_transaction_limit(session, current_user.id)
     await check_symbol_limit(session, current_user.id, data.api_id)
+    before = await account_shortfalls(session, current_user.id, {data.symbol})
 
     await end_read(session)  # nothing written yet; don't hold a connection while the rates (maybe Yahoo's) load
     rates = await get_all_conversion_rates()
@@ -305,6 +337,10 @@ async def make_transaction(
     if not await rebuild_symbol_ledger(session, current_user.id, data.symbol):
         await session.rollback()
         raise HTTPException(status_code=409, detail=OVERSOLD)  # Error if you are trying to sell more than you have
+    # a sell tagged with an account can't take more than that account (plus "not set" shares) held then
+    if account_oversell_added(before, await account_shortfalls(session, current_user.id, {data.symbol})):
+        await session.rollback()
+        raise HTTPException(status_code=409, detail=ACCOUNT_OVERSOLD)
 
     await session.commit()
     await session.refresh(transaction)

@@ -1,10 +1,13 @@
 import {describe, expect, it} from "vitest";
 import {
+    ACCOUNT_OVERSOLD,
+    accountSuffix,
     amountHint,
     createPayload,
     isFutureInput,
     ledgerErrorMessage,
     localInputToIso,
+    ownedForAccount,
     parseDecimalInput,
     quantityInputValue,
     symbolSelection,
@@ -142,6 +145,35 @@ describe("ledger errors", () => {
         expect(ledgerErrorMessage(conflict, {mode: "edit", symbol: "btc"})).toMatch(/BTC history selling more/);
         expect(ledgerErrorMessage(conflict, {mode: "delete", symbol: "eth"}))
             .toMatch(/can't be deleted: a later sell of ETH needs it/);
+    });
+
+    it("explains a sell that its account couldn't cover", () => {
+        const conflict = Object.assign(new Error(ACCOUNT_OVERSOLD), {status: 409});
+        expect(ledgerErrorMessage(conflict, {mode: "create", symbol: "aapl", action: "SELL"}))
+            .toMatch(/That account didn't hold that much AAPL\. /);
+        expect(ledgerErrorMessage(conflict, {mode: "create", symbol: "aapl", action: "SELL", backdated: true}))
+            .toMatch(/AAPL on that date/);
+        expect(ledgerErrorMessage(conflict, {mode: "edit", symbol: "aapl"})).toMatch(/more than its account held/);
+        expect(ledgerErrorMessage(conflict, {mode: "delete", symbol: "aapl"})).toMatch(/from the same account/);
+    });
+});
+
+describe("ownedForAccount", () => {
+    const holding = {quantity: 16, accounts: {TFSA: 10, NON_REGISTERED: 6}};
+
+    it("counts only the picked account (plus shares with no account set), like the server", () => {
+        expect(ownedForAccount(holding, "TFSA")).toEqual({owned: 10, inAccount: "TFSA"});
+        expect(ownedForAccount(holding, "RRSP")).toEqual({owned: 0, inAccount: "RRSP"});
+        expect(ownedForAccount({quantity: 12, accounts: {TFSA: 2, UNSET: 10}}, "TFSA"))
+            .toEqual({owned: 12, inAccount: "TFSA"});
+        expect(accountSuffix("TFSA")).toBe(" in TFSA");
+        expect(accountSuffix(null)).toBe("");
+    });
+
+    it("uses the whole holding for a sell with no account, or an older server without the split", () => {
+        expect(ownedForAccount(holding, "")).toEqual({owned: 16, inAccount: null});
+        expect(ownedForAccount({quantity: 3}, "TFSA")).toEqual({owned: 3, inAccount: null});
+        expect(ownedForAccount(null, "TFSA")).toEqual({owned: 0, inAccount: null});
     });
 });
 

@@ -1,6 +1,7 @@
 """
 Trades can say which account they were made in (TFSA, RRSP, FHSA, RESP, NON_REGISTERED), or nothing (null). The
-account labels and filters trades only: holdings, the dashboard and the oversell check stay per symbol.
+account labels and filters trades; holdings and the dashboard stay per symbol. Sells are also checked against their
+own account (tests/test_account_oversell.py).
 """
 import pytest
 from sqlalchemy import text
@@ -96,10 +97,11 @@ def test_unknown_account_filters_are_rejected(client, user, bad):
 
 
 def test_holdings_and_the_oversell_check_stay_per_symbol(client, user):
-    # bought in one account and sold from another: still one position (the maths isn't split by account)
     post(client, user, account_type="TFSA", quantity=2)
-    post(client, user, account_type="RRSP", action="SELL", quantity=1, price_of_one=120)
+    # the RRSP holds none: refused (per account), while a sell with no account is only checked overall
+    post(client, user, expect=409, account_type="RRSP", action="SELL", quantity=1, price_of_one=120)
     post(client, user, action="SELL", quantity=1, price_of_one=120)
+    post(client, user, account_type="TFSA", action="SELL", quantity=1, price_of_one=120)
     post(client, user, expect=409, account_type="TFSA", action="SELL", quantity=1)
 
     assert client.get("/holdings", headers=user.headers).json() == []

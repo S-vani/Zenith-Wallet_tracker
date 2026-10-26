@@ -5,7 +5,8 @@ from bisect import bisect_right
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from decimal import Decimal
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import httpx
 import yfinance as yf
@@ -24,14 +25,29 @@ log = logging.getLogger("uvicorn.error")
 
 FX_CACHE_SECONDS = 3600  # open.er-api only updates once a day and asks callers not to poll it often
 FX_RETRY_SECONDS = 300  # after a failed refresh the last good rates are served, and the api is retried this often
+# With no rates at all (a cold start while open.er-api is down) a failure is remembered this long: every request
+# queued on the lock would otherwise retry the api one after another, each waiting for its timeout
+FX_COLD_FAILURE_SECONDS = 45
 
 SYMBOL_CURRENCY_CACHE_SIZE = 5000  # listing currencies kept (least recently used dropped first)
 _symbol_currency_cache: dict[str, str | None] = {}
 _rates_cache: dict = {}
 _rates_cache_time: float = 0
 _rates_retry_at: float = 0
+_rates_failed_at: float = 0  # last failed fetch while nothing was cached (see FX_COLD_FAILURE_SECONDS)
 
 # Yahoo ticker suffix -> listing currency, used when Yahoo doesn't say. No suffix means a US listing.
+# Canadian tax dates (trade date, settlement date, the day of a trade-date exchange rate) are counted in Toronto
+# time: a trade at 9 pm on Dec 31 is a Dec 31 trade, although it's stored as Jan 1 in UTC
+TORONTO = ZoneInfo("America/Toronto")
+
+
+def toronto_date(value: datetime) -> date:
+    """The calendar date in Toronto of a stored time (naive values are UTC, like every stored trade)."""
+    value = value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    return value.astimezone(TORONTO).date()
+
+
 _SUFFIX_CURRENCY = {
     "TO": "CAD", "V": "CAD", "CN": "CAD", "NE": "CAD",
     "L": "GBp",  # London prices are quoted in pence
@@ -114,9 +130,19 @@ async def get_all_conversion_rates() -> dict:
     """
     if _rates_usable(time.time()):
         return _rates_cache
+    _fail_fast_without_rates(time.time())
     # when the rates expire many requests notice at once; only the first one asks open.er-api, the rest wait for it
     async with _for_this_loop("fx", asyncio.Lock):
         return await _refresh_conversion_rates()
+
+
+RATES_UNAVAILABLE = "Exchange rates are temporarily unavailable. Please try again in a few minutes."
+
+
+def _fail_fast_without_rates(now: float) -> None:
+    """503 at once while nothing is cached and the last fetch failed only moments ago."""
+    if not _rates_cache and now - _rates_failed_at < FX_COLD_FAILURE_SECONDS:
+        raise HTTPException(status_code=503, detail=RATES_UNAVAILABLE)
 
 
 def _rates_usable(now: float) -> bool:
@@ -129,11 +155,12 @@ def has_cached_rates() -> bool:
 
 
 async def _refresh_conversion_rates() -> dict:
-    global _rates_cache, _rates_cache_time, _rates_retry_at
+    global _rates_cache, _rates_cache_time, _rates_retry_at, _rates_failed_at
 
     now = time.time()
     if _rates_usable(now):  # refreshed by the request we waited for
         return _rates_cache
+    _fail_fast_without_rates(now)  # the request we waited for just failed: don't ask again straight away
 
     try:
         usd_to_cad, usd, eur = await asyncio.gather(
@@ -150,13 +177,14 @@ async def _refresh_conversion_rates() -> dict:
             log.warning("Exchange rate refresh failed (%s), using the rates from %.0f minutes ago", exc,
                         (now - _rates_cache_time) / 60)
             return _rates_cache
+        _rates_failed_at = time.time()
         log.error("Exchange rates are unavailable and none are cached: %s", exc)
-        raise HTTPException(status_code=503,
-                            detail="Exchange rates are temporarily unavailable. Please try again in a few minutes.")
+        raise HTTPException(status_code=503, detail=RATES_UNAVAILABLE)
 
     _rates_cache = fresh
     _rates_cache_time = now
     _rates_retry_at = 0
+    _rates_failed_at = 0
 
     return _rates_cache
 
@@ -366,10 +394,13 @@ async def get_holdings_at_time(
         apply_trade(holdings_at_timestamp, t, currency, conversion)
         if getattr(t, "coin_id", None):
             coin_ids[str(t.api_id)] = t.coin_id  # the newest trade that names the exact coin wins
+    split, _ = account_split(transactions)
 
     return {
         api_id: {"avg_price": h["avg_price"], "quantity": float(h["qty"]), "type": h["type"],
-                 "coin_id": coin_ids.get(api_id)}
+                 "coin_id": coin_ids.get(api_id),
+                 # {account or "UNSET": quantity}: lets the add form say how much one account holds
+                 "accounts": {account: float(qty) for account, qty in split.get(api_id, {}).items()}}
         for api_id, h in holdings_at_timestamp.items()
     }
 
@@ -424,6 +455,7 @@ async def get_holdings_at_time_list(
             "quantity": float(value["quantity"]),
             "type": value["type"],
             "coin_id": value.get("coin_id"),  # CoinGecko id when the trades name the exact coin (for its chart)
+            "accounts": value.get("accounts", {}),  # quantity per account (see account_split); adds up to quantity
             # None = "price unavailable" (no source has one), so it isn't shown as worth $0 / -100%
             "current_price": float(price) * float(value["quantity"]) if price is not None else None
         })
@@ -587,11 +619,34 @@ class PriceSeries:
     known: list[datetime] = field(default_factory=list)  # when each close was known (see above)
     closes: list[float] = field(default_factory=list)  # in the source's own currency
     volumes: list[float | None] = field(default_factory=list)
+    _days: list[date] | None = field(default=None, repr=False, compare=False)  # bar_days, worked out once
 
     def close_at(self, at: datetime) -> float | None:
         """The latest close known at `at`, or None if the history doesn't reach back that far."""
         i = bisect_right(self.known, at + LIVE_SLACK) - 1
         return self.closes[i] if i >= 0 else None
+
+    def bar_days(self) -> list[date]:
+        """
+        Each bar's own calendar date. Daily bars are labelled with their start in the exchange's time zone (Yahoo's
+        FX bars start at midnight London time, 23:00 UTC in summer), so the label's date is used, not the UTC one.
+        """
+        if self._days is None or len(self._days) != len(self.closes):
+            days = []
+            for i in range(len(self.closes)):
+                label = self.labels[i] if i < len(self.labels) else ""
+                try:
+                    days.append(date.fromisoformat(label[:10]))
+                except ValueError:
+                    days.append((self.times[i] if i < len(self.times) else self.known[i]).date())
+            self._days = days
+        return self._days
+
+    def close_on_day(self, day: date) -> tuple[float, date] | None:
+        """(close, its bar's date) of the bar dated `day`, else of the last bar before it; None before the first."""
+        days = self.bar_days()
+        i = bisect_right(days, day) - 1
+        return (self.closes[i], days[i]) if i >= 0 else None
 
 
 def lookup_spec(age: timedelta) -> tuple[str, str]:
@@ -702,11 +757,15 @@ async def _yahoo_series(ticker: str, period: str, interval: str) -> PriceSeries 
 # Trade-date exchange rates. A price typed in USD / EUR is stored in CAD too; for a backdated trade (e.g. a broker
 # import spanning years) the CAD amount uses the rate of the trade's own date, which the capital gains / ACB report
 # needs (CRA wants the rate of the day of the trade). One daily Yahoo history per currency, cached like any price
-# series, serves every date. When it's unavailable the current rate is used (the behaviour before this existed).
+# series, serves every date: the daily bar dated the trade's date in Toronto time, or the bar before it when that
+# day has none (weekends, holidays, or not published yet). When it's unavailable the current rate is used (the
+# behaviour before this existed). Trades logged live (or less than TRADE_DATE_FX_AFTER ago) use the current
+# open.er-api rate, which is the rate of that day anyway.
 # ---------------------------------------------------------------------------------------------------------------------
 FX_HISTORY_TICKERS = {"USD": "USDCAD=X", "EUR": "EURCAD=X"}  # closes are CAD per 1 unit of the currency
 TRADE_DATE_FX_AFTER = timedelta(days=1)  # trades newer than this simply use the current rate
 FX_HISTORY_PERIOD = "max"  # imports can reach back many years; still one request per currency
+FX_MAX_GAP_DAYS = 7  # a previous bar older than this means the history has a hole: use the current rate instead
 
 
 def needs_trade_date_rate(currency: str | None, at: datetime | None, now: datetime | None = None) -> bool:
@@ -732,15 +791,19 @@ async def fx_history(currency: str) -> PriceSeries | None:
 def cad_price_on(price: float, currency: str | None, at: datetime | None, rates: dict,
                  history: PriceSeries | None) -> float:
     """
-    A price typed in `currency` as CAD: at the latest close of `history` known at the trade's time `at` when the
-    trade is backdated (see needs_trade_date_rate), otherwise, or with no usable close, at the current rate.
+    A price typed in `currency` as CAD: for a backdated trade (see needs_trade_date_rate) at the close of the daily
+    bar dated the trade's Toronto date (the bar before it on weekends and holidays), otherwise, or with no usable
+    close, at the current rate.
     """
     current = get_conversion_factor(rates, currency)  # units of the currency per 1 CAD
     if history is not None and needs_trade_date_rate(currency, at):
-        rate = history.close_at(_as_utc(at))
-        # a close far from today's rate is a bad Yahoo row (USD/CAD and EUR/CAD never moved 2x in decades)
-        if rate is not None and math.isfinite(rate) and 0.5 < rate * current < 2:
-            return float(price) * rate
+        day = toronto_date(at)
+        found = history.close_on_day(day)
+        if found is not None:
+            rate, bar_day = found
+            # a close far from today's rate is a bad Yahoo row (USD/CAD and EUR/CAD never moved 2x in decades)
+            if (day - bar_day).days <= FX_MAX_GAP_DAYS and math.isfinite(rate) and 0.5 < rate * current < 2:
+                return float(price) * rate
     return float(price) / current
 
 
@@ -1021,6 +1084,88 @@ async def rebuild_symbol_ledger(db: AsyncSession, user_id: UUID, symbol: str) ->
     )
 
     return not _replay_ledger(result.scalars().all()).oversold
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Per-account check. Holdings, average cost and the ledger stay per symbol across accounts; on top of that a sell
+# mustn't sell more than its own account held (10 AAPL in a TFSA can't be sold 15 at a time just because a
+# non-registered account has 6 more). The rule, chosen so older data stays editable:
+#   - a sell tagged with an account may use that account's shares plus the "not set" ones (untagged buys could have
+#     been in any account); anything past that is the sell's shortfall
+#   - a sell with no account set is only checked across all accounts (rebuild_symbol_ledger)
+#   - a create, edit or delete is refused (409) only when it makes some sell's shortfall bigger than it was before
+#     (a new sell starts at 0). Older histories (sells tagged to another account than their buys, from before
+#     accounts were checked) keep their shortfall and stay editable, as long as an edit doesn't make it worse.
+# Past a shortfall the replay goes on like allocation.replay_accounts (the rest from "not set", then the largest
+# other account), so the split matches the allocation view and the add form's "You own N" hint.
+# ---------------------------------------------------------------------------------------------------------------------
+ACCOUNT_OVERSOLD = "Insufficient holdings in that account"
+
+
+def account_split(trades) -> tuple[dict[str, dict[str, Decimal]], dict[str, Decimal]]:
+    """
+    Replay trades (sorted oldest first, LEDGER_ORDER) per account. Returns ({api_id: {account or "UNSET": quantity}}
+    for what is held at the end, {sell id: shortfall} for the tagged sells that took more than their account plus the
+    "not set" shares held then).
+    """
+    positions: dict[str, dict[str, Decimal]] = {}
+    shortfalls: dict[str, Decimal] = {}
+    for t in trades:
+        api_id = str(t.api_id)
+        account = getattr(t, "account_type", None) or ACCOUNT_UNSET
+        qty = as_quantity(t.quantity)
+
+        if str(t.action) == "BUY":
+            accounts = positions.setdefault(api_id, {})
+            accounts[account] = accounts.get(account, Decimal(0)) + qty
+            continue
+
+        accounts = positions.get(api_id) or {}
+        if account != ACCOUNT_UNSET:
+            usable = accounts.get(account, Decimal(0)) + accounts.get(ACCOUNT_UNSET, Decimal(0))
+            if qty > usable + sell_tolerance(usable):
+                shortfalls[str(t.id)] = qty - usable
+        if not accounts:
+            continue
+        total = sum(accounts.values())
+        if qty >= total - sell_tolerance(total):
+            del positions[api_id]  # sold out, like apply_trade
+            continue
+
+        rest = qty
+        order = [account] + sorted((k for k in accounts if k != account),
+                                   key=lambda k: (k != ACCOUNT_UNSET, -accounts[k], k))
+        for key in order:
+            if rest <= 0:
+                break
+            taken = min(rest, accounts.get(key, Decimal(0)))
+            if key in accounts:
+                accounts[key] -= taken
+            rest -= taken
+        for key in [k for k, q in accounts.items() if q <= 0]:
+            del accounts[key]
+    return positions, shortfalls
+
+
+async def account_shortfalls(db: AsyncSession, user_id: UUID, symbols) -> dict[str, Decimal]:
+    """{sell id: shortfall} over the given symbols' trades as they are in the session now (see account_split)."""
+    result = await db.execute(
+        select(Transaction)
+        .where(Transaction.user_id == user_id, Transaction.symbol.in_(list(symbols)))
+        .order_by(*LEDGER_ORDER)
+    )
+    by_symbol: dict[str, list] = {}
+    for t in result.scalars().all():
+        by_symbol.setdefault(str(t.symbol), []).append(t)
+    shortfalls: dict[str, Decimal] = {}
+    for trades in by_symbol.values():
+        shortfalls.update(account_split(trades)[1])
+    return shortfalls
+
+
+def account_oversell_added(before: dict[str, Decimal], after: dict[str, Decimal]) -> bool:
+    """True when a change left some sell short of its account by more than it was before the change."""
+    return any(short > before.get(tid, Decimal(0)) + QTY_STEP for tid, short in after.items())
 
 
 async def current_quantity(db: AsyncSession, user_id: UUID, symbol: str) -> Decimal:

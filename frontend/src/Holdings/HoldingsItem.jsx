@@ -2,7 +2,7 @@ import HoldingsChart from "./HoldingsChart.jsx"
 import {useState} from "react";
 import {useUser} from "../context/UserContext.jsx";
 import {changeClass, formatMoney, formatPercent, formatPrice, formatQuantity, formatSignedMoney} from "../utils/format.js";
-import {averageCost, isPriced} from "./holdingsTotals.js";
+import {AVG_COST_NOTE, averageCost, isPriced} from "./holdingsTotals.js";
 
 // One unbreakable amount: on the website it shrinks with its cell by its length (--chars, see Holdings.css)
 // instead of wrapping between digits ("CA$479,158,262," / "703.04"). The app shrinks it with fitNumbers.js instead
@@ -38,7 +38,8 @@ function HoldingsItem({holding, index}) {
                       title={priced ? undefined : "Price unavailable"}>{priced ? <Amount text={formatMoney(holding.current_price, currency)}/> : "—"}</span>
                 <span className="holding-cell" data-label="Quantity"><Amount text={formatQuantity(holding.quantity)}/></span>
                 {/* a desktop column; phones have no room in the 2-column card, so it's in the expanded panel there */}
-                <span className="holding-cell holding-avg-cost" data-label="Avg cost">{avgCost === null ? "—" : <Amount text={avgCostText}/>}</span>
+                <span className="holding-cell holding-avg-cost" data-label="Avg cost"
+                      title={AVG_COST_NOTE}>{avgCost === null ? "—" : <Amount text={avgCostText}/>}</span>
                 <span className={`holding-cell ${classReturn}`} data-label="Return">{priced ? <Amount text={formatSignedMoney(gain, currency)}/> : "—"}</span>
                 <span className={`holding-cell ${classReturn}`} data-label="Return %">{priced ? <Amount text={formatPercent(gainPct)}/> : "—"}</span>
 
@@ -51,6 +52,8 @@ function HoldingsItem({holding, index}) {
                         Average cost <span className="holding-panel-amount">{avgCostText}</span>
                         {" "}per {holding.type === "stock" ? "share" : "coin"}
                     </p>
+                    {/* TFSA and non-registered buys are averaged together here; the tax report has the ACB */}
+                    <p className="holding-panel-note">{AVG_COST_NOTE}</p>
                     <HoldingsChart symbol={holding.symbol} type={holding.type} coinId={holding.coin_id}/>
                 </div>
             )}

@@ -11,7 +11,7 @@ import {saveCsv} from "../Reports/saveCsv.js";
 
 import "../css/Reports.css";
 
-// Capital gains report for Canadian taxes: taxable (non-registered or not set) sales of one calendar year with
+// Capital gains report for Canadian taxes: taxable (non-registered or not set) sales settling in one year with
 // their ACB, always in CAD. The page's <main> comes from the signed-in layout (App.jsx).
 function ReportsPage() {
     usePageTitle("Tax report");
@@ -116,7 +116,11 @@ function ReportsPage() {
                 {errorAlert}
                 <ReportTotals totals={shown.totals} year={shown.year}/>
 
-                {(counts.oversold > 0 || counts.superficial > 0 || counts.foreign > 0) && (
+                {(shown.warnings ?? []).map((warning) => (
+                    <p key={warning} className="alert-warning reports-warning-summary">{warning}</p>
+                ))}
+
+                {Object.values(counts).some((n) => n > 0) && (
                     <div className="alert-warning reports-warning-summary">
                         <strong>Please review: </strong>
                         {[
@@ -124,6 +128,10 @@ function ReportsPage() {
                             + "trades held (check the account types of earlier buys)",
                             counts.superficial > 0 && plural(counts.superficial, "possible superficial loss",
                                 "possible superficial losses"),
+                            counts.acb > 0 && `${plural(counts.acb, "sale")} whose ACB may be too low after a `
+                            + "superficial loss",
+                            counts.interlisted > 0 && `${plural(counts.interlisted, "sale")} of shares also traded `
+                            + "under another listing",
                             counts.foreign > 0 && `${plural(counts.foreign, "sale")} involving USD or EUR amounts`,
                         ].filter(Boolean).join(" · ")}
                         .
@@ -140,6 +148,10 @@ function ReportsPage() {
                         <li>
                             Amounts are in Canadian dollars whatever your display currency, because Canadian tax
                             is reported in CAD.
+                        </li>
+                        <li>
+                            Each sale is in the tax year of its settlement date ("Settles"): one business day after
+                            a stock trade (two before May 28, 2024), the trade date itself for crypto.
                         </li>
                         {shown.notes.map((note) => <li key={note}>{note}</li>)}
                         <li>

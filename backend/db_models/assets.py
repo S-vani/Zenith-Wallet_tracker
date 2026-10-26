@@ -244,8 +244,18 @@ def _email_account() -> EmailAccount | None:
 
     gmail_user, gmail_pass = os.getenv("GMAIL_USER"), os.getenv("GMAIL_PASS")
     if not gmail_user or not gmail_pass:
+        if gmail_user or gmail_pass:
+            logging.getLogger("uvicorn.error").error("Only one of GMAIL_USER / GMAIL_PASS is set, no email is sent")
         return None
     return EmailAccount("smtp.gmail.com", 587, gmail_user, gmail_pass, gmail_user)
+
+
+def _email_settings_present() -> bool:
+    """
+    True when any email setting is filled in. _email_account() can still be None then (a half-finished setup, e.g.
+    SMTP_HOST without EMAIL_FROM): that's a broken server, not local development, so links must not be logged.
+    """
+    return any((os.getenv(name) or "").strip() for name in ("SMTP_HOST", "GMAIL_USER", "GMAIL_PASS"))
 
 
 # A failed send is tried again after these many seconds (a provider hiccup shouldn't lose a verification email)
@@ -307,9 +317,14 @@ async def send_link_email(user, page: str, token: str, subject: str, intro: str)
     user_email = str(user.email)
 
     account = _email_account()
+    label = "Verification" if page == "verify" else "Password reset"
     if account is None:
-        # no email account configured (local development): log the link instead of sending an email
-        label = "Verification" if page == "verify" else "Password reset"
+        if _email_settings_present():
+            # a half-configured server: the link and the address would end up in production logs, where anyone
+            # reading them could use the link, so neither is logged (_email_account already said what's missing)
+            logging.getLogger("uvicorn.error").error("%s email not sent: the email settings are incomplete", label)
+            return
+        # no email settings at all (local development): log the link instead of sending an email
         logging.getLogger("uvicorn.error").warning("%s link for %s: %s", label, user_email, link)
         return
 
@@ -320,6 +335,9 @@ async def send_notice_email(to_address: str, subject: str, body: str) -> None:
     """A security notice without a link, e.g. to the old address after the email was changed."""
     account = _email_account()
     if account is None:
+        if _email_settings_present():  # broken setup on a real server: no address in the logs
+            logging.getLogger("uvicorn.error").error("Security notice not sent: the email settings are incomplete")
+            return
         logging.getLogger("uvicorn.error").warning("Security notice for %s: %s", to_address, subject)
         return
     _send_in_background(account, to_address, subject, body)
@@ -345,7 +363,8 @@ class Transaction(Base):
     # asks CoinGecko for exactly that coin instead of the most popular one with the symbol. Empty on older trades.
     coin_id = Column(String, nullable=True)
     # The account the trade was made in: one of ACCOUNT_TYPES (backend/schemas/assets.py), or NULL = not set.
-    # Holdings and the ledger stay per symbol across accounts; this only labels and filters trades.
+    # Holdings and the ledger stay per symbol across accounts; sells are also checked against their own account
+    # (account_split in services/asset_services.py).
     account_type = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 

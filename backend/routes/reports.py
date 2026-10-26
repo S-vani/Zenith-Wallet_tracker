@@ -25,7 +25,8 @@ FIRST_YEAR = 2000
 
 class Sale(BaseModel):
     id: str
-    date: str  # YYYY-MM-DD, UTC
+    date: str  # YYYY-MM-DD, the trade date in Toronto
+    settlement_date: str  # decides the tax year (stocks T+1 / T+2 business days, crypto the trade date)
     symbol: str
     asset_type: str
     quantity: float
@@ -36,6 +37,9 @@ class Sale(BaseModel):
     currency_entered: Optional[str]
     foreign_currency: bool
     superficial_loss: bool
+    superficial_amount: float  # the part of the loss CRA may deny (CRA's formula, 0 when not flagged), positive
+    acb_may_rise: bool  # an earlier possible superficial loss would be added to this sale's ACB
+    interlisted: bool  # also traded under its other listing (SHOP / SHOP.TO): see the report's warnings
     oversold: bool
     notes: list[str]
 
@@ -46,6 +50,7 @@ class Totals(BaseModel):
     net: float
     gains: float
     losses: float
+    possibly_superficial: float  # how much of `losses` is possibly superficial (flagged, still included)
     taxable_at_50pct: float
 
 
@@ -54,6 +59,7 @@ class CapitalGainsReport(BaseModel):
     currency: str
     sales: list[Sale]
     totals: Totals
+    warnings: list[str]  # e.g. interlisted shares kept in separate ACB pools
     notes: list[str]
     superficial_loss_url: str
 
@@ -63,7 +69,8 @@ class ReportYears(BaseModel):
 
 
 def _check_year(year: int) -> int:
-    current = datetime.now(timezone.utc).year
+    # a stock sold on the last trading day of the year settles (and counts) in the next one
+    current = datetime.now(timezone.utc).year + 1
     if not FIRST_YEAR <= year <= current:
         raise HTTPException(status_code=422, detail=f"Choose a year between {FIRST_YEAR} and {current}.")
     return year
@@ -82,7 +89,7 @@ async def capital_gains_years(
         session: AsyncSession = Depends(get_async_session),
         current_user: User = Depends(current_active_user),
 ):
-    """The calendar years (UTC) with a sale in a non-registered (or not set) account, newest first."""
+    """The tax years (by settlement date) with a sale in a non-registered (or not set) account, newest first."""
     return {"years": taxable_sale_years(await _all_trades(session, current_user))}
 
 
@@ -92,7 +99,7 @@ async def capital_gains_report(
         session: AsyncSession = Depends(get_async_session),
         current_user: User = Depends(current_active_user),
 ):
-    """Taxable sales of one calendar year with proceeds, ACB and gain in CAD, the year's totals and notes."""
+    """Taxable sales settling in one year with proceeds, ACB and gain in CAD, the year's totals and notes."""
     year = _check_year(year)
     return capital_gains(await _all_trades(session, current_user), year)
 
