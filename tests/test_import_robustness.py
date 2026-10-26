@@ -395,6 +395,12 @@ def test_commit_accepts_the_minimal_rows_the_page_sends(client, user):
 
 
 def test_today_as_a_day_is_never_in_the_future():
+    # "now" is pinned: reading the clock in the test and again inside parse_trade_date made the second reading a few
+    # microseconds later, so this failed now and then (it did in CI)
     now = datetime.now(timezone.utc).replace(tzinfo=None)
-    moment, date_only = parse_trade_date(now.date().isoformat())
+    moment, date_only = parse_trade_date(now.date().isoformat(), now=now)
     assert date_only and moment <= now
+
+    # without a pinned clock the result is still never later than a reading taken after the call
+    moment, _ = parse_trade_date(now.date().isoformat())
+    assert moment <= datetime.now(timezone.utc).replace(tzinfo=None)
