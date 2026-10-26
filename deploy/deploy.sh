@@ -86,7 +86,14 @@ venv_python() {
     done
     return 1
 }
-any_python() { venv_python || command -v python3 || command -v python; }
+# A Python that can actually run sqlite3 (`python3` can be a stub that only prints an install hint)
+any_python() {
+    local p
+    for p in "$(venv_python)" "$(command -v python3)" "$(command -v python)"; do
+        [[ -n "$p" ]] && "$p" -c 'import sqlite3' > /dev/null 2>&1 && { printf '%s' "$p"; return 0; }
+    done
+    return 1
+}
 
 # env_value KEY: KEY's value in .env, parsed by python-dotenv like the app does (quotes, `export`, comments). Before
 # .venv exists, a plain fallback: last KEY=..., surrounding quotes or a trailing " # comment" removed.
@@ -183,7 +190,11 @@ show_status() {
     info "Checkout:      $(git log -1 --format='%h %s (%cr)')  [$(git symbolic-ref -q --short HEAD || echo detached)]"
     local deployed=""
     [[ -f "$STATE_DIR/deployed" ]] && deployed="$(cat "$STATE_DIR/deployed")"
-    info "Last deployed: ${deployed:+$(git log -1 --format='%h %s (%cr)' "$deployed" 2> /dev/null || echo "$deployed")}${deployed:-unknown (no deploy with this script yet)}"
+    if [[ -n "$deployed" ]]; then
+        info "Last deployed: $(git log -1 --format='%h %s (%cr)' "$deployed" 2> /dev/null || echo "$deployed")"
+    else
+        info "Last deployed: unknown (no deploy with this script yet)"
+    fi
     local behind
     behind="$(git rev-list --count "HEAD..origin/$BRANCH" 2> /dev/null || echo '?')"
     info "origin/$BRANCH:   $(git log -1 --format='%h %s (%cr)' "origin/$BRANCH")  ($behind new commit(s))"
@@ -475,7 +486,15 @@ backup_db() {
         dry "back up $db to $dir/walletdatabase-<time>-pre-deploy.db.gz (+ integrity check, keep the last 30)"
         return 0
     fi
-    BACKUP_DIR="$dir" APP_DIR="$APP_DIR" bash "$APP_DIR/deploy/zenith-backup.sh" pre-deploy | sed 's/^/    /'
+    # The backup script of the commit being deployed (the checkout isn't updated yet), so a fix to it applies to this
+    # deploy too, as with deploy.sh itself
+    local script ok=0
+    script="$(mktemp)"
+    git cat-file blob "$TARGET:deploy/zenith-backup.sh" > "$script" 2> /dev/null ||
+        cp "$APP_DIR/deploy/zenith-backup.sh" "$script"
+    BACKUP_DIR="$dir" APP_DIR="$APP_DIR" bash "$script" pre-deploy && ok=1
+    rm -f "$script"
+    ((ok)) || die "the database backup failed (see above)"
     BACKUP_FILE="$(ls -1t "$dir"/walletdatabase-*-pre-deploy.db.gz | head -n 1)"
     SCHEMA_BEFORE="$(schema_fingerprint)"
 }

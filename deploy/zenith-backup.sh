@@ -75,8 +75,15 @@ if command -v sqlite3 > /dev/null; then
     sqlite3 "$DB_PATH" ".timeout 30000" ".backup '$OUT'"
     CHECK="$(sqlite3 "$OUT" 'PRAGMA integrity_check;')"
 else
-    PY="$(venv_python || command -v python3 || command -v python)" ||
-        { echo "Neither sqlite3 nor Python is installed; can't back up" >&2; exit 1; }
+    # the first Python that can import sqlite3 (`python3` can be a stub that only prints an install hint)
+    PY=""
+    for candidate in "$(venv_python)" "$(command -v python3)" "$(command -v python)"; do
+        if [[ -n "$candidate" ]] && "$candidate" -c 'import sqlite3' > /dev/null 2>&1; then
+            PY="$candidate"
+            break
+        fi
+    done
+    [[ -n "$PY" ]] || { echo "Neither sqlite3 nor Python with sqlite3 is installed; can't back up" >&2; exit 1; }
     CHECK="$("$PY" - "$DB_PATH" "$OUT" << 'PY'
 import sqlite3, sys
 src = sqlite3.connect(sys.argv[1], timeout=30)
