@@ -196,12 +196,17 @@ unless billing is on), `MIN_IOS_APP_VERSION` (forced update; unset = off), `BACK
 Frontend: `frontend/.env` → `VITE_BACKEND_URL`; `frontend/.env.ios` for the app build.
 
 ## Deploying (server: `~/walletapp` as user `deploy`)
-`bash deploy/deploy.sh [tag]`: first checks the tools, write access to `/var/www/html` and the `SECRET` length
-(changes nothing if one fails), then backs up the DB, checks out the release, `uv sync --frozen`, builds the website into
-`/var/www/html`, restarts `walletapp-backend` and waits for `/health`, rolling back to the previous commit if it
-isn't healthy. One-time server setup (systemd unit with exactly one worker on 127.0.0.1, nightly backups kept 30
-days, 14-day logs, uptime monitor) and restore steps: `docs/deploy.md`. nginx rate limits, security headers, log
-format: `docs/nginx-hardening.md` (nginx must proxy from 127.0.0.1 so the backend sees real client IPs).
+One command, no `git pull`: `bash ~/walletapp/deploy/deploy.sh` (or `./deploy.sh`). It checks tools, a clean
+checkout, the `SECRET` length (parsed like python-dotenv) and disk space (changes nothing if one fails), fetches
+`origin/main` (exits if nothing is new; re-runs itself if `deploy.sh` changed), backs up the DB
+(`zenith-backup.sh`, sqlite3 or Python, to `~/walletapp-backups`), `git merge --ff-only`, `uv sync --frozen`,
+builds the website into `frontend/dist-next`, restarts `walletapp-backend` (sudo) and waits for `/health`, then swaps
+`dist-next` → `dist` (old build kept in `dist-prev`; nginx serves `frontend/dist` directly, no copy). Any failure
+after the merge rolls back code, packages, website and API; the DB is kept (migrations are additive) and the restore
+steps are printed. Flags: `--status`, `--dry-run`, `--force`, `--setup-nginx` (API `client_max_body_size 3m` for CSV
+imports), `--install-backups`. First run, one-time setup and manual restore: `docs/deploy.md`. The installed
+systemd unit is never overwritten. nginx rate limits, security headers, log format: `docs/nginx-hardening.md` (nginx
+must proxy from 127.0.0.1 so the backend sees real client IPs).
 
 ## Working notes
 - Keep changes in the existing style (JSX with 4-space indent, plain CSS files per area, small comments explaining

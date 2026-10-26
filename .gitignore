@@ -21,3 +21,9 @@ identifier.sqlite
 *.db-shm
 *.db.gz
 backups/
+
+# deploy/deploy.sh: the build being prepared, the previous build kept for a rollback, and the deploy state
+frontend/dist-next/
+frontend/dist-prev/
+frontend/dist-failed/
+/.deploy/
