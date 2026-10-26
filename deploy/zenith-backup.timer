@@ -1,3 +1,4 @@
+# Nightly run of zenith-backup.service. Installed by: bash deploy/deploy.sh --install-backups
 [Unit]
 Description=Nightly Zenith database backup
 

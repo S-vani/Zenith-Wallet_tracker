@@ -1,12 +1,16 @@
-# systemd unit for the Zenith API. Install:
+# systemd unit for the Zenith API: a reference copy. deploy.sh never installs or overwrites it (the server already has
+# one); `bash deploy/deploy.sh --status` says when the installed unit differs. To install or update it by hand:
 #   sudo cp deploy/walletapp-backend.service /etc/systemd/system/
-#   sudo systemctl daemon-reload && sudo systemctl enable --now walletapp-backend
+#   sudo systemctl daemon-reload && sudo systemctl restart walletapp-backend
 #
 # One worker on purpose: the rate limits, login lockouts, analyst caps and price caches live in memory
 # (backend/ratelimit.py, analyst/service.py), so a second worker would double every limit and every Yahoo call.
 # Listens on 127.0.0.1 only: nginx proxies to it, and the backend trusts X-Real-IP only from 127.0.0.1.
 # --no-access-log: nginx already keeps the request log (14 days, see docs/deploy.md); this avoids a second copy
 # in the journal with query strings in it.
+# No EnvironmentFile=: the app reads .env itself (python-dotenv). systemd parses quotes and `#` differently, and
+# variables it sets win over .env, so loading .env here too could give the API a different SECRET than the one
+# deploy.sh checked, or make later edits to .env silently not apply.
 
 [Unit]
 Description=Zenith Wallet Tracker API
@@ -16,7 +20,6 @@ Wants=network-online.target
 [Service]
 User=deploy
 WorkingDirectory=/home/deploy/walletapp
-EnvironmentFile=/home/deploy/walletapp/.env
 ExecStart=/home/deploy/walletapp/.venv/bin/uvicorn backend.main:app --host 127.0.0.1 --port 8000 --workers 1 --proxy-headers --forwarded-allow-ips 127.0.0.1 --no-access-log
 Restart=always
 RestartSec=3

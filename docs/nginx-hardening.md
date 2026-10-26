@@ -32,7 +32,8 @@ server {
     # nosniff, X-Frame-Options, frame-ancestors and Referrer-Policy come from the backend itself
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
-    client_max_body_size 64k;  # the API only ever receives small JSON bodies
+    # CSV imports send up to 2 MB (everything else is small JSON). `bash deploy/deploy.sh --setup-nginx` sets this.
+    client_max_body_size 3m;
 
     location /auth/ {
         limit_req zone=zenith_auth burst=10 nodelay;
@@ -65,7 +66,12 @@ of 10 is far more than one person needs, so it isn't affected in practice.
 ```nginx
 server {
     server_name zenithwalletracker.ca www.zenithwalletracker.ca;
-    # ... existing listen / ssl / root /var/www/html lines ...
+    # ... existing listen / ssl lines ...
+
+    # served straight from the build folder: deploy/deploy.sh builds into dist-next and swaps it in with a rename,
+    # so nothing is copied and the site is never half-updated
+    root /home/deploy/walletapp/frontend/dist;
+    index index.html;
 
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     add_header X-Content-Type-Options "nosniff" always;
