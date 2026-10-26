@@ -1,5 +1,5 @@
 import {changeClass, formatQuantity} from "../utils/format.js";
-import {cad, saleFlags, securityLabel, signedCad} from "./reportUtils.js";
+import {cad, saleDates, saleFlags, securityLabel, signedCad} from "./reportUtils.js";
 
 // The warning labels plus the server's explanation of each, and CRA's page for a possible superficial loss
 function SaleNotes({sale, craUrl}) {
@@ -36,11 +36,12 @@ function SalesTable({sales, year, craUrl}) {
             <div className="reports-table-wrap" tabIndex={0} role="region" aria-labelledby="reports-table-caption">
                 <table className="reports-table">
                     <caption id="reports-table-caption" className="visually-hidden">
-                        Taxable sales in {year}, amounts in Canadian dollars
+                        Taxable sales settling in {year}, dates in Toronto time, amounts in Canadian dollars
                     </caption>
                     <thead>
                         <tr>
-                            <th scope="col">Date (UTC)</th>
+                            <th scope="col">Trade date</th>
+                            <th scope="col">Settles</th>
                             <th scope="col">Security</th>
                             <th scope="col" className="num">Quantity</th>
                             <th scope="col" className="num">Proceeds</th>
@@ -53,6 +54,7 @@ function SalesTable({sales, year, craUrl}) {
                         {sales.map((sale) => (
                             <tr key={sale.id} className={saleFlags(sale).length ? "has-warning" : undefined}>
                                 <td className="nowrap">{sale.date}</td>
+                                <td className="nowrap">{sale.settlement_date ?? sale.date}</td>
                                 <th scope="row" className="reports-symbol">{securityLabel(sale)}</th>
                                 <td className="num">{formatQuantity(sale.quantity)}</td>
                                 <td className="num">{cad(sale.proceeds)}</td>
@@ -70,7 +72,7 @@ function SalesTable({sales, year, craUrl}) {
                     <li key={sale.id} className="reports-sale-card">
                         <div className="reports-sale-head">
                             <h3 className="reports-symbol">{securityLabel(sale)}</h3>
-                            <span className="reports-muted">{sale.date} (UTC)</span>
+                            <span className="reports-muted">{saleDates(sale)}</span>
                         </div>
                         <dl className="reports-sale-figures">
                             <div><dt>Quantity</dt><dd>{formatQuantity(sale.quantity)}</dd></div>
