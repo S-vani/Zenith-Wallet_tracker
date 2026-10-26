@@ -32,6 +32,12 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
   - Trades carry an optional `account_type` (`TFSA`/`RRSP`/`FHSA`/`RESP`/`NON_REGISTERED`, null = not set; the one
     list is `AccountType`/`ACCOUNT_TYPES` in `schemas/assets.py`, `utils/accounts.js` on the frontend; `GET
     /transactions?account_type=…|UNSET`). Holdings, the ledger and the oversell check stay per symbol across accounts.
+    On top of that, create/edit/delete check sells per account (`account_split` / `account_shortfalls` in
+    `asset_services.py`, 409 "Insufficient holdings in that account"): a sell tagged with an account may use that
+    account's shares plus the "not set" ones; a sell with no account is only checked overall; a change is refused
+    only if it makes some sell's shortfall bigger than before, so older data (sells tagged to another account than
+    their buys) stays editable. `/holdings` rows carry `accounts` ({account|UNSET: qty}) for the add form's
+    account-aware "You own N" hint (`ownedForAccount` in `tradeForm.js`). CSV import only checks per symbol.
   - `routes/imports.py` + `services/imports.py` — `GET /transactions/export` (CSV of every trade, Zenith template,
     formula-injection guarded), `GET /transactions/import/template`, `POST /transactions/import/preview` (parses
     Zenith / Wealthsimple activities / Questrade activity CSVs, ≤ 2 MB / 5000 rows, flags errors and duplicates,
@@ -40,12 +46,17 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
     `/transactions/{trans_id}` swallows `/transactions/export`.
   - `routes/reports.py` + `services/reports.py` — Canadian capital-gains / ACB report (`/reports/capital-gains`,
     `/years`, `.csv`): only `NON_REGISTERED`/null trades, ACB pooled per security across years in CAD (stored
-    `price_of_one`), superficial-loss flags (a buy in any account within 30 days, still held), oversold sales
-    flagged, never adjusted; informational 50% inclusion line; no price/FX calls.
+    `price_of_one`), oversold sales flagged, never adjusted; informational 50% inclusion line; no price/FX calls.
+    Dates are Toronto calendar dates; a sale counts in the year of its settlement date (stocks T+1 business days
+    from 2024-05-28, T+2 before, skipping weekends + Christmas/Boxing Day/New Year; crypto = trade date), so
+    `/years` can include next year. Superficial loss (flagged, not adjusted): CRA's least of (sold, bought in any
+    account within ±30 trade days, held at the window's end) / sold gives `superficial_amount`; registered
+    repurchases are worded as lost for good, taxable ones mark later sales of that pool `acb_may_rise`; totals carry
+    `possibly_superficial`. Interlisted `X` + `X.TO` taxable trades give a `warnings` entry (pools stay separate).
   - `routes/allocation.py` + `services/allocation.py` — `GET /portfolio/allocation` (by asset type, account, holding,
     listing currency) priced exactly like `/holdings`; per-account quantities via `replay_accounts` (a sell takes
     from its own account, then "not set", then the largest, never negative).
-  - `services/asset_services.py` — pricing (yfinance), FX conversion (open.er-api, 1 h cache; the last good rates are served if a refresh fails, 503 only with none), holdings math,
+  - `services/asset_services.py` — pricing (yfinance), FX conversion (open.er-api, 1 h cache; the last good rates are served if a refresh fails, 503 only with none; with none cached a failure is remembered for 45 s so queued requests 503 at once instead of each retrying), holdings math,
     `rebuild_symbol_ledger` (replays a symbol's buys/sells; used by PUT/DELETE to keep history valid). Ledger
     replays sort by `LEDGER_ORDER` (time, then BUY before SELL, so same-tick trades can't oversell). Every yfinance
     call goes through `run_yahoo` (own 16-thread pool, at most 6 at once); concurrent cache misses for one series
@@ -55,7 +66,8 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
     report), `gemini.py` (optional rewording), `service.py` (DB cache, rate limits), `schema.py` (response model).
   - `db_models/assets.py` — `User`, `Transaction`, `OAuthAccount`, `UserManager` (password rules: 8–128 chars, not
     the email, not one repeated character, not in `common_passwords.py`) and
-    `send_link_email` (verification + password-reset emails via `SMTP_*`, else `GMAIL_*`, else the link is logged;
+    `send_link_email` (verification + password-reset emails via `SMTP_*`, else `GMAIL_*`; the link is logged only
+    when no email setting is set at all — a half-configured setup logs an error without link or address;
     retried twice; failure logs never include addresses). Login and re-auth hash passwords in a thread. Reset flow:
     `/auth/forgot-password` (always 202) → email → `/reset-password?token=` page (moves the token out of the address
     bar into sessionStorage, `Authentication/resetToken.js`) → `/auth/reset-password`.
@@ -129,7 +141,8 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
 - Quantities/prices are `Numeric(20, 10)` (SQLite hands them back as floats): compare with `as_quantity` /
   `sell_tolerance`, never raw floats. Quantity max is 1e9.
 - A USD/EUR trade dated more than a day back is converted to CAD at its own date's rate (Yahoo daily `USDCAD=X` /
-  `EURCAD=X`, one cached series per currency, latest close known at that time; `cad_price_on` in
+  `EURCAD=X`, one cached series per currency: the daily bar dated the trade's Toronto date, the bar before only on
+  weekends/holidays or when that day's bar doesn't exist yet; `cad_price_on` in
   `asset_services.py`) on create, edit and CSV import, falling back to the current rate when the history is missing
   — the capital-gains report needs trade-date rates. Trades saved before this keep their entry-day rate.
 - Trades also keep `price_entered` + `currency_entered` (as typed). `price_in_currency` / `profit_in_currency` use

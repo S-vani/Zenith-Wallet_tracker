@@ -199,6 +199,12 @@ html:not(.native) .cell-amount {
     color: var(--text-muted);
 }
 
+.holding-panel-note {
+    margin: 0 0 0.75rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
 .holding-panel-amount {
     font-weight: 700;
     color: var(--text);

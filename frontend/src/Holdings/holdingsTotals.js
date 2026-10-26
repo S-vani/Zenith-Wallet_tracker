@@ -5,6 +5,10 @@ export function isPriced(holding) {
     return holding.current_price !== null && holding.current_price !== undefined;
 }
 
+// The average cost pools every account (TFSA, RRSP and non-registered buys together), so it isn't the ACB CRA asks
+// for; said wherever it's shown so nobody files with it
+export const AVG_COST_NOTE = "Average across all your accounts, not your tax ACB (see Tax report).";
+
 // Average cost of one unit (share / coin), or null when it can't be worked out
 export function averageCost(holding) {
     const quantity = Number(holding.quantity);
