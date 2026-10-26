@@ -1,10 +1,11 @@
 import {accountLabel} from "../utils/accounts.js";
 import {formatPrice, formatQuantity} from "../utils/format.js";
-import {STATUS_LABELS, rowDate, visibleRows} from "./importHelpers.js";
+import {STATUS_LABELS, isIncluded, rowDate, visibleRows} from "./importHelpers.js";
 
-// The preview's rows: a table on wider screens, one card per row on phones (see Import.css). Duplicates get an
-// "Include" checkbox; ready rows are always imported and problem rows never are.
-function ImportPreview({rows, included, onToggle, filter, onFilterChange}) {
+// The preview's rows: a table on wider screens, one card per row on phones (see Import.css). Ready rows and
+// duplicates get an "Include" checkbox (ready ones start ticked, duplicates unticked), so any row can be left out;
+// problem rows are never imported.
+function ImportPreview({rows, toggled, onToggle, filter, onFilterChange}) {
     const {rows: shown, hidden, total} = visibleRows(rows, filter);
 
     return (
@@ -42,16 +43,18 @@ function ImportPreview({rows, included, onToggle, filter, onFilterChange}) {
                             return (
                                 <tr key={row.line} className={`import-row is-${row.status}`}>
                                     <td data-label="Include" className="import-cell-include">
-                                        {row.status === "duplicate" ? (
-                                            <input type="checkbox" checked={included.has(row.line)}
+                                        {row.status === "ok" || row.status === "duplicate" ? (
+                                            <input type="checkbox" checked={isIncluded(row, toggled)}
                                                    onChange={() => onToggle(row.line)}
-                                                   aria-label={`Include line ${row.line} (${what}) anyway`}/>
+                                                   aria-label={row.status === "duplicate"
+                                                       ? `Include line ${row.line} (${what}) anyway`
+                                                       : `Import line ${row.line} (${what})`}/>
                                         ) : (
-                                            <span aria-hidden="true">{row.status === "ok" ? "✓" : "—"}</span>
+                                            <span aria-hidden="true">—</span>
                                         )}
                                     </td>
                                     <td data-label="Line">{row.line}</td>
-                                    <td data-label="Date">{rowDate(row.date)}</td>
+                                    <td data-label="Date">{rowDate(row.date, row.date_only)}</td>
                                     <td data-label="Trade" className="import-cell-trade">
                                         {row.action && <span className={`import-action is-${row.action.toLowerCase()}`}>{row.action}</span>}
                                         <span className="import-symbol">{(row.symbol ?? "—").toUpperCase()}</span>

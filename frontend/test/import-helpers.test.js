@@ -2,9 +2,13 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vitest";
 import {
     FORMAT_OPTIONS,
     MAX_FILE_BYTES,
+    commitRows,
     fileProblem,
     formatLabel,
     importButtonLabel,
+    importedText,
+    isIncluded,
+    newImportId,
     needsAttention,
     rowDate,
     rowsToImport,
@@ -54,6 +58,43 @@ describe("rowsToImport", () => {
         expect(rowsToImport(undefined, new Set())).toEqual([]);
     });
 
+    it("lets any ready row be left out, never a problem row", () => {
+        expect(rowsToImport(ROWS, new Set([2])).map((r) => r.line)).toEqual([6]);
+        expect(rowsToImport(ROWS, new Set([2, 3, 4])).map((r) => r.line)).toEqual([3, 6]);
+        expect(isIncluded(ROWS[0], new Set())).toBe(true);
+        expect(isIncluded(ROWS[1], new Set())).toBe(false);
+        expect(isIncluded(ROWS[2], new Set([4]))).toBe(false);
+    });
+
+    it("sends only the fields the import needs, and marks ticked duplicates", () => {
+        const row = {
+            line: 3, date: "2024-01-02T21:00:00+00:00", date_only: true, action: "BUY", asset_type: "stock",
+            symbol: "AAPL", quantity: 1, price: 10, currency: "USD", account_type: null, coin_id: null,
+            status: "duplicate", message: "Already in your trades, so it's skipped unless you include it.",
+        };
+        const [sent] = commitRows([row]);
+        expect(sent).not.toHaveProperty("message");
+        expect(sent).not.toHaveProperty("status");
+        expect(sent).toMatchObject({line: 3, date_only: true, symbol: "AAPL", include_duplicate: true});
+        const [ready] = commitRows([{...row, status: "ok"}]);
+        expect(ready).not.toHaveProperty("include_duplicate");
+    });
+
+    it("makes a new UUID for each import, with or without crypto.randomUUID", () => {
+        const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+        expect(newImportId({randomUUID: () => "from-crypto"})).toBe("from-crypto");
+        const fallback = newImportId({getRandomValues: (bytes) => bytes.fill(255)});
+        expect(fallback).toMatch(uuid);
+        expect(newImportId(null)).toMatch(uuid);
+        expect(newImportId(null)).not.toBe(newImportId(null));
+    });
+
+    it("says when a retry found the trades already saved", () => {
+        expect(importedText({imported: 3, skipped_duplicates: 0})).toBe("Imported 3 trades");
+        expect(importedText({imported: 0, skipped_duplicates: 2})).toBe(
+            "Imported 0 trades (2 already in your trades were skipped)");
+    });
+
     it("labels the button with the count", () => {
         expect(importButtonLabel(0)).toBe("Nothing to import");
         expect(importButtonLabel(1)).toBe("Import 1 trade");
@@ -85,6 +126,8 @@ describe("labels", () => {
 
     it("shows a broker row's day (stored at noon UTC) as that same day in Canada", () => {
         expect(rowDate("2024-02-01T12:00:00+00:00")).toBe("Feb 1, 2024");
+        // a day-only row (21:00 UTC) shows the file's day in every time zone
+        expect(rowDate("2024-02-01T21:00:00+00:00", true)).toBe("Feb 1, 2024");
         expect(rowDate(null)).toBe("—");
         expect(rowDate("nope")).toBe("—");
     });
@@ -131,6 +174,12 @@ describe("import api", () => {
         await expect(api.commitImport([{line: 4}])).rejects.toMatchObject({
             status: 409, message: "Nothing was imported: line 4 sells too much NVDA.",
         });
+    });
+
+    it("sends the import id with the rows", async () => {
+        fetchMock.mockResolvedValue({ok: true, status: 200, json: async () => ({imported: 1, skipped_duplicates: 0})});
+        await api.commitImport([{line: 2}], "abc-123");
+        expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({rows: [{line: 2}], import_id: "abc-123"});
     });
 
     it("downloads the export as text with a dated file name", async () => {
