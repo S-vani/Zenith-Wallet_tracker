@@ -1,6 +1,7 @@
 import {useEffect} from "react";
 import {Link, useLocation} from "react-router-dom";
 import {getToken} from "../services/api.js";
+import {BRAND_ACCENT, BRAND_NAME} from "../utils/brand.js";
 
 import "../css/Home.css";
 import "../css/Legal.css";
@@ -23,7 +24,7 @@ function LegalLayout({sections = [], children}) {
             <header className="home-topbar">
                 <Link to="/" className="home-brand">
                     <img className="brand-mark" src="/zenith-logo.svg" alt="" width="32" height="32"/>
-                    <span className="brand-name">Zenith&nbsp;<span className="brand-accent">Wallet Tracker</span></span>
+                    <span className="brand-name">Zenith&nbsp;<span className="brand-accent">{BRAND_ACCENT}</span></span>
                 </Link>
                 <nav className="home-auth" aria-label="Account">
                     <Link to={loggedIn ? "/dashboard" : "/"} className="auth-btn login-btn">
@@ -46,7 +47,7 @@ function LegalLayout({sections = [], children}) {
             <footer className="home-footer">
                 <span className="footer-brand">
                     <img className="footer-mark" src="/zenith-logo.svg" alt="" width="16" height="16"/>
-                    © 2026 Zenith Wallet Tracker
+                    © 2026 {BRAND_NAME}
                 </span>
                 <LegalLinks/>
             </footer>

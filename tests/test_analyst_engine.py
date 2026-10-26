@@ -66,8 +66,8 @@ def test_few_signals_means_low_confidence():
 def test_bullish_and_bearish_reports_have_matching_text():
     up = build_report(make_data("up", fundamentals=dict(GOOD_FUNDAMENTALS)))
     down = build_report(make_data("down", fundamentals=dict(BAD_FUNDAMENTALS)))
-    assert "favourable" in up.bottom_line and "unfavourable" not in up.bottom_line
-    assert "unfavourable" in down.bottom_line
+    assert "lean positive" in up.bottom_line and "lean negative" not in up.bottom_line
+    assert "lean negative" in down.bottom_line
     assert any("above" in r for r in up.reasons)
     assert any("below" in r for r in down.reasons)
     assert 1 <= len(up.reasons) <= 3 and 1 <= len(down.reasons) <= 3

@@ -171,6 +171,8 @@ function ImportSection() {
                     trade's date (today's rate if that one isn't available), the same as adding a trade by hand.
                 </li>
                 <li>Nothing is saved until you press Import and confirm.</li>
+                {/* broker names only describe the file formats; App Review (5.2) expects no implied partnership */}
+                <li>Zenith isn't affiliated with or endorsed by Wealthsimple or Questrade.</li>
             </ul>
 
             {imported !== null && (

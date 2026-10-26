@@ -2,6 +2,7 @@ import {Link} from "react-router-dom";
 import usePageTitle from "../utils/usePageTitle.js";
 import {CONTACT_EMAIL} from "../utils/contact.js";
 import LegalLayout from "../components/LegalLayout.jsx";
+import {BRAND_NAME} from "../utils/brand.js";
 
 // Shown publicly and required by the app stores. Keep it in step with what the app actually collects and sends.
 const EFFECTIVE_DATE = "October 24, 2026";
@@ -29,7 +30,7 @@ function PrivacyPage() {
                 <h1>Privacy Policy &amp; Disclaimer</h1>
                 <p className="legal-meta">Effective {EFFECTIVE_DATE}</p>
                 <p>
-                    Zenith Wallet Tracker ("Zenith", "we", "us") is a portfolio tracking app available at
+                    {BRAND_NAME} ("Zenith", "we", "us") is a portfolio tracking app available at
                     zenithwalletracker.ca and, where available, as a mobile app. This page explains what information we
                     collect, why, who it is shared with, and how to delete it. It also explains the limits of
                     the market information Zenith shows you.
@@ -104,6 +105,8 @@ function PrivacyPage() {
                 <p>
                     If you import a CSV file, it is sent to our server only to read the trades in it. The file
                     itself isn't kept: only the trades you choose to import are saved, like trades you type in.
+                    Broker exports can include other columns, such as an account number; those are skipped
+                    and never saved.
                     Exports are created on request and sent straight to you.
                 </p>
                 <h3>Technical information</h3>

@@ -782,12 +782,12 @@ def build_scenarios(f: Facts, data: AssetData, sentiment: str) -> tuple[list[Sce
         # either way, whatever the overall outlook
         base_summary = ("No major surprise: the price keeps swinging the way it has recently and ends up in the middle "
                         "of its typical range, a little above or below where it is now.")
-        bull_summary = ("Buyers stay in control and the price pushes toward the top of its range."
+        bull_summary = ("Buying pressure continues and the price moves toward the top of its range."
                         if sentiment == "bullish" else
-                        "Buyers regain control and the price rallies toward the top of its typical range.")
-        bear_summary = ("Sellers stay in control and the price falls toward the bottom of its range."
+                        "Buying pressure returns and the price moves toward the top of its typical range.")
+        bear_summary = ("Selling pressure continues and the price moves toward the bottom of its range."
                         if sentiment == "bearish" else
-                        "Sellers take over and the price falls toward the bottom of its typical range.")
+                        "Selling pressure builds and the price moves toward the bottom of its typical range.")
     scenarios = [
         Scenario(case="bull", summary=bull_summary, conditions=bull_conditions[:3]),
         Scenario(case="base", summary=base_summary,
@@ -931,9 +931,10 @@ def build_report(data: AssetData) -> AnalystReport:
             change = (f"A recovery above the {level_name} ({fmt_money(level, cur)}) would challenge this view."
                       if side(f.price, level) <= 0 else
                       f"A drop below the {level_name} ({fmt_money(level, cur)}) would confirm it.")
-        lean_word = {"bullish": "favourable", "bearish": "unfavourable", "neutral": "mixed"}[sentiment]
+        # describes what the signals show, never what to do (App Review 2.3.1 / no financial advice)
+        lean = {"bullish": "lean positive", "bearish": "lean negative", "neutral": "are mixed"}[sentiment]
         driver = supporting[0].phrase if supporting else "the recent price action"
-        bottom_line = f"On balance the evidence is {lean_word}, driven mainly by {driver}. {change}"
+        bottom_line = f"On balance the signals {lean}, driven mainly by {driver}. {change}"
         if risk_phrase:  # ordinary volatility is already covered by the scenario ranges, so it isn't repeated here
             bottom_line += f" The main risk to watch is {risk_phrase}."
 

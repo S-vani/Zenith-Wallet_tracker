@@ -80,7 +80,7 @@ function AnalystReport({report, now}) {
 
             {report.bottom_line && (
                 <section className="analyst-bottom-line" aria-labelledby={`${ids}-bottom`}>
-                    <h3 id={`${ids}-bottom`} className="analyst-section-title">Bottom line</h3>
+                    <h3 id={`${ids}-bottom`} className="analyst-section-title">Summary</h3>
                     <p>{report.bottom_line}</p>
                 </section>
             )}

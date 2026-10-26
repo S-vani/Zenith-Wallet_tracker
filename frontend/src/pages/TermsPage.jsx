@@ -2,6 +2,7 @@ import {Link} from "react-router-dom";
 import usePageTitle from "../utils/usePageTitle.js";
 import {CONTACT_EMAIL} from "../utils/contact.js";
 import LegalLayout from "../components/LegalLayout.jsx";
+import {BRAND_NAME} from "../utils/brand.js";
 
 // Public Terms of Use, linked from sign up (which says creating an account means agreeing to them), the sign in
 // form, the policy pages and the app. Plain language on purpose. Update the date when the substance changes.
@@ -31,7 +32,7 @@ function TermsPage() {
                 <h1>Terms of Use</h1>
                 <p className="legal-meta">Effective {EFFECTIVE_DATE}</p>
                 <p>
-                    These terms cover your use of Zenith Wallet Tracker ("Zenith", "we", "us"), the portfolio
+                    These terms cover your use of {BRAND_NAME} ("Zenith", "we", "us"), the portfolio
                     tracker at zenithwalletracker.ca and in the Zenith iPhone app. They are written to be read, so
                     here is the short version:
                 </p>

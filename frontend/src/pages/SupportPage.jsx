@@ -2,6 +2,7 @@ import {Link} from "react-router-dom";
 import usePageTitle from "../utils/usePageTitle.js";
 import {CONTACT_EMAIL} from "../utils/contact.js";
 import LegalLayout from "../components/LegalLayout.jsx";
+import {BRAND_NAME} from "../utils/brand.js";
 
 // Public help page. App Store Connect requires a Support URL (https://zenithwalletracker.ca/support), so this must
 // stay reachable without an account. Keep the answers in step with the app's actual screens and wording.
@@ -24,7 +25,7 @@ function SupportPage() {
             <header className="legal-header">
                 <h1>Support</h1>
                 <p>
-                    Help with Zenith Wallet Tracker on the website and in the iPhone app. If your question isn't
+                    Help with {BRAND_NAME} on the website and in the iPhone app. If your question isn't
                     answered here, email us and we'll get back to you.
                 </p>
             </header>

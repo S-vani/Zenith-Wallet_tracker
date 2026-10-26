@@ -27,7 +27,7 @@ The demo account's email must use a real domain: sign-up and password reset reje
 | Marketing URL | https://zenithwalletracker.ca |
 | Privacy Policy URL | https://zenithwalletracker.ca/privacy |
 | Copyright | 2026 *your legal name* |
-| Age rating | Answer the questionnaire honestly (no objectionable content); the privacy policy says the app isn't meant for children under 13, so don't market it to them |
+| Age rating | Answer the questionnaire honestly (no objectionable content, no unrestricted web access: outside links open specific pages in a Safari sheet), then choose **13+** so it matches the Terms and privacy policy (not meant for children under 13) |
 | App Privacy | Must match `frontend/ios/App/App/PrivacyInfo.xcprivacy`: Name, Email, User ID, Other Financial Info (linked to the user, App Functionality, not tracking); Search History (not linked, App Functionality). No tracking. |
 | Screenshots | iPhone 6.9" (1320×2868 or 1290×2796), taken in the simulator signed in to the demo account |
 

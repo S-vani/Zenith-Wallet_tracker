@@ -11,7 +11,7 @@ function AnalystOverview({report}) {
         <div className={`analyst-overview analyst-card${sentiment ? ` sentiment-${sentiment.className}` : ""}`}>
             {sentiment && (
                 <div className="analyst-sentiment">
-                    <span className="analyst-sentiment-label">Outlook</span>
+                    <span className="analyst-sentiment-label">Signal summary</span>
                     <span className={`analyst-sentiment-badge ${sentiment.className}`}>
                         <SentimentIcon sentiment={sentiment.className}/>
                         {sentiment.label}
