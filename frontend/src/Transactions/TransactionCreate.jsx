@@ -7,8 +7,8 @@ import {loadLastAccount, saveLastAccount} from "../utils/accounts.js";
 import HoldingsChart from "../Holdings/HoldingsChart.jsx";
 import TradeFields from "./TradeFields.jsx";
 import {
-    amountHint, backdatedPriceHint, createPayload, isFutureInput, ledgerErrorMessage, parseDecimalInput,
-    quantityInputValue, toLocalInputValue,
+    accountSuffix, amountHint, backdatedPriceHint, createPayload, isFutureInput, ledgerErrorMessage,
+    ownedForAccount, parseDecimalInput, quantityInputValue, toLocalInputValue,
 } from "./tradeForm.js";
 
 import "../css/Holdings.css";
@@ -33,17 +33,20 @@ function TransactionCreate({onClose, onCreated, data}) {
     });
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
-    const [owned, setOwned] = useState(null);
+    const [held, setHeld] = useState(undefined); // the /holdings row (null = none held), undefined while loading
 
     // how much of this asset the user holds, shown when selling
     useEffect(() => {
         getHoldings()
             .then((holdings) => {
                 const match = holdings.find((h) => h.symbol.toLowerCase() === data.api_id.toLowerCase() && h.type === data.type);
-                setOwned(match ? match.quantity : 0);
+                setHeld(match ?? null);
             })
             .catch(() => null);
     }, [data.api_id, data.type]);
+    // per account, like the server checks it (that account's shares plus the ones with no account set)
+    const {owned, inAccount} = held === undefined ? {owned: null, inAccount: null}
+        : ownedForAccount(held, form.account_type);
 
     const setField = (name, value) => {
         setError(null);
@@ -103,6 +106,7 @@ function TransactionCreate({onClose, onCreated, data}) {
                 {form.action === "SELL" && owned !== null && (
                     <p className="create-total">
                         You own <strong>{formatQuantity(owned)} {data.symbol.toUpperCase()}</strong>
+                        {accountSuffix(inAccount)}
                         {backdated && " today"}
                         {owned > 0 && (
                             <button type="button" className="inline-link sell-all"
@@ -123,7 +127,7 @@ function TransactionCreate({onClose, onCreated, data}) {
 
                 {hint && <p className="create-hint">{hint}</p>}
                 {sellsTooMuch && (
-                    <p className="create-hint">That's more than the {formatQuantity(owned)} you own.</p>
+                    <p className="create-hint">That's more than the {formatQuantity(owned)} you own{accountSuffix(inAccount)}.</p>
                 )}
                 {dateInFuture && <p className="create-hint">The date can't be in the future.</p>}
                 {oldPriceHint && <p className="create-hint">{oldPriceHint}</p>}

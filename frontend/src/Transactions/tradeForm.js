@@ -2,7 +2,7 @@
 // test/transactions-helpers.test.js)
 
 import {formatMoney, formatPrice} from "../utils/format.js";
-import {normalizeAccountType} from "../utils/accounts.js";
+import {ACCOUNT_UNSET, accountLabel, normalizeAccountType} from "../utils/accounts.js";
 
 const pad = (n) => String(n).padStart(2, "0");
 
@@ -93,11 +93,45 @@ export function updatePayload(initial, form) {
     return changes;
 }
 
+// The 409 detail when a sell would take more than its own account held (see account_split in the backend)
+export const ACCOUNT_OVERSOLD = "Insufficient holdings in that account";
+
+// How much a sell from `account` can take, for the add form's "You own N" hint. Same rule as the server: a sell
+// tagged with an account may use that account's shares plus the "not set" ones (they could be in any account),
+// never more than the whole holding; a sell with no account set is only checked against the whole holding.
+// `holding` is a /holdings row (its `accounts` is {account or "UNSET": quantity}); null = none held.
+export function ownedForAccount(holding, account) {
+    if (!holding) return {owned: 0, inAccount: null};
+    const total = Number(holding.quantity) || 0;
+    const acct = normalizeAccountType(account);
+    if (!acct || !holding.accounts) return {owned: total, inAccount: null};
+    const own = Number(holding.accounts[acct]) || 0;
+    const unset = Number(holding.accounts[ACCOUNT_UNSET]) || 0;
+    return {owned: Math.min(total, own + unset), inAccount: acct};
+}
+
+// " in TFSA" after "You own 3 AAPL", nothing when the hint covers every account
+export function accountSuffix(inAccount) {
+    return inAccount ? ` in ${accountLabel(inAccount)}` : "";
+}
+
 // The backend answers 409 when a save, edit or delete would make the history sell more than was owned at some
 // point. Say what that means for the thing the user just tried.
 export function ledgerErrorMessage(err, {mode, symbol = "", action = "BUY", backdated = false} = {}) {
     if (err?.status !== 409) return err?.message ?? "Something went wrong. Please try again.";
     const name = symbol.toUpperCase();
+
+    if (err.message === ACCOUNT_OVERSOLD) {
+        if (mode === "delete") {
+            return `This buy can't be deleted: a later sell of ${name} from the same account needs it.`;
+        }
+        if (mode === "edit") {
+            return `That change would leave a sell of ${name} taking more than its account held at the time. ` +
+                "Check the account, quantity and date.";
+        }
+        return `That account didn't hold that much ${name}${backdated ? " on that date" : ""}. Check the account ` +
+            "you picked (shares with no account set count for any account).";
+    }
 
     if (mode === "delete") {
         return `This buy can't be deleted: a later sell of ${name} needs it. Delete or edit that sell first.`;

@@ -1,7 +1,8 @@
 """
 Backdated trades typed in USD / EUR are stored in CAD at the exchange rate of their own date (Yahoo's daily
-USDCAD=X / EURCAD=X history, "latest close known at that time"), which the capital gains / ACB report relies on.
-Recent trades, CAD trades, and trades whose rate history is unavailable keep using the current rate.
+USDCAD=X / EURCAD=X history: the bar dated the trade's Toronto date, or the bar before it on weekends and holidays),
+which the capital gains / ACB report relies on. Recent trades, CAD trades, and trades whose rate history is
+unavailable keep using the current rate.
 """
 from datetime import datetime, timedelta, timezone
 
@@ -29,6 +30,9 @@ class FxTicker:
             raise RuntimeError("Yahoo is down")
         if self.fake.mode == "empty":
             return pd.DataFrame({"Close": []}, index=pd.DatetimeIndex([], tz="UTC"))
+        if self.fake.daily is not None:  # {"YYYY-MM-DD": close}, bars labelled like Yahoo's (midnight London time)
+            index = pd.DatetimeIndex([pd.Timestamp(day, tz="Europe/London") for day in self.fake.daily])
+            return pd.DataFrame({"Close": list(self.fake.daily.values())}, index=index)
         index = pd.date_range(pd.Timestamp("2022-01-01", tz="UTC"), pd.Timestamp.now(tz="UTC").floor("D"), freq="D")
         return pd.DataFrame({"Close": [FX[self.symbol][day.year] for day in index]}, index=index)
 
@@ -38,7 +42,7 @@ def fx(market, monkeypatch):
     """Daily FX histories for USDCAD=X / EURCAD=X; `fx.calls` lists the history requests, `fx.mode` breaks them."""
     real_ticker = market.Ticker
     state = type("FxFake", (), {})()
-    state.calls, state.mode = [], "ok"
+    state.calls, state.mode, state.daily = [], "ok", None
     monkeypatch.setattr(market, "Ticker",
                         lambda symbol: FxTicker(state, symbol.upper()) if symbol.upper() in FX
                         else real_ticker(symbol))
@@ -81,11 +85,47 @@ def test_backdated_usd_buy_uses_the_rate_of_its_date(client, make_user, db, fx):
     assert fx.calls == [("USDCAD=X", "max", "1d"), ("EURCAD=X", "max", "1d")]
 
 
-def test_latest_close_known_at_the_time_is_used(client, make_user, db, fx):
+def test_the_bar_of_the_toronto_trade_date_is_used(client, make_user, db, fx):
     usd = make_user(currency="USD")
-    # the 2024-01-01 bar only closes at the end of that day, so a trade at noon still uses 2023-12-31's close
+    # noon UTC on Jan 1 is 7 am in Toronto: the 2024-01-01 bar, not the day before's
     tx = post(client, usd, created_at=at(2024, 1, 1, 12))
+    assert stored(db, tx["id"]) == pytest.approx(70 * USD_CAD[2024])
+    # 3 am UTC on Jan 1 is still Dec 31 in Toronto: that day's bar
+    tx = post(client, usd, created_at=at(2024, 1, 1, 3))
     assert stored(db, tx["id"]) == pytest.approx(70 * USD_CAD[2023])
+
+
+# Hand-made business-day history (Yahoo has no FX bars on weekends; 2024-07-01, Canada Day, is left out here too)
+JUNE_JULY_2024 = {"2024-06-27": 1.3700, "2024-06-28": 1.3680, "2024-07-02": 1.3720, "2024-07-03": 1.3650,
+                  "2024-07-04": 1.3610}
+
+
+@pytest.mark.parametrize("created_at, expected_rate", [
+    (at(2024, 7, 3, 15), 1.3650),  # Wednesday 11 am Toronto: Wednesday's bar (it used to take Tuesday's)
+    (at(2024, 7, 4, 1), 1.3650),  # Thursday 01:00 UTC = Wednesday 9 pm Toronto: still Wednesday's bar
+    (at(2024, 6, 29, 16), 1.3680),  # Saturday: Friday's bar
+    (at(2024, 6, 30, 16), 1.3680),  # Sunday: Friday's bar
+    (at(2024, 7, 1, 16), 1.3680),  # holiday with no bar: the previous one (Friday's)
+    (at(2024, 7, 2, 3), 1.3680),  # Tuesday 03:00 UTC = Monday 11 pm Toronto: the holiday, so Friday's
+    (at(2024, 7, 2, 12), 1.3720),  # Tuesday morning: Tuesday's bar
+])
+def test_trade_date_rate_hand_computed(client, make_user, db, fx, created_at, expected_rate):
+    fx.daily = JUNE_JULY_2024
+    usd = make_user(currency="USD")
+    tx = post(client, usd, price_of_one=100, created_at=created_at)
+    assert stored(db, tx["id"]) == pytest.approx(100 * expected_rate)
+
+
+def test_a_day_whose_bar_isnt_published_yet_uses_the_previous_one():
+    # the history stops on Wednesday (e.g. fetched before Thursday's bar existed); a Thursday trade uses Wednesday's
+    days = list(JUNE_JULY_2024)[:4]  # up to Wednesday
+    history = services.PriceSeries(labels=[f"{day} 00:00:00+01:00" for day in days],
+                                   closes=[JUNE_JULY_2024[day] for day in days])
+    when = datetime(2024, 7, 4, 15, tzinfo=timezone.utc)
+    assert services.cad_price_on(100, "USD", when, RATES, history) == pytest.approx(136.50)
+    # a gap of more than a week is a hole in the history: the current rate instead
+    when = datetime(2024, 7, 20, 15, tzinfo=timezone.utc)
+    assert services.cad_price_on(100, "USD", when, RATES, history) == pytest.approx(100 / RATES["usd"])
 
 
 def test_recent_and_cad_trades_are_unchanged(client, make_user, db, fx):
@@ -114,7 +154,7 @@ def test_dates_before_the_history_and_bad_closes_fall_back(client, make_user, db
     tx = post(client, usd, created_at=at(2015, 6, 15))  # the fake history starts in 2022
     assert stored(db, tx["id"]) == pytest.approx(70 / RATES["usd"])
 
-    history = services.PriceSeries(known=[datetime(2024, 1, 1, tzinfo=timezone.utc)], closes=[140.0])
+    history = services.PriceSeries(labels=["2024-01-01 00:00:00+00:00"], closes=[140.0])
     when = datetime(2024, 6, 1)
     assert services.cad_price_on(70, "USD", when, RATES, history) == pytest.approx(70 / RATES["usd"])
 
@@ -190,5 +230,6 @@ def test_capital_gains_report_uses_trade_date_rates(client, make_user, fx):
     body = client.get("/reports/capital-gains", headers=usd.headers, params={"year": 2024}).json()
     [sale] = body["sales"]
     assert (sale["proceeds"], sale["acb"], sale["gain"]) == (113.4, 91.0, 22.4)
-    assert any("trade date" in note for note in sale["notes"])
-    assert any("exchange rate of the trade date" in note for note in body["notes"])
+    assert any("close for the trade date (Toronto time" in note for note in sale["notes"])
+    assert any("closing rate (USD/CAD or EUR/CAD) for its trade date in Toronto" in note for note in body["notes"])
+    assert any("open.er-api" in note for note in body["notes"])

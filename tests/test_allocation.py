@@ -104,21 +104,24 @@ def test_a_sell_from_an_account_without_enough_takes_from_not_set_first(client, 
     assert_weights(body)
 
 
-def test_a_partly_covered_sell_takes_the_rest_from_the_largest_other_account(client, user):
+def test_a_partly_covered_sell_takes_the_rest_from_the_largest_other_account(client, user, db):
     trade(client, user, "AAPL", 3, account="TFSA")
     trade(client, user, "AAPL", 2, account="FHSA")
     trade(client, user, "AAPL", 6, account="RRSP")
-    trade(client, user, "AAPL", 5, action="SELL", account="TFSA")  # 3 from the TFSA, 2 more from the RRSP
+    # such a sell is refused now; older data can still have one (saved before sells were checked per account)
+    sold = trade(client, user, "AAPL", 5, action="SELL")
+    db.set_transaction(sold["id"], account_type="TFSA")  # 3 from the TFSA, 2 more from the RRSP
 
     body = allocation(client, user)
     assert as_map(body["by_account"]) == pytest.approx({"RRSP": 4 * 140, "FHSA": 2 * 140})
     assert_weights(body)
 
 
-def test_selling_everything_empties_every_account(client, user):
+def test_selling_everything_empties_every_account(client, user, db):
     trade(client, user, "AAPL", 3, account="TFSA")
     trade(client, user, "AAPL", 2)
-    trade(client, user, "AAPL", 5, action="SELL", account="RRSP")
+    sold = trade(client, user, "AAPL", 5, action="SELL")
+    db.set_transaction(sold["id"], account_type="RRSP")  # older data, see the test above
     trade(client, user, "AAPL", 1, account="FHSA")
 
     body = allocation(client, user)

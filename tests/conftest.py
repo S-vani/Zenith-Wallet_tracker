@@ -247,6 +247,7 @@ def stub_external_services(monkeypatch):
     monkeypatch.setattr(services, "yf", market)
     monkeypatch.setattr(services, "_symbol_currency_cache", {})
     monkeypatch.setattr(services, "_series_cache", {})  # cached price histories must not leak between tests
+    monkeypatch.setattr(services, "_rates_failed_at", 0)  # nor a remembered exchange-rate outage
 
     routes_http = FakeHttpx()
     services_http = FakeHttpx()
@@ -323,6 +324,12 @@ async def _set_transaction_created_at(tx_id, created_at):
         await session.commit()
 
 
+async def _set_transaction_fields(tx_id, **values):
+    async with async_session_maker() as session:
+        await session.execute(update(Transaction).where(Transaction.id == tx_id).values(**values))
+        await session.commit()
+
+
 @pytest.fixture
 def db(run):
     """Small helpers for reading/changing rows directly in the test database."""
@@ -331,6 +338,8 @@ def db(run):
         get_user=lambda email: run(_get_user, email),
         get_transaction=lambda tx_id: run(_get_transaction, tx_id),
         set_created_at=lambda tx_id, created_at: run(_set_transaction_created_at, tx_id, created_at),
+        # writes straight to the row, e.g. to recreate data saved before a check existed
+        set_transaction=lambda tx_id, **values: run(lambda: _set_transaction_fields(tx_id, **values)),
     )
 
 
