@@ -7,6 +7,7 @@ import {
     localInputToIso,
     parseDecimalInput,
     quantityInputValue,
+    symbolSelection,
     toLocalInputValue,
     updatePayload,
 } from "../src/Transactions/tradeForm.js";
@@ -141,5 +142,27 @@ describe("ledger errors", () => {
         expect(ledgerErrorMessage(conflict, {mode: "edit", symbol: "btc"})).toMatch(/BTC history selling more/);
         expect(ledgerErrorMessage(conflict, {mode: "delete", symbol: "eth"}))
             .toMatch(/can't be deleted: a later sell of ETH needs it/);
+    });
+});
+
+describe("picking a search result", () => {
+    // regression: the Select button dropped coin_id, so a coin sharing its ticker was saved as the popular one
+    it("keeps a coin's CoinGecko id through to the saved trade", () => {
+        const result = {api_id: "pepe", symbol: "pepe", type: "crypto", price: 0.00001, coin_id: "pepe-impostor",
+            name: "Pepe Impostor", change: 0, change_pct: 0};
+        const picked = symbolSelection(result);
+        expect(picked).toEqual({api_id: "pepe", symbol: "pepe", type: "crypto", price: 0.00001,
+            coin_id: "pepe-impostor"});
+
+        // what TransactionCreate builds from it, then sends
+        const form = {symbol: picked.symbol, api_id: picked.api_id, coin_id: picked.coin_id ?? null,
+            asset_type: picked.type, action: "BUY", quantity: "1", price_of_one: "1", created_at: "x"};
+        expect(createPayload(form, "x").coin_id).toBe("pepe-impostor");
+    });
+
+    it("sends no coin id for stocks or coins without one", () => {
+        expect(symbolSelection({api_id: "SHOP.TO", symbol: "SHOP.TO", type: "stock", price: 100, coin_id: "x"}))
+            .not.toHaveProperty("coin_id");
+        expect(symbolSelection({api_id: "btc", symbol: "btc", type: "crypto", price: 1})).not.toHaveProperty("coin_id");
     });
 });

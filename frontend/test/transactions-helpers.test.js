@@ -37,7 +37,7 @@ describe("backdatedPriceHint", () => {
 describe("full amounts in the trade details", () => {
     it("never shortens huge amounts", () => {
         expect(fullMoney(97.5e12, "CAD")).toBe("CA$97,500,000,000,000.00");
-        expect(fullMoney(1234.5, "USD")).toBe("$1,234.50");
+        expect(fullMoney(1234.5, "USD")).toBe("US$1,234.50");
         expect(fullMoney(5, null)).toBe("—");
     });
 

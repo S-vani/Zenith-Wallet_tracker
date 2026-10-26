@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useUser } from "../context/UserContext.jsx";
-import { formatPercent, formatPrice } from "../utils/format.js";
+import { formatPercent, formatPrice, listingName } from "../utils/format.js";
 import HoldingsChart from "../Holdings/HoldingsChart.jsx";
 import AnalystPanel from "../Analyst/AnalystPanel.jsx";
 import {isNative} from "../native/platform.js";
@@ -34,8 +34,10 @@ function SearchResults({ results }) {
                                 )}
                                 <div className="search-result-info">
                                     <span className="search-result-symbol">{result.symbol}</span>
-                                    {result.name ? (
-                                        <span className="search-result-name" title={result.name}>{result.name}</span>
+                                    {listingName(result) ? (
+                                        <span className="search-result-name" title={listingName(result)}>
+                                            {listingName(result)}
+                                        </span>
                                     ) : (
                                         <span className="search-result-type">{result.type}</span>
                                     )}

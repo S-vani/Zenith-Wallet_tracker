@@ -56,6 +56,18 @@ export function quantityInputValue(value) {
     return n.toFixed(10).replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
 }
 
+// What the add-trade form starts from when a search result is picked. The coin's CoinGecko id has to come along:
+// several coins share a ticker, and without it the trade (and its price and chart) would use the most popular one.
+export function symbolSelection(result) {
+    return {
+        api_id: result.api_id,
+        symbol: result.symbol,
+        type: result.type,
+        price: result.price,
+        ...(result.type === "crypto" && result.coin_id ? {coin_id: result.coin_id} : {}),
+    };
+}
+
 // Body for POST /transactions. The date is only sent when the user changed it, so an untouched form is dated
 // "now" by the server at the moment it's saved. A coin also sends its CoinGecko id from search, since several
 // coins can share a ticker and the server would otherwise price the most popular one. The account is only sent

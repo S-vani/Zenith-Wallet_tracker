@@ -60,7 +60,7 @@ describe("dashboardChartSummary", () => {
     it("leaves the invested part out for charts saved before it existed", () => {
         const old = chart.map(({time, value}) => ({time, value}));
         expect(dashboardChartSummary(old, "year", "USD")).not.toContain("invested");
-        expect(normalize(dashboardChartSummary(old, "year", "USD"))).toContain("from $12,000.00 to $53,900.00");
+        expect(normalize(dashboardChartSummary(old, "year", "USD"))).toContain("from US$12,000.00 to US$53,900.00");
     });
 
     it("handles no data", () => {

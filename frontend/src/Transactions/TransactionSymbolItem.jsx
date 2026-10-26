@@ -1,19 +1,16 @@
 import {useUser} from "../context/UserContext.jsx";
-import {changeClass, formatPercent, formatPrice, formatSignedMoney} from "../utils/format.js";
+import {changeClass, formatPercent, formatPrice, formatSignedMoney, listingName} from "../utils/format.js";
+import {symbolSelection} from "./tradeForm.js";
 
 function TransactionSymbolItem({data, onSub, selected = false}) {
     const {currency} = useUser();
 
-    const select = () => onSub({
-        api_id: data.api_id,
-        symbol: data.symbol,
-        type: data.type,
-        price: data.price
-    }, data);
+    const select = () => onSub(symbolSelection(data), data);
 
     const price = formatPrice(data.price, currency);
     const change = formatSignedMoney(data.change, currency);
     const changePct = formatPercent(data.change_pct);
+    const listing = listingName(data);
 
     return (
         <div className={`transaction-symbol-item-wrapper${selected ? " selected" : ""}`}>
@@ -24,7 +21,7 @@ function TransactionSymbolItem({data, onSub, selected = false}) {
                     {/* the name tells apart tickers like "SHOP" vs "SHOP.TO", or coins that share a symbol */}
                     <span className="symbol-names">
                         <span className="symbol-text" title={data.symbol}>{data.symbol}</span>
-                        {data.name && <span className="symbol-name" title={data.name}>{data.name}</span>}
+                        {listing && <span className="symbol-name" title={listing}>{listing}</span>}
                     </span>
                 </div>
 

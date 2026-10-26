@@ -6,23 +6,23 @@ import {formatPrice, priceInputValue} from "../src/utils/format.js";
 describe("formatPrice", () => {
     it("uses 2 decimals for normal prices", () => {
         expect(formatPrice(1234.5, "CAD")).toBe("CA$1,234.50");
-        expect(formatPrice(3, "USD")).toBe("$3.00");
+        expect(formatPrice(3, "USD")).toBe("US$3.00");
     });
 
     it("keeps meaningful digits for sub-dollar coins", () => {
-        expect(formatPrice(0.1234, "USD")).toBe("$0.1234");
-        expect(formatPrice(0.000648, "USD")).toBe("$0.000648");
+        expect(formatPrice(0.1234, "USD")).toBe("US$0.1234");
+        expect(formatPrice(0.000648, "USD")).toBe("US$0.000648");
     });
 
     it("never shows a real sub-cent price as $0.00", () => {
-        expect(formatPrice(5.43793e-10, "USD")).toBe("$0.0000000005438");
-        expect(formatPrice(4.3354e-8, "USD")).toBe("$0.00000004335");
-        expect(formatPrice(5.43793e-10, "USD")).not.toBe("$0.00");
+        expect(formatPrice(5.43793e-10, "USD")).toBe("US$0.0000000005438");
+        expect(formatPrice(4.3354e-8, "USD")).toBe("US$0.00000004335");
+        expect(formatPrice(5.43793e-10, "USD")).not.toBe("US$0.00");
     });
 
     it("handles zero and bad input", () => {
-        expect(formatPrice(0, "USD")).toBe("$0.00");
-        expect(formatPrice(undefined, "USD")).toBe("$0.00");
+        expect(formatPrice(0, "USD")).toBe("US$0.00");
+        expect(formatPrice(undefined, "USD")).toBe("US$0.00");
     });
 });
 

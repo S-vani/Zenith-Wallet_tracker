@@ -1,17 +1,11 @@
-import {useEffect, useRef, useState} from "react";
+import {useState} from "react";
 import {Pie, PieChart, ResponsiveContainer, Tooltip} from "recharts";
-import {getPortfolioAllocation} from "../services/api.js";
 import {formatMoney} from "../utils/format.js";
 import {INITIAL_DIMENSION, TOOLTIP_STYLE} from "../utils/chart.js";
-import useRefreshKey from "../native/useRefreshKey.js";
-import {dashboardKey, readDashboardCache, writeDashboardCache} from "./dashboardCache.js";
 import {unpricedNote} from "./dashboardText.js";
 import {allocationRows, allocationSummary, availableViews, formatWeight} from "./allocationData.js";
 
 import "../css/Allocation.css";
-
-// only called from event handlers and state initialisers, never while rendering
-const currentTime = () => Date.now();
 
 // What each tab's breakdown means where it isn't obvious
 const VIEW_NOTES = {
@@ -21,52 +15,12 @@ const VIEW_NOTES = {
 };
 
 // The dashboard's "X-ray": today's value split by asset type, account, holding or listing currency.
-// `currency` is the user's (null until /user loads, so nothing is fetched or cached under a guess); `unavailable`
-// means the account itself couldn't be loaded, and the page already shows that error with its Try again button.
-function AllocationCard({currency, unavailable = false}) {
+// `data` is the /portfolio/allocation reply the page loaded together with the value card (same request batch, same
+// cached prices), so the two totals always agree; it used to load on its own and drifted from the card when the
+// range changed or the dashboard reloaded. `error` is why it couldn't be loaded, `onRetry` loads it again.
+// `unavailable` means the dashboard itself couldn't be loaded, and the page already shows that error.
+function AllocationCard({currency, data, error = null, onRetry, unavailable = false}) {
     const [view, setView] = useState("asset_type");
-    const [loaded, setLoaded] = useState({}); // cache key -> reply, for this visit
-    const [error, setError] = useState(null);
-    const [attempt, setAttempt] = useState(0); // bumped by "Try again"
-    const [clock, setClock] = useState(currentTime); // "now" for the shared cache's age check
-    const fetchedWith = useRef({}); // key -> refreshKey of the last fetch made while the card is open
-    const refreshKey = useRefreshKey(); // app only: pull to refresh / coming back to the app
-
-    // the dashboard's one-minute cache (keyed by session token + currency), so coming back to the dashboard is
-    // instant; "allocation" never clashes with its range keys
-    const key = currency ? dashboardKey("allocation", 0, currency) : null;
-    const data = key ? loaded[key] ?? readDashboardCache(key, clock) : undefined;
-
-    useEffect(() => {
-        if (!key) return; // waiting for the user's currency
-        const fresh = readDashboardCache(key) !== undefined;
-        if (fresh && fetchedWith.current[key] === refreshKey) return;
-
-        let ignore = false;
-        fetchedWith.current[key] = refreshKey;
-
-        getPortfolioAllocation()
-            .then((reply) => {
-                writeDashboardCache(key, reply);
-                setLoaded((all) => ({...all, [key]: reply}));
-                if (!ignore) setError(null);
-            })
-            .catch((err) => {
-                delete fetchedWith.current[key]; // try again next time
-                if (!ignore) setError(err.message);
-            });
-
-        return () => {
-            ignore = true;
-        };
-    }, [key, refreshKey, attempt]);
-
-    const retry = () => {
-        setError(null); // back to the spinner while it tries again
-        setClock(currentTime());
-        setAttempt((n) => n + 1);
-    };
-
     const views = availableViews(data);
     const activeView = views.some((v) => v.value === view) ? view : views[0]?.value ?? "asset_type";
     const rows = data ? allocationRows(data, activeView) : [];
@@ -78,7 +32,7 @@ function AllocationCard({currency, unavailable = false}) {
         body = (
             <div className="alert-error alert-retry" role="alert">
                 <span>{error}</span>
-                <button type="button" className="btn" onClick={retry}>Try again</button>
+                <button type="button" className="btn" onClick={onRetry}>Try again</button>
             </div>
         );
     } else if (!data && unavailable) {
@@ -113,7 +67,7 @@ function AllocationCard({currency, unavailable = false}) {
                 {error && (
                     <div className="alert-error alert-retry" role="alert">
                         <span>{error}</span>
-                        <button type="button" className="btn" onClick={retry}>Try again</button>
+                        <button type="button" className="btn" onClick={onRetry}>Try again</button>
                     </div>
                 )}
 

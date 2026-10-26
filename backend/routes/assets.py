@@ -1,3 +1,4 @@
+import asyncio
 import os
 import time
 from collections import deque
@@ -29,7 +30,9 @@ from backend.services.asset_services import (current_quantity, create_holding_fi
                                              get_all_conversion_rates, get_conversion_factor,
                                              rebuild_symbol_ledger, get_latest_stock_quotes,
                                              get_position_values_at, get_buys_between, get_coingecko_history,
-                                             end_read, to_cad_on_trade_date)
+                                             end_read, to_cad_on_trade_date, get_ticker_currency,
+                                             get_native_to_cad_factor)
+from backend.services.imports import CANADIAN_SUFFIXES, listed_symbol, yahoo_class_share
 
 load_dotenv()
 router = APIRouter()
@@ -475,9 +478,33 @@ async def get_price_history(
     return body
 
 
+MAX_HISTORY_DAYS = 3650  # 10 years: the longest chart Yahoo's weekly "MAX" history is read for
+
+
+async def all_time_days(session: AsyncSession, user: User, now: datetime | None = None) -> int:
+    """
+    Days the "All" chart covers: back to the user's first trade, so backdated and imported history is included
+    (it used to start at date_joined, which squashed years of imported trades into one day). With no trades it's the
+    days since joining. At least 1, at most MAX_HISTORY_DAYS.
+    """
+    now = now or datetime.now(timezone.utc).replace(tzinfo=None)
+    first = (await session.execute(
+        select(func.min(Transaction.created_at)).where(Transaction.user_id == user.id)
+    )).scalar()
+    start = first or user.date_joined
+    if start is None:
+        return 365
+    if start.tzinfo is not None:  # stored as naive UTC, but be safe
+        start = start.astimezone(timezone.utc).replace(tzinfo=None)
+    # ceil, so the chart's first point is at or before the first trade
+    days = -(-(now - start) // timedelta(days=1)) if now > start else 1
+    return max(1, min(MAX_HISTORY_DAYS, days))
+
+
 @router.get("/portfolio/history")
 async def get_portfolio_history(
-        range: int = Query(ge=1, le=3650),  # days; "All" is the days since joining, capped at 10 years
+        # days (1 to 10 years), or "all" for the days since the user's first trade
+        range: Annotated[str, Query(max_length=4, pattern=r"^(all|[0-9]{1,4})$")],
 
         session: AsyncSession = Depends(get_async_session),
         current_user: User = Depends(current_active_user)
@@ -486,7 +513,14 @@ async def get_portfolio_history(
     return a list of dictionaries which each have a time mapping to a string of time and also a value mapping to a float,
     to create a chart for frontend
     """
-    data = await get_portfolio_value_history(session, current_user.id, range, current_user.currency)
+    if range == "all":
+        days = await all_time_days(session, current_user)
+    else:
+        days = int(range)
+        if not 1 <= days <= MAX_HISTORY_DAYS:
+            raise HTTPException(status_code=422, detail=f"range must be 1 to {MAX_HISTORY_DAYS} days, or all")
+
+    data = await get_portfolio_value_history(session, current_user.id, days, current_user.currency)
 
     return data
 
@@ -567,13 +601,57 @@ def clean_search_query(asset: str) -> str:
     return asset
 
 
-async def find_us_stock_symbols(query: str, user_id=None) -> list[dict]:
+# TwelveData lists the same company on many exchanges; only US and Canadian listings are kept (the app prices
+# stocks from Yahoo and promises "US and Canadian stocks"). The exchange is returned with each result so SHOP (NYSE)
+# and SHOP.TO (TSX) can be told apart.
+SEARCH_COUNTRIES = {"United States": "US", "Canada": "Canada"}
+STOCK_SEARCH_RESULTS = 6
+STOCK_SEARCH_CANDIDATES = 30  # unique listings kept per term, so "SHOP.TO" can be picked out of "SHOP"'s matches
+
+
+def yahoo_listing(result: dict) -> str | None:
     """
-    Up to 6 unique US-listed stocks / ETFs matching the query as {"symbol", "name"}, from TwelveData's symbol search
-    (1 credit). Raises a 503 when TwelveData returns an error (usually the per-minute credit limit) so the user sees
-    that instead of "no results", and a 429 when the user starts too many new searches.
+    Yahoo's ticker for a TwelveData match, or None if it isn't a US or Canadian listing the app can price:
+    US "BRK.B" -> "BRK-B"; TSX "SHOP" -> "SHOP.TO", "DLR.U" -> "DLR-U.TO"; TSXV -> ".V", NEO / Cboe Canada -> ".NE",
+    CSE -> ".CN". Same mapping as the CSV import (services/imports.py), so a searched and an imported trade match.
     """
-    cached = _cache_get(_stock_search_cache, query, STOCK_SEARCH_TTL)
+    symbol = str(result.get("symbol") or "").strip().upper()
+    if not symbol:
+        return None
+    country = result.get("country")
+    if country == "United States":
+        return yahoo_class_share(symbol)
+    if country == "Canada":
+        # the MIC (XTSE, XTSX, NEOE, XCNQ) is the most precise; the exchange name (TSX, TSXV, NEO, CSE) is the backup
+        for exchange in (result.get("mic_code"), result.get("exchange")):
+            if exchange:
+                ticker = listed_symbol(symbol, str(exchange))
+                if ticker.endswith(CANADIAN_SUFFIXES):
+                    return ticker
+    return None  # another country, or a Canadian exchange we don't know Yahoo's suffix for
+
+
+def split_listing_query(query: str) -> tuple[str, str | None]:
+    """
+    What to ask TwelveData for, and the Canadian suffix the user typed, if any. TwelveData knows "SHOP", not
+    "SHOP.TO", and writes share classes with a dot: "SHOP.TO" -> ("SHOP", ".TO"), "DLR-U.TO" -> ("DLR.U", ".TO"),
+    "BRK-B" -> ("BRK.B", None).
+    """
+    base, dot, suffix = query.rpartition(".")
+    wanted = f".{suffix}" if dot and base else None
+    if wanted not in CANADIAN_SUFFIXES:
+        base, wanted = query, None
+    return base.replace("-", "."), wanted
+
+
+async def find_stock_listings(term: str, user_id=None) -> list[dict]:
+    """
+    Unique US and Canadian stocks / ETFs matching `term` as {"symbol" (Yahoo ticker), "name", "exchange",
+    "country"}, in TwelveData's relevance order, from its symbol search (1 credit; cached per term). Raises a 503 when
+    TwelveData returns an error (usually the per-minute credit limit) so the user sees that instead of "no results",
+    and a 429 when the user starts too many new searches.
+    """
+    cached = _cache_get(_stock_search_cache, term, STOCK_SEARCH_TTL)
     if cached is not None:
         return cached
     if user_id is not None:
@@ -582,7 +660,9 @@ async def find_us_stock_symbols(query: str, user_id=None) -> list[dict]:
     async with httpx.AsyncClient(timeout=10) as client:
         response = await client.get(
             "https://api.twelvedata.com/symbol_search",
-            params={"symbol": query, "show_plan": True, "apikey": os.getenv("API_KEY")}
+            # more rows than the default 30: a popular ticker's listings on other continents came first and pushed
+            # the Canadian one out
+            params={"symbol": term, "outputsize": 120, "show_plan": True, "apikey": os.getenv("API_KEY")}
         )
     body = response.json()
 
@@ -596,16 +676,29 @@ async def find_us_stock_symbols(query: str, user_id=None) -> list[dict]:
 
     matches, seen = [], set()
     for result in body["data"]:
-        is_us = result.get("country") == "United States"
-        is_valid_type = result.get("instrument_type") in ["Common Stock", "ETF"]
-        if is_us and is_valid_type and result["symbol"] not in seen:  # skip duplicate listings
-            seen.add(result["symbol"])
-            matches.append({"symbol": result["symbol"], "name": result.get("instrument_name") or ""})
-        if len(matches) == 6:
+        if not isinstance(result, dict) or result.get("instrument_type") not in ("Common Stock", "ETF"):
+            continue
+        ticker = yahoo_listing(result)
+        if ticker is None or ticker in seen:  # another country, or a duplicate listing (e.g. other US venues)
+            continue
+        seen.add(ticker)
+        matches.append({
+            "symbol": ticker,
+            "name": result.get("instrument_name") or "",
+            "exchange": str(result.get("exchange") or ""),
+            "country": SEARCH_COUNTRIES[result["country"]],
+        })
+        if len(matches) == STOCK_SEARCH_CANDIDATES:
             break
 
-    _cache_put(_stock_search_cache, query, matches)
+    _cache_put(_stock_search_cache, term, matches)
     return matches
+
+
+async def listing_to_cad(match: dict) -> float | None:
+    """CAD per unit of the listing's price. US listings trade in USD; a Canadian one asks Yahoo (DLR-U.TO is USD)."""
+    currency = "USD" if match["country"] == "US" else await get_ticker_currency(match["symbol"])
+    return await get_native_to_cad_factor(currency)
 
 
 @router.get("/assets/search/stock")
@@ -613,41 +706,52 @@ async def search_assets_stocks(asset: Annotated[str, Query(max_length=200)],
                                current_user: User = Depends(current_active_user),
                                session: AsyncSession = Depends(get_async_session)):
     """
-    Search US stocks and ETFs. For example if asset is "AAP" this returns up to 6 items like AAPL, AAPD, etc. with
-    their name, price and daily change in the user's currency. Matches come from TwelveData, prices from Yahoo (free).
+    Search US and Canadian stocks and ETFs. For example "AAP" returns up to 6 items like AAPL, AAPD, ..., and "SHOP"
+    both SHOP (NYSE) and SHOP.TO (TSX), with their name, exchange, price and daily change in the user's currency.
+    A typed exchange suffix ("SHOP.TO", "ABC.V") keeps only that exchange's listings. Matches come from TwelveData,
+    prices from Yahoo (free) in the listing's currency, converted the same way as the holdings.
     """
     await end_read(session)  # the session only loaded the user; don't hold its connection while TwelveData answers
     asset = clean_search_query(asset).upper()
     if not asset:
         return []
 
-    matches = await find_us_stock_symbols(asset, current_user.id)
+    term, wanted_suffix = split_listing_query(asset)
+    matches = await find_stock_listings(term, current_user.id)
+    if wanted_suffix:
+        matches = [m for m in matches if m["symbol"].endswith(wanted_suffix)]
+    matches = matches[:STOCK_SEARCH_RESULTS]
     if not matches:
         return []
 
     rates = await get_all_conversion_rates()
     conversion = get_conversion_factor(rates, current_user.currency)
-    usd_to_user = float(rates["usd_to_cad"]) * conversion  # only US listings are kept, so prices are in USD
 
-    quotes = await get_latest_stock_quotes([m["symbol"] for m in matches])
+    quotes, to_cad = await asyncio.gather(
+        get_latest_stock_quotes([m["symbol"] for m in matches]),
+        asyncio.gather(*[listing_to_cad(m) for m in matches]),
+    )
     if not quotes:
         raise HTTPException(status_code=503, detail="Stock prices are temporarily unavailable")
 
     final = []
-    for match in matches:  # keep TwelveData's relevance order
+    for match, factor in zip(matches, to_cad):  # keep TwelveData's relevance order
         symbol = match["symbol"]
         quote = quotes.get(symbol)
-        if quote is None:  # Yahoo has no prices for it (e.g. a newly listed or delisted ticker)
+        if quote is None or factor is None:  # no prices on Yahoo (new / delisted), or an unknown listing currency
             continue
+        native_to_user = factor * conversion
         change = quote["close"] - quote["previous_close"]
         final.append({
             "api_id": symbol,
             "symbol": symbol,
             "name": match["name"],  # company or fund name, shown under the ticker
+            "exchange": match["exchange"],  # "NYSE", "TSX", ...: tells SHOP and SHOP.TO apart
+            "country": match["country"],  # "US" or "Canada"
             "type": "stock",
             "image": "",
-            "price": quote["close"] * usd_to_user,
-            "change": change * usd_to_user,
+            "price": quote["close"] * native_to_user,
+            "change": change * native_to_user,
             "change_pct": change / quote["previous_close"] * 100 if quote["previous_close"] else 0.0,
         })
 
