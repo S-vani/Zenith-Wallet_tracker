@@ -238,3 +238,26 @@ def test_portfolio_history_values(client, user, buy, db):
 
 def test_portfolio_history_1d_point_count(client, user):
     assert len(client.get("/portfolio/history?range=1", headers=user.headers).json()) == 289
+
+
+def test_portfolio_history_all_starts_at_the_first_trade(client, user, buy, db):
+    # regression: "All" started at date_joined, so backdated / imported history was squashed into the last day
+    tx = buy(user, "AAPL", 2, 100)
+    first_trade = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=400, hours=5)
+    db.set_created_at(tx["id"], first_trade)
+
+    data = client.get("/portfolio/history?range=all", headers=user.headers).json()
+    start = datetime.fromisoformat(data[0]["time"]).astimezone(timezone.utc).replace(tzinfo=None)
+    assert first_trade - timedelta(days=1) <= start <= first_trade  # begins just before the first trade
+    assert data[-1]["value"] == pytest.approx(2 * AAPL_CAD)
+
+
+def test_portfolio_history_all_without_trades(client, user):
+    data = client.get("/portfolio/history?range=all", headers=user.headers).json()
+    assert len(data) == 289  # joined today: one day
+    assert all(point["value"] == 0 for point in data)
+
+
+@pytest.mark.parametrize("value", ["ALL", "forever", "1.5", "", "3651"])
+def test_portfolio_history_rejects_other_ranges(client, user, value):
+    assert client.get("/portfolio/history", params={"range": value}, headers=user.headers).status_code == 422

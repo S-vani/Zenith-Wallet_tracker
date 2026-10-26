@@ -89,7 +89,7 @@ function TransactionCreate({onClose, onCreated, data}) {
         <div className="transaction-create-wrapper">
             {form.action === "BUY" && (
                 <div className="create-chart">
-                    <span className="create-chart-label">{data.symbol.toUpperCase()} price</span>
+                    {/* the chart's own title already says "AAPL price (per share)", so no extra label here */}
                     <HoldingsChart symbol={data.api_id} type={data.type} coinId={data.coin_id} initialRange="1D"
                                    compact/>
                 </div>

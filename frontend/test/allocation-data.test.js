@@ -127,7 +127,7 @@ describe("allocationSummary", () => {
     it("uses the view's own wording", () => {
         const rows = allocationRows(REPLY, "currency");
         expect(normalize(allocationSummary(rows, "currency", "USD")))
-            .toBe("Allocation by listing currency: USD 60.0% ($600.00), Crypto 40.0% ($400.00).");
+            .toBe("Allocation by listing currency: USD 60.0% (US$600.00), Crypto 40.0% (US$400.00).");
     });
 
     it("says when there is nothing to split up", () => {

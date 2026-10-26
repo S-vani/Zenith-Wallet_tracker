@@ -36,6 +36,13 @@ export function formatMoney(value, currency = "CAD", options = {}) {
         return formatMoney(n, currency, {notation: "compact", maximumFractionDigits: 1, minimumFractionDigits: 0});
     }
 
+    // In a US locale Intl writes USD as a bare "$", which Canadians (the app's main users) read as CA$. Spell it
+    // "US$" so the user's USD amounts can't be mistaken for Canadian dollars. CAD keeps Intl's own symbol.
+    if (currency === "USD") {
+        return formatters[key].formatToParts(n)
+            .map((part) => (part.type === "currency" && part.value === "$" ? "US$" : part.value))
+            .join("");
+    }
     return formatters[key].format(n);
 }
 
@@ -80,6 +87,14 @@ export function formatQuantity(value) {
     const n = Number(value);
     if (Math.abs(n) >= 1e12) return n.toLocaleString(undefined, {notation: "compact", maximumFractionDigits: 1});
     return n.toLocaleString(undefined, {maximumFractionDigits: 8});
+}
+
+// The line under a search result's ticker: "TSX · Shopify Inc." vs "NYSE · Shopify Inc.", so the US and Canadian
+// listings of one company can be told apart. The exchange goes first so a long name is what gets cut off.
+export function listingName(result) {
+    const name = result?.name ?? "";
+    const exchange = result?.type === "stock" ? result?.exchange : "";
+    return [exchange, name].filter(Boolean).join(" · ");
 }
 
 export function changeClass(value) {

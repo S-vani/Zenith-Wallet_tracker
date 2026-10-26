@@ -6,6 +6,7 @@ import {
     formatPrice,
     formatQuantity,
     formatSignedMoney,
+    listingName,
     normalizeCurrency,
     SUPPORTED_CURRENCIES,
 } from "../src/utils/format.js";
@@ -30,8 +31,16 @@ describe("normalizeCurrency", () => {
 describe("formatMoney", () => {
     it("formats each supported currency with 2 decimals", () => {
         expect(formatMoney(1234.5, "CAD")).toBe("CA$1,234.50");
-        expect(formatMoney(1234.5, "USD")).toBe("$1,234.50");
+        expect(formatMoney(1234.5, "USD")).toBe("US$1,234.50");
         expect(formatMoney(1234.5, "EUR")).toBe("€1,234.50");
+    });
+
+    // regression: a USD account saw a bare "$", which Canadians read as their own dollar
+    it("spells USD as US$ while CAD keeps its usual symbol", () => {
+        expect(formatMoney(5, "USD")).toBe("US$5.00");
+        expect(formatMoney(-5, "USD")).toBe("-US$5.00");
+        expect(formatMoney(5, "CAD")).toBe("CA$5.00");
+        expect(formatMoney(5, "USD")).not.toMatch(/US\$.*US\$/); // never doubled
     });
 
     it("defaults to CAD", () => {
@@ -50,22 +59,22 @@ describe("formatMoney", () => {
     });
 
     it("normalizes lowercase, empty and unknown currencies", () => {
-        expect(formatMoney(10, "usd")).toBe("$10.00");
+        expect(formatMoney(10, "usd")).toBe("US$10.00");
         expect(formatMoney(10, "")).toBe("CA$10.00");
         expect(formatMoney(10, "GBP")).toBe("CA$10.00");
     });
 
     it("rounds to cents", () => {
-        expect(formatMoney(1.234, "USD")).toBe("$1.23");
-        expect(formatMoney(1.236, "USD")).toBe("$1.24");
+        expect(formatMoney(1.234, "USD")).toBe("US$1.23");
+        expect(formatMoney(1.236, "USD")).toBe("US$1.24");
     });
 
     it("treats non-numbers as zero", () => {
-        expect(formatMoney(undefined, "USD")).toBe("$0.00");
-        expect(formatMoney(null, "USD")).toBe("$0.00");
-        expect(formatMoney("abc", "USD")).toBe("$0.00");
-        expect(formatMoney(NaN, "USD")).toBe("$0.00");
-        expect(formatMoney("12.5", "USD")).toBe("$12.50");
+        expect(formatMoney(undefined, "USD")).toBe("US$0.00");
+        expect(formatMoney(null, "USD")).toBe("US$0.00");
+        expect(formatMoney("abc", "USD")).toBe("US$0.00");
+        expect(formatMoney(NaN, "USD")).toBe("US$0.00");
+        expect(formatMoney("12.5", "USD")).toBe("US$12.50");
     });
 
     it("formats negatives", () => {
@@ -73,29 +82,29 @@ describe("formatMoney", () => {
     });
 
     it("keeps normal notation just below a trillion", () => {
-        expect(formatMoney(999_999_999_999, "USD")).toBe("$999,999,999,999.00");
+        expect(formatMoney(999_999_999_999, "USD")).toBe("US$999,999,999,999.00");
     });
 
     it("switches to compact notation for huge numbers", () => {
-        expect(formatMoney(1e12, "USD")).toBe("$1T");
+        expect(formatMoney(1e12, "USD")).toBe("US$1T");
         expect(formatMoney(1.5e12, "CAD")).toBe("CA$1.5T");
-        expect(formatMoney(-2.5e12, "USD")).toBe("-$2.5T");
+        expect(formatMoney(-2.5e12, "USD")).toBe("-US$2.5T");
         expect(formatMoney(1e30, "USD").length).toBeLessThan(40);
     });
 
     it("honours explicit options", () => {
-        expect(formatMoney(1.23456, "USD", {maximumFractionDigits: 4})).toBe("$1.2346");
+        expect(formatMoney(1.23456, "USD", {maximumFractionDigits: 4})).toBe("US$1.2346");
     });
 });
 
 describe("formatSignedMoney", () => {
     it("adds a sign for gains and losses", () => {
-        expect(formatSignedMoney(12.3, "USD")).toBe("+$12.30");
-        expect(formatSignedMoney(-12.3, "USD")).toBe("−$12.30");
+        expect(formatSignedMoney(12.3, "USD")).toBe("+US$12.30");
+        expect(formatSignedMoney(-12.3, "USD")).toBe("−US$12.30");
     });
 
     it.each([0, 0.004, -0.004, -0.0049, 1e-12, -1e-12])("shows %d as an unsigned zero", (value) => {
-        expect(formatSignedMoney(value, "USD")).toBe("$0.00");
+        expect(formatSignedMoney(value, "USD")).toBe("US$0.00");
     });
 
     it("never shows a negative zero", () => {
@@ -105,13 +114,13 @@ describe("formatSignedMoney", () => {
     });
 
     it("signs the smallest visible amounts", () => {
-        expect(formatSignedMoney(0.006, "USD")).toBe("+$0.01");
-        expect(formatSignedMoney(-0.006, "USD")).toBe("−$0.01");
+        expect(formatSignedMoney(0.006, "USD")).toBe("+US$0.01");
+        expect(formatSignedMoney(-0.006, "USD")).toBe("−US$0.01");
     });
 
     it("handles invalid input and huge values", () => {
-        expect(formatSignedMoney(undefined, "USD")).toBe("$0.00");
-        expect(formatSignedMoney(-3e12, "USD")).toBe("−$3T");
+        expect(formatSignedMoney(undefined, "USD")).toBe("US$0.00");
+        expect(formatSignedMoney(-3e12, "USD")).toBe("−US$3T");
     });
 });
 
@@ -171,5 +180,21 @@ describe("changeClass", () => {
         ["abc", "neutral"],
     ])("%j -> %s", (value, expected) => {
         expect(changeClass(value)).toBe(expected);
+    });
+});
+
+describe("listingName", () => {
+    it("puts the exchange before a stock's name so SHOP and SHOP.TO can be told apart", () => {
+        expect(listingName({type: "stock", symbol: "SHOP.TO", name: "Shopify Inc.", exchange: "TSX"}))
+            .toBe("TSX · Shopify Inc.");
+        expect(listingName({type: "stock", symbol: "SHOP", name: "Shopify Inc.", exchange: "NYSE"}))
+            .toBe("NYSE · Shopify Inc.");
+    });
+
+    it("copes with missing parts and leaves coins alone", () => {
+        expect(listingName({type: "stock", name: "Apple Inc."})).toBe("Apple Inc.");
+        expect(listingName({type: "stock", exchange: "TSX", name: ""})).toBe("TSX");
+        expect(listingName({type: "crypto", name: "Bitcoin", exchange: "x"})).toBe("Bitcoin");
+        expect(listingName(null)).toBe("");
     });
 });

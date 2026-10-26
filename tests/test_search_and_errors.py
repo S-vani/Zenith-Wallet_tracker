@@ -19,8 +19,12 @@ def fresh_search_state(monkeypatch):
     monkeypatch.setattr(routes_module, "_search_times", {})
 
 
-def stock(symbol, country="United States", kind="Common Stock", name=None):
-    return {"symbol": symbol, "country": country, "instrument_type": kind, "instrument_name": name or f"{symbol} Inc"}
+def stock(symbol, country="United States", kind="Common Stock", name=None, exchange="NASDAQ", mic=None):
+    row = {"symbol": symbol, "country": country, "instrument_type": kind, "instrument_name": name or f"{symbol} Inc",
+           "exchange": exchange}
+    if mic:
+        row["mic_code"] = mic
+    return row
 
 
 RATE_LIMITED = {"code": 429, "status": "error",
@@ -48,7 +52,8 @@ def test_stock_search_filters_and_converts(client, user, search_http, market):
 
     assert [r["symbol"] for r in results] == ["AAPL", "SPY"]
     assert results[0] == {
-        "api_id": "AAPL", "symbol": "AAPL", "name": "Apple Inc.", "type": "stock", "image": "",
+        "api_id": "AAPL", "symbol": "AAPL", "name": "Apple Inc.", "exchange": "NASDAQ", "country": "US",
+        "type": "stock", "image": "",
         "price": pytest.approx(100 * RATES["usd_to_cad"]),
         "change": pytest.approx(2 * RATES["usd_to_cad"]),
         "change_pct": pytest.approx(2 / 98 * 100),
@@ -82,7 +87,7 @@ def test_stock_search_skips_symbols_without_prices(client, user, search_http, ma
 
 
 def test_stock_search_no_matches(client, user, search_http, market):
-    search_http.responses[TWELVE_SEARCH] = {"data": [stock("XYZ", country="Canada")]}
+    search_http.responses[TWELVE_SEARCH] = {"data": [stock("XYZ", country="Germany", exchange="XETR")]}
     assert client.get("/assets/search/stock?asset=xyz", headers=user.headers).json() == []
     assert market.requested == []  # no price lookups when nothing matched
 
@@ -132,6 +137,92 @@ def test_stock_search_matches_expire(client, user, search_http):
 def test_stock_search_503_when_no_prices_at_all(client, user, search_http):
     search_http.responses[TWELVE_SEARCH] = {"data": [stock("ZZZZ")]}  # matched, but Yahoo has nothing
     assert client.get("/assets/search/stock?asset=zzzz", headers=user.headers).status_code == 503
+
+
+# --------------------------------------------------------------------------- Canadian listings
+SHOP_LISTINGS = {"data": [
+    stock("SHOP", name="Shopify Inc.", exchange="NYSE", mic="XNYS"),
+    stock("SHOP", country="Canada", name="Shopify Inc.", exchange="TSX", mic="XTSE"),
+    stock("SHOP", country="Mexico", exchange="BMV", mic="XMEX"),
+]}
+
+
+def test_stock_search_finds_canadian_listings(client, user, search_http, market):
+    # regression: only US listings were kept, so SHOP.TO, TD.TO, XEQT... could not be found at all
+    search_http.responses[TWELVE_SEARCH] = SHOP_LISTINGS
+    market.prices["SHOP"] = 80.0  # USD on the NYSE; SHOP.TO is 50 CAD in the fake market
+
+    results = client.get("/assets/search/stock?asset=shop", headers=user.headers).json()
+    assert [(r["symbol"], r["exchange"], r["country"]) for r in results] == [
+        ("SHOP", "NYSE", "US"), ("SHOP.TO", "TSX", "Canada")]  # told apart by exchange; Mexico is left out
+    assert results[0]["price"] == pytest.approx(80 * RATES["usd_to_cad"])
+    assert results[1]["price"] == pytest.approx(50.0)  # Yahoo says CAD: no conversion for a CAD user
+    assert results[1]["api_id"] == "SHOP.TO"  # the Yahoo ticker the holdings and charts price with
+
+
+def test_stock_search_converts_canadian_prices_for_usd_users(client, make_user, search_http):
+    usd_user = make_user(currency="USD")
+    search_http.responses[TWELVE_SEARCH] = SHOP_LISTINGS
+    [result] = client.get("/assets/search/stock?asset=shop.to", headers=usd_user.headers).json()
+    assert result["price"] == pytest.approx(50.0 * RATES["usd"])  # CAD -> USD, not treated as USD
+
+
+def test_stock_search_usd_traded_tsx_listing(client, user, search_http, market):
+    # DLR.U trades on the TSX in US dollars: Yahoo's DLR-U.TO, priced in USD
+    search_http.responses[TWELVE_SEARCH] = {"data": [
+        stock("DLR.U", country="Canada", name="Global X US Dollar Currency ETF", kind="ETF", exchange="TSX",
+              mic="XTSE")]}
+    market.prices["DLR-U.TO"] = 10.0
+    market.currencies["DLR-U.TO"] = "USD"
+    [result] = client.get("/assets/search/stock?asset=dlr", headers=user.headers).json()
+    assert result["symbol"] == "DLR-U.TO"
+    assert result["price"] == pytest.approx(10.0 * RATES["usd_to_cad"])
+
+
+def test_typed_canadian_suffix_searches_the_bare_ticker(client, user, search_http, market):
+    market.prices["SHOP"] = 80.0
+    search_http.responses[TWELVE_SEARCH] = SHOP_LISTINGS
+
+    results = client.get("/assets/search/stock?asset=SHOP.TO", headers=user.headers).json()
+    assert [r["symbol"] for r in results] == ["SHOP.TO"]  # only the TSX listing
+    assert search_http.calls[0][1]["symbol"] == "SHOP"  # TwelveData doesn't know "SHOP.TO"
+
+    # the bare query reuses the same TwelveData answer (one credit) and shows both listings
+    assert [r["symbol"] for r in client.get("/assets/search/stock?asset=shop", headers=user.headers).json()] \
+        == ["SHOP", "SHOP.TO"]
+    assert len(search_http.calls) == 1
+
+
+@pytest.mark.parametrize("row, ticker", [
+    (stock("XIU", country="Canada", exchange="TSX", mic="XTSE"), "XIU.TO"),
+    (stock("XEQT", country="Canada", exchange="TSX"), "XEQT.TO"),  # no MIC: the exchange name is enough
+    (stock("ABC", country="Canada", exchange="TSXV", mic="XTSX"), "ABC.V"),
+    (stock("VFV", country="Canada", exchange="NEO", mic="NEOE"), "VFV.NE"),
+    (stock("PKG", country="Canada", exchange="CSE", mic="XCNQ"), "PKG.CN"),
+    (stock("DLR.U", country="Canada", exchange="TSX", mic="XTSE"), "DLR-U.TO"),
+    (stock("CTC.A", country="Canada", exchange="TSX", mic="XTSE"), "CTC-A.TO"),
+    (stock("BRK.B", exchange="NYSE", mic="XNYS"), "BRK-B"),
+    (stock("ZZZ", country="Canada", exchange="Somewhere"), None),  # unknown Canadian exchange: can't be priced
+    (stock("SAP", country="Germany", exchange="XETR"), None),
+])
+def test_yahoo_listing(row, ticker):
+    assert routes_module.yahoo_listing(row) == ticker
+
+
+@pytest.mark.parametrize("query, expected", [
+    ("SHOP.TO", ("SHOP", ".TO")),
+    ("ABC.V", ("ABC", ".V")),
+    ("VFV.NE", ("VFV", ".NE")),
+    ("PKG.CN", ("PKG", ".CN")),
+    ("DLR-U.TO", ("DLR.U", ".TO")),
+    ("DLR.U.TO", ("DLR.U", ".TO")),
+    ("BRK-B", ("BRK.B", None)),
+    ("BRK.B", ("BRK.B", None)),
+    ("AAPL", ("AAPL", None)),
+    (".TO", (".TO", None)),
+])
+def test_split_listing_query(query, expected):
+    assert routes_module.split_listing_query(query) == expected
 
 
 # ---------------------------------------------------------------------------------------------------------------------

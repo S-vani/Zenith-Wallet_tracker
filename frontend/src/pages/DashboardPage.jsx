@@ -1,6 +1,6 @@
 import {useEffect, useRef, useState} from "react";
 import {Link} from "react-router-dom";
-import {getDashboardStats, getPortfolioHistory} from "../services/api.js";
+import {getDashboardStats, getPortfolioAllocation, getPortfolioHistory} from "../services/api.js";
 import DashboardStats from "../Dashboard/DashboardStats.jsx";
 import DashboardChart from "../Dashboard/DashboardChart.jsx";
 import AllocationCard from "../Dashboard/AllocationCard.jsx";
@@ -24,12 +24,18 @@ const DAY_MS = 1000 * 60 * 60 * 24;
 // only called from event handlers and state initialisers, never while rendering
 const currentTime = () => Date.now();
 
-// Days of history to chart; "All" goes back to the day the user joined (a year if that's unknown)
-function rangeDays(range, dateJoined, now) {
-    const fixed = TIME_RANGES.find((r) => r.value === range)?.days;
-    if (fixed) return fixed;
-    const joined = dateJoined ? new Date(dateJoined).getTime() : NaN;
-    return Number.isFinite(joined) ? Math.max(1, Math.ceil((now - joined) / DAY_MS)) : 365;
+// Days of history to chart. "All" asks the server for "all": it starts the chart at the first trade, which this page
+// doesn't know (going by date_joined squashed backdated or imported history into a single day)
+function rangeDays(range) {
+    return TIME_RANGES.find((r) => r.value === range)?.days ?? "all";
+}
+
+// How many days a loaded chart covers, so "All" gets the same tooltips (times or dates) as a fixed range that long
+function chartDays(days, chart) {
+    if (days !== "all") return days;
+    const first = Date.parse(chart?.[0]?.time);
+    const last = Date.parse(chart?.[chart.length - 1]?.time);
+    return Number.isFinite(first) && Number.isFinite(last) ? Math.max(1, Math.round((last - first) / DAY_MS)) : 365;
 }
 
 const greeting = () => {
@@ -47,19 +53,19 @@ function DashboardPage() {
     const [attempt, setAttempt] = useState(0); // bumped by "Try again" to fetch the selected range again
     const [activeRange, setActiveRange] = useState("day");
     const [clock, setClock] = useState(currentTime); // "now" for cache ages, moved on by range clicks
-    // everything loaded while the page is open, by cache key: {range, days, stats, chart}
+    // everything loaded while the page is open, by cache key: {range, days, stats, chart, allocation}
     const [loaded, setLoaded] = useState({});
     const [shownKey, setShownKey] = useState(null); // the newest fully loaded range, shown while another loads
     const fetchedWith = useRef({}); // key -> refreshKey of the last fetch made while this page is open
     const refreshKey = useRefreshKey(); // app only: pull to refresh / coming back to the app
 
-    const days = rangeDays(activeRange, user?.date_joined, clock);
+    const days = rangeDays(activeRange);
     // no key until the user (and so the currency every amount comes in) is known, so nothing is cached or shown
     // under a guessed currency
     const key = currency ? dashboardKey(activeRange, days, currency) : null;
 
-    // Stats and chart always come from the same range and are swapped together, so the chart's colour and the
-    // return next to it can never disagree
+    // Stats, chart and allocation always come from the same load and are swapped together, so the chart's colour
+    // and the return next to it can never disagree, and neither can the value card and the allocation total
     const current = key ? loaded[key] ?? readDashboardCache(key, clock) : undefined;
     const shown = current ?? (key && loaded[shownKey]) ?? null;
     const pending = !current; // the selected range is still loading; an older one stays on screen, dimmed
@@ -76,9 +82,12 @@ function DashboardPage() {
         let ignore = false; // the user may already have clicked another range
         fetchedWith.current[key] = refreshKey;
 
-        Promise.all([getDashboardStats(activeRange), getPortfolioHistory(days)])
-            .then(([stats, chart]) => {
-                const entry = {range: activeRange, days, stats, chart};
+        // a failed allocation only fails its own card (with its own Try again), not the whole dashboard
+        const allocation = getPortfolioAllocation()
+            .then((reply) => ({allocation: reply}), (err) => ({allocationError: err.message}));
+        Promise.all([getDashboardStats(activeRange), getPortfolioHistory(days), allocation])
+            .then(([stats, chart, split]) => {
+                const entry = {range: activeRange, days: chartDays(days, chart), stats, chart, ...split};
                 writeDashboardCache(key, entry);
                 setLoaded((all) => ({...all, [key]: entry}));
                 // even a range the user already left is a better placeholder than nothing while the next one loads
@@ -103,6 +112,13 @@ function DashboardPage() {
     const retry = () => {
         setError(null); // back to the loading skeletons while it tries again
         if (!currency) reloadUser();
+        setAttempt((n) => n + 1);
+    };
+
+    // the allocation failed but the rest loaded: load the range again (its saved copy would otherwise be reused)
+    const retryAllocation = () => {
+        if (key) delete fetchedWith.current[key];
+        setClock(currentTime());
         setAttempt((n) => n + 1);
     };
 
@@ -152,8 +168,10 @@ function DashboardPage() {
             <DashboardChart entry={shown} updating={pending && !!shown} currency={currency}
                             error={failed ? "Your portfolio history couldn't be loaded." : null}/>
 
-            {/* loads on its own (it's the same for every range); the account error is already shown above */}
-            <AllocationCard currency={currency} unavailable={!currency && Boolean(userError)}/>
+            {/* the same for every range, but loaded with each one so its total matches the value card above;
+                a dashboard error is already shown above */}
+            <AllocationCard currency={currency} data={shown?.allocation} error={shown?.allocationError ?? null}
+                            onRetry={retryAllocation} unavailable={failed}/>
         </div>
     );
 }

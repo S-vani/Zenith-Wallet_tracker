@@ -43,6 +43,13 @@ function HoldingsTotals({holdings}) {
                 <span/>
             </div>
             {leftOut && <p className="holdings-totals-note">{leftOut}</p>}
+            {/* the two "returns" differ on purpose; without this people took the gap for a bug */}
+            {hasTotals && (
+                <p className="holdings-totals-note">
+                    Total return is unrealized only: what you still hold, against what you paid for it. The
+                    dashboard's all-time return also counts gains and losses from what you've sold.
+                </p>
+            )}
         </section>
     );
 }

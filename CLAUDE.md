@@ -154,10 +154,16 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
 - `/portfolio/history` points are `{time, value, invested}`: `invested` = cost basis of what was held then (average
   cost via `apply_trade`, the same replay as the holdings, prices via `price_in_currency`), over the same priced
   holdings as `value`; the dashboard draws it as the dashed "Invested" line. Charts get a visually hidden text
-  summary (`chartSummary` in `utils/chart.js`).
+  summary (`chartSummary` in `utils/chart.js`). `range` is days (1–3650) or `all` = since the first trade (the
+  dashboard's "All"; never `date_joined`, which hid backdated/imported history). The dashboard loads
+  `/portfolio/allocation` with each range's stats so the Allocation total matches the value card.
 - Stock search uses TwelveData only for `symbol_search` (1 credit; free plan = 8 credits/min) with matches cached
   10 min per query; prices come from Yahoo (`get_latest_stock_quotes`). Don't reintroduce TwelveData `/quote`
   (1 credit per symbol): it used up the limit and errors showed as "no results". Provider errors → 503 with a message.
+  US and Canadian listings are kept and mapped to Yahoo tickers with the import's helpers (`yahoo_listing`: TSX `.TO`,
+  TSXV `.V`, NEO `.NE`, CSE `.CN`, `BRK.B` → `BRK-B`); results carry `exchange` + `country` (shown as
+  "TSX · Shopify Inc."). A typed suffix (`SHOP.TO`) searches `SHOP` and keeps that exchange's listings.
+- Money: `formatMoney` writes USD as "US$" (never a bare "$", which Canadians read as CA$).
 - `/prices/history` falls back to CoinGecko for coins Yahoo doesn't list (e.g. PEPE), cached; it returns `source`,
   and `covered_range: "1Y"` + `note` for a CoinGecko "5Y" (its free plan stops at 365 days), shown under the chart.
 
