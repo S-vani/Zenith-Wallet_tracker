@@ -265,16 +265,16 @@ ledger check rejects any edit that would sell more than was owned.
 
 ## Deployment
 
-The production server runs the code from a Git checkout:
+The production server runs the code from a Git checkout, and one command deploys the latest `main`:
 
 ```bash
-git pull
-uv sync                                   # or: .venv/bin/pip install -r requirements.txt
-cd frontend && npm ci && npm run build    # copy dist/ to the nginx web root if it serves /var/www/html
-sudo systemctl restart walletapp-backend   # required: a pull alone does not reload the Python process
+bash ~/walletapp/deploy/deploy.sh
 ```
 
-Check that the API is up with `curl https://api.zenithwalletracker.ca/auth/providers`.
+It backs up the database, pulls, installs dependencies, builds the website into a temporary folder and swaps it in
+(the site is never blank), restarts `walletapp-backend`, waits for `/health`, and rolls everything back if any step
+fails. Flags: `--status`, `--dry-run`, `--force`, `--setup-nginx`, `--install-backups`. See
+[docs/deploy.md](docs/deploy.md).
 
 ## Disclaimer
 

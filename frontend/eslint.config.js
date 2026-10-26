@@ -6,7 +6,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
   // ios/ holds a copy of the built site (made by `npx cap sync`), not source code
-  globalIgnores(['dist', 'dist-ios', 'ios']),
+  globalIgnores(['dist', 'dist-next', 'dist-prev', 'dist-ios', 'ios']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
