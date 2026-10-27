@@ -36,6 +36,16 @@ function DashboardChart({entry, updating = false, currency, error}) {
                 Building your portfolio history…
             </div>
         );
+    } else if (!hasValues && entry.stats?.has_trades) {
+        // everything was sold before this period, or nothing held has a price: not a new account
+        body = (
+            <div className="state-message">
+                <strong>Nothing to chart for this period</strong>
+                You didn't hold anything with a known price during it. Your past trades are still on the
+                Transactions page.
+                <Link to="/transactions" className="btn">See your transactions</Link>
+            </div>
+        );
     } else if (!hasValues) {
         body = (
             <div className="state-message">

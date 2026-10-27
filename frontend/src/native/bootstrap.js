@@ -2,12 +2,14 @@ import {isNative, loadPlugin} from "./platform.js";
 import {restoreToken} from "./secureToken.js";
 import {isLockEnabled} from "./biometric.js";
 import {haptic} from "./haptics.js";
-import {setOnline} from "./connectivity.js";
+import {getConnectivity, setOnline} from "./connectivity.js";
 import {watchNumbers} from "./fitNumbers.js";
 import {applyPreferredTextSize} from "./textZoom.js";
 import {openLinksInAppBrowser} from "./externalLinks.js";
 import {loadAppVersion} from "./appVersion.js";
 import {handleAppUrl} from "./appLinks.js";
+import {renewSessionIfOld} from "../services/api.js";
+import {watchScreenRequests} from "./screens.js";
 
 const appPlugin = loadPlugin(() => import("@capacitor/app"));
 const networkPlugin = loadPlugin(() => import("@capacitor/network"));
@@ -44,8 +46,10 @@ export async function initNative() {
     const versionRead = loadAppVersion();
 
     await restoreToken(); // must finish before the first render, which checks for a token
+    watchScreenRequests(); // a Home Screen quick action or Siri may have opened the app on a screen
     const lockEnabled = await isLockEnabled();
     await versionRead;
+    renewSessionIfOld(); // in the background: the current token works meanwhile
     return {lockEnabled};
 }
 
@@ -75,8 +79,10 @@ function watchAppState() {
         // "pause" only comes when the app has really left the screen (home swipe, another app), never for the
         // Face ID sheet, so the lock can tell the two apart
         App.addListener("pause", () => window.dispatchEvent(new Event("app:pause")));
-        // Text Size may have been changed in Settings while the app was away
-        App.addListener("resume", () => applyPreferredTextSize());
+        App.addListener("resume", () => {
+            applyPreferredTextSize(); // Text Size may have been changed in Settings while the app was away
+            renewSessionIfOld(); // a phone left unopened for a week: keep the sign in fresh
+        });
         // zenithwallet://login from the "Open the Zenith app" button after verifying an email or resetting a
         // password in Safari (appLinks.js). The launch URL covers a cold start, in case its event came before
         // this listener; opening the same screen twice is harmless.
@@ -91,9 +97,11 @@ function watchNetwork() {
     networkPlugin().then(async ({Network}) => {
         // listen first, then read the current state, so a change in between isn't lost
         Network.addListener("networkStatusChange", ({connected}) => {
+            // also sent for Wi-Fi <-> mobile data switches that never went offline: only a real return reloads
+            const wasOffline = !getConnectivity().online;
             setOnline(connected);
             window.dispatchEvent(new CustomEvent("app:network", {detail: {connected}}));
-            if (connected) window.dispatchEvent(new Event("app:refresh")); // catch up after being offline
+            if (connected && wasOffline) window.dispatchEvent(new Event("app:refresh")); // catch up after being offline
         });
         const {connected} = await Network.getStatus();
         setOnline(connected);

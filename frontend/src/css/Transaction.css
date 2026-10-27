@@ -864,6 +864,11 @@
         grid-template-columns: 1fr;
     }
 
+    /* date and account one under the other: side by side the date field was too narrow and cut off the year */
+    .trade-date-account {
+        flex-direction: column;
+    }
+
     .create-transaction-buttons .btn,
     .transaction-actions .btn {
         flex: 1;
@@ -958,13 +963,21 @@
 }
 
 @media (max-width: 640px) {
+    /* the whole width of the card opens the filters, not just the word (the card looks like one big button) */
+    .filter-heading .filter-title {
+        flex: 1;
+    }
+
     .filter-toggle {
         cursor: pointer;
         min-height: 2.5rem;
+        width: 100%;
     }
 
     .filter-chevron {
         display: inline;
+        margin-left: auto;
+        padding-right: 0.5rem;
     }
 
     .filter-add-section.open .filter-chevron {

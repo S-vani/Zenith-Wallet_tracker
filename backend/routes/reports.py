@@ -3,6 +3,7 @@ Canadian capital gains (ACB) report. Built only from the stored trades (prices a
 exchange-rate source is called, so there's nothing slow to wait on and no end_read needed. The maths is in
 backend/services/reports.py.
 """
+import asyncio
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -15,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.authentication.authentication import current_active_user
 from backend.db.database import get_async_session
 from backend.db_models.assets import Transaction, User
-from backend.services.asset_services import LEDGER_ORDER
+from backend.services.asset_services import LEDGER_ORDER, end_read
 from backend.services.reports import capital_gains, report_csv, taxable_sale_years
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -101,7 +102,10 @@ async def capital_gains_report(
 ):
     """Taxable sales settling in one year with proceeds, ACB and gain in CAD, the year's totals and notes."""
     year = _check_year(year)
-    return capital_gains(await _all_trades(session, current_user), year)
+    trades = await _all_trades(session, current_user)
+    await end_read(session)
+    # CPU work in a thread: a long history must not stall every other request on this one-worker server
+    return await asyncio.to_thread(capital_gains, trades, year)
 
 
 @router.get("/capital-gains.csv")
@@ -112,7 +116,9 @@ async def capital_gains_csv(
 ):
     """The same report as a CSV download (one row per sale plus a totals row)."""
     year = _check_year(year)
-    report = capital_gains(await _all_trades(session, current_user), year)
+    trades = await _all_trades(session, current_user)
+    await end_read(session)
+    report = await asyncio.to_thread(capital_gains, trades, year)
     return Response(
         content=report_csv(report),
         media_type="text/csv; charset=utf-8",

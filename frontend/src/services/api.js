@@ -6,6 +6,7 @@ import {isNative} from "../native/platform.js";
 import {appVersionHeaders} from "../native/appVersion.js";
 import {requireUpdate, updateMessageFrom} from "../native/updateRequired.js";
 import {forgetLastAccount} from "../utils/accounts.js";
+import {forgetPortfolioForSiri} from "../native/screens.js";
 
 const BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
@@ -35,12 +36,25 @@ export function getToken() {
     return localStorage.getItem(TOKEN_KEY);
 }
 
-export function logout() {
+// keepLock: an expired session keeps the app's Face ID lock on for the next sign in on this phone; signing out on
+// purpose (Log out, "Sign out instead", deleting the account) turns it off
+export function logout({keepLock = false} = {}) {
     localStorage.removeItem(TOKEN_KEY);
     keepInKeychain(null); // the iOS app also keeps the token in the Keychain; no-op on the website
     forgetAll(); // and the app's offline copy of the portfolio screens
-    resetLockOnSignOut(); // and the app's Face ID lock, which belongs to this sign in; no-op on the website
+    if (!keepLock) resetLockOnSignOut(); // and the app's Face ID lock; no-op on the website
     forgetLastAccount(); // and the add form's remembered account, which was this person's
+    forgetPortfolioForSiri(); // and the portfolio total the app keeps for Siri; no-op on the website
+}
+
+// A 401/403 for the token a request was sent with. If someone has signed in since (a slow request from before
+// the sign in answering late), that old token's refusal must not sign out the new session.
+function sessionExpired(sentToken) {
+    if (getToken() === sentToken) {
+        logout({keepLock: true});
+        window.dispatchEvent(new Event("auth:expired"));
+    }
+    return new Error("Your session has expired. Please log in again.");
 }
 
 function getAuthHeaders() {
@@ -124,7 +138,7 @@ async function updateRequiredError(res) {
 async function request(path, {auth = true, fallbackError = "Something went wrong. Please try again.", signal, ...options} = {}) {
     // On the website (no time limit) the caller's own signal goes to fetch untouched. In the app a second controller
     // aborts on the time limit *or* when the caller's AbortController (e.g. switching analyst symbols) fires.
-    const timeoutMs = requestTimeout(path); // 0 on the website
+    const timeoutMs = requestTimeout(path, options.method); // 0 on the website
     const controller = timeoutMs ? new AbortController() : null;
     let timedOut = false;
     const timer = controller ? setTimeout(() => {
@@ -146,11 +160,17 @@ async function request(path, {auth = true, fallbackError = "Something went wrong
             markStale(); // the banner says this is saved data
             return saved;
         }
+        if (timedOut && !isGet(options)) {
+            // the server may still have saved it: "try again" could save a trade twice
+            throw new Error("The server didn't answer in time, so this may or may not have been saved. Check " +
+                "before trying again.", {cause: err});
+        }
         throw new Error(timedOut
             ? "The server is taking too long to answer. Please try again."
             : "Can't reach the server. Check your connection and try again.", {cause: err});
     };
 
+    const sentToken = auth ? getToken() : null;
     try {
         let res;
         try {
@@ -173,9 +193,7 @@ async function request(path, {auth = true, fallbackError = "Something went wrong
         }
 
         if (auth && (res.status === 401 || res.status === 403)) {
-            logout();
-            window.dispatchEvent(new Event("auth:expired"));
-            throw new Error("Your session has expired. Please log in again.");
+            throw sessionExpired(sentToken);
         }
 
         if (!res.ok) {
@@ -207,12 +225,16 @@ function isGet(options) {
 }
 
 // Date inputs give "YYYY-MM-DD", which JS reads as UTC midnight. Use the local start/end of the day instead
+// null for a date the browser let through but no Date can hold (a six-digit year typed into the picker): the filter
+// is then simply left out instead of failing with "Invalid time value"
 function startOfDay(date) {
-    return new Date(`${date}T00:00:00`).toISOString();
+    const day = new Date(`${date}T00:00:00`);
+    return Number.isNaN(day.getTime()) ? null : day.toISOString();
 }
 
 function endOfDay(date) {
-    return new Date(`${date}T23:59:59.999`).toISOString();
+    const day = new Date(`${date}T23:59:59.999`);
+    return Number.isNaN(day.getTime()) ? null : day.toISOString();
 }
 
 export async function getTransactions(filters = {}) {
@@ -227,11 +249,13 @@ export async function getTransactions(filters = {}) {
     if (filters.account_type) {
         params.append("account_type", filters.account_type) // a type, or ACCOUNT_UNSET for trades without one
     }
-    if (filters.start_date) {
-        params.append("start_date", startOfDay(filters.start_date))
+    const start = filters.start_date && startOfDay(filters.start_date);
+    if (start) {
+        params.append("start_date", start)
     }
-    if (filters.end_date) {
-        params.append("end_date", endOfDay(filters.end_date))
+    const end = filters.end_date && endOfDay(filters.end_date);
+    if (end) {
+        params.append("end_date", end)
     }
 
     return request(`/transactions?${params.toString()}`, {fallbackError: "Failed to load transactions."});
@@ -286,6 +310,7 @@ export async function commitImport(rows, importId = null) {
 // file is named here, the same way the server names it.
 async function requestCsv(path, filename, fallbackError) {
     let res;
+    const sentToken = getToken();
     try {
         res = await fetch(`${BASE_URL}${path}`, {headers: {...getAuthHeaders(), ...appVersionHeaders()}});
     } catch {
@@ -295,9 +320,7 @@ async function requestCsv(path, filename, fallbackError) {
         throw await updateRequiredError(res);
     }
     if (res.status === 401 || res.status === 403) {
-        logout();
-        window.dispatchEvent(new Event("auth:expired"));
-        throw new Error("Your session has expired. Please log in again.");
+        throw sessionExpired(sentToken);
     }
     if (!res.ok) {
         const error = new Error(await errorMessage(res, fallbackError));
@@ -385,18 +408,17 @@ export async function getCapitalGainsReport(year) {
 export async function getCapitalGainsCsv(year) {
     const fallback = "Couldn't download the CSV. Please try again.";
     let res;
+    const sentToken = getToken();
     try {
         res = await fetch(`${BASE_URL}/reports/capital-gains.csv?year=${encodeURIComponent(year)}`, {
-            headers: {Authorization: `Bearer ${getToken()}`, ...appVersionHeaders()},
+            headers: {Authorization: `Bearer ${sentToken}`, ...appVersionHeaders()},
         });
     } catch (err) {
         throw new Error("Can't reach the server. Check your connection and try again.", {cause: err});
     }
     if (res.status === 426) throw await updateRequiredError(res);
     if (res.status === 401 || res.status === 403) {
-        logout();
-        window.dispatchEvent(new Event("auth:expired"));
-        throw new Error("Your session has expired. Please log in again.");
+        throw sessionExpired(sentToken);
     }
     if (!res.ok) throw new Error(await errorMessage(res, fallback));
     return {filename: `zenith-capital-gains-${year}.csv`, text: await res.text()};
@@ -447,6 +469,36 @@ export function googleSignInUrl(next = "/dashboard") {
 export function saveToken(token) {
     localStorage.setItem(TOKEN_KEY, token);
     keepInKeychain(token);
+}
+
+// App only: the app's sign in lasts 30 days. While it's in use, a token over a week old is swapped for a fresh one
+// (POST /user/token), so someone who opens the app every day is never sent back to the login screen. Called on
+// launch and when the app comes back; at most one attempt an hour, and any failure just waits for the next one.
+const RENEW_AFTER_DAYS = 7;
+const APP_TOKEN_DAYS = 30;
+let lastRenewAttempt = 0;
+
+export function tokenAgeDays(token, now = Date.now()) {
+    try {
+        const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+        return APP_TOKEN_DAYS - (payload.exp * 1000 - now) / 86400000;
+    } catch {
+        return null;
+    }
+}
+
+export async function renewSessionIfOld() {
+    const token = getToken();
+    if (!isNative || !token || Date.now() - lastRenewAttempt < 60 * 60 * 1000) return;
+    const age = tokenAgeDays(token);
+    if (age === null || age < RENEW_AFTER_DAYS) return;
+    lastRenewAttempt = Date.now();
+    try {
+        const data = await request("/user/token", {method: "POST", headers: APP_CLIENT_HEADERS});
+        if (getToken() === token) saveToken(data.access_token); // unless someone signed out or in meanwhile
+    } catch {
+        // offline or the server is down: the current token still works, try again later
+    }
 }
 
 export async function signupAuthentication(form) {

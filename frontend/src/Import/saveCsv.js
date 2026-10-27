@@ -1,11 +1,12 @@
 import {isNative} from "../native/platform.js";
-import {shareText} from "../native/share.js";
+import {shareFile} from "../native/share.js";
 
 // Hand a CSV ({filename, text}) to the person. The website downloads it; the iOS web view can't save a download,
-// so the app opens the share sheet instead (Save to Files, Mail, AirDrop...). Returns false if that was cancelled.
+// so the app shares it as a .csv file instead (Save to Files, Mail, AirDrop...). Returns false if that was
+// cancelled. Used by the export and the tax report.
 export async function saveCsv({filename, text}) {
     if (isNative) {
-        return shareText({title: filename, text});
+        return shareFile({filename, text});
     }
     const url = URL.createObjectURL(new Blob([text], {type: "text/csv;charset=utf-8"}));
     const link = document.createElement("a");

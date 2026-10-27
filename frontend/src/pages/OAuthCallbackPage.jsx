@@ -6,6 +6,16 @@ import usePageTitle from "../utils/usePageTitle.js";
 
 import "../css/Home.css"
 
+// Only a path on this site. Browsers read "\" as "/" ("/\evil.com" would be "//evil.com", which the router
+// can't open and ended on the error screen), and control characters don't belong in a path. Same rule as the server.
+function safeNext(next) {
+    // eslint-disable-next-line no-control-regex -- matching control characters is the point
+    if (next && next.startsWith("/") && !next.startsWith("//") && !next.includes("\\") && !/[\x00-\x1f]/.test(next)) {
+        return next;
+    }
+    return "/dashboard";
+}
+
 // Google sign in lands here with the login token in the URL fragment (#token=...)
 function OAuthCallbackPage() {
     usePageTitle("Signing in");
@@ -38,8 +48,7 @@ function OAuthCallbackPage() {
             showToast(params.get("new") === "1" ? "Account created with Google. Welcome!" : "Signed in with Google");
         }
 
-        const next = params.get("next");
-        navigate(next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard", {replace: true});
+        navigate(safeNext(params.get("next")), {replace: true});
     }, [navigate]);
 
     return (

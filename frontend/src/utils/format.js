@@ -29,7 +29,9 @@ export function formatMoney(value, currency = "CAD", options = {}) {
         });
     }
 
-    const n = Number(value) || 0;
+    let n = Number(value) || 0;
+    // -0.001 rounds to zero: show "CA$0.00", not "-CA$0.00"
+    if (Math.abs(n) < 0.005 && (options.maximumFractionDigits ?? 2) <= 2) n = 0;
 
     // absurdly large numbers would overflow every card, so switch to compact notation (e.g. $1.2T)
     if (Math.abs(n) >= 1e12 && !options.notation) {

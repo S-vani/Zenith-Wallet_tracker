@@ -134,7 +134,7 @@ def test_delisted_stock_is_unavailable(client, user, buy):
     [h] = client.get("/holdings", headers=user.headers).json()
     assert h["current_price"] is None
     d = client.get("/dashboard?current_timeperiod=all", headers=user.headers).json()
-    assert d == {"value": 0.0, "curr_timeperiod": 0.0, "basis": 0.0, "unpriced": ["GONE"]}
+    assert d == {"value": 0.0, "curr_timeperiod": 0.0, "basis": 0.0, "unpriced": ["GONE"], "has_trades": True}
 
 
 def test_yahoo_outage_serves_the_last_good_prices(client, user, buy, market, monkeypatch):

@@ -27,6 +27,7 @@ function AppLock({initiallyEnabled}) {
     const [pending, setPending] = useState(slowStart); // slow start: still finding out, no buttons yet
     const [label, setLabel] = useState("Face ID");
     const [failed, setFailed] = useState(false);
+    const [noPasscode, setNoPasscode] = useState(false); // the iPhone's passcode was turned off since
     const prompting = useRef(false);
     const lockedRef = useRef(locked); // the listeners below need the current value, not the one they closed over
     const unlockedWhenLeft = useRef(false);
@@ -39,8 +40,11 @@ function AppLock({initiallyEnabled}) {
 
     // While covered, nothing behind the lock may stay usable: the focused field is blurred (which also closes the
     // keyboard) and html.app-locked hides the rest of the page from taps, focus and VoiceOver (Native.css).
+    // An open "are you sure?" box is cancelled: a modal <dialog> makes everything outside it inert, the lock
+    // screen's buttons included (ConfirmDialog listens for app:locked).
     useLayoutEffect(() => {
         if (!locked) return;
+        window.dispatchEvent(new Event("app:locked"));
         document.activeElement?.blur?.();
         document.documentElement.classList.add("app-locked");
         return () => document.documentElement.classList.remove("app-locked");
@@ -58,9 +62,13 @@ function AppLock({initiallyEnabled}) {
             await verifyIdentity("Unlock Zenith to see your portfolio");
             haptic("success");
             setFailed(false);
+            setNoPasscode(false);
             lock(false);
         } catch {
             setFailed(true);
+            // with no passcode set any more, iOS can't check anyone: say so instead of "try again" forever
+            const info = await biometricInfo();
+            setNoPasscode(!info.available);
         } finally {
             prompting.current = false;
         }
@@ -108,8 +116,15 @@ function AppLock({initiallyEnabled}) {
             coveredThisTrip.current = true;
             lock(true);
         };
-        const onBackground = () => leave(false);
+        // Only really leaving (pause) locks. Brief "inactive" moments (Control Center, a notification, Siri, the
+        // Face ID sheet of Password AutoFill) don't: locking then closed the keyboard and lost what was being typed,
+        // and the native cover in SceneDelegate.swift already hides the screen in the app switcher.
         const onPause = () => leave(true);
+        // signed out while covered (the session expired, or another device signed everyone out): there's nothing
+        // left to protect, and the login page must not need Face ID first
+        const onSignedOut = () => {
+            if (lockedRef.current && !getToken()) lock(false);
+        };
         const onResume = (e) => {
             const action = onReturn({...state(), unlockedWhenLeft: unlockedWhenLeft.current, away: e.detail?.away});
             coveredThisTrip.current = false;
@@ -117,14 +132,14 @@ function AppLock({initiallyEnabled}) {
             else if (action === "ask") unlock();
         };
         window.addEventListener("app:lock-setting", onSetting);
-        window.addEventListener("app:background", onBackground);
         window.addEventListener("app:pause", onPause);
         window.addEventListener("app:resume", onResume);
+        window.addEventListener("auth:expired", onSignedOut);
         return () => {
             window.removeEventListener("app:lock-setting", onSetting);
-            window.removeEventListener("app:background", onBackground);
             window.removeEventListener("app:pause", onPause);
             window.removeEventListener("app:resume", onResume);
+            window.removeEventListener("auth:expired", onSignedOut);
         };
     }, [enabled, unlock, lock]);
 
@@ -138,7 +153,9 @@ function AppLock({initiallyEnabled}) {
 
     // without an enrolled face or finger the phone only asks for the passcode, so don't promise Face ID
     const passcodeOnly = label === "Passcode";
-    const message = failed
+    const message = noPasscode
+        ? "Your iPhone no longer has a passcode, so Zenith can't check it's you. Set a passcode in Settings > Face ID & Passcode, or sign out."
+        : failed
         ? (passcodeOnly ? "That didn't work. Try your passcode again." : `${label} didn't work. Try again or use your passcode.`)
         : (passcodeOnly ? "Use your passcode to open your portfolio." : `Use ${label} to open your portfolio.`);
 

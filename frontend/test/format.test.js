@@ -77,6 +77,12 @@ describe("formatMoney", () => {
         expect(formatMoney("12.5", "USD")).toBe("US$12.50");
     });
 
+    it("never shows a minus sign on an amount that rounds to zero", () => {
+        expect(formatMoney(-0.001, "CAD")).toBe("CA$0.00");
+        expect(formatMoney(-0.004, "USD")).toBe("US$0.00");
+        expect(formatMoney(-0.005, "CAD")).toBe("-CA$0.01");
+    });
+
     it("formats negatives", () => {
         expect(formatMoney(-3, "EUR")).toBe("-€3.00");
     });

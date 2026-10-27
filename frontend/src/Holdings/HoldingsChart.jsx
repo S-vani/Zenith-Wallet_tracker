@@ -17,7 +17,10 @@ function HoldingChart({symbol, type, coinId = null, initialRange = "1M", compact
     const [range, setRange] = useState(initialRange);
     // the chart on screen and the range it belongs to; while another range loads it stays visible, dimmed
     const [shown, setShown] = useState(null);
-    const [error, setError] = useState(null);
+    // {range, message}: an error belongs to the range that failed, so picking another range loads it instead of
+    // showing the old error, and "Try again" (attempt) loads the failed one again
+    const [failure, setFailure] = useState(null);
+    const [attempt, setAttempt] = useState(0);
     // set once a "5Y" answer turned out shorter (CoinGecko stops at a year), so the 5Y button can say so
     const [fiveYearNote, setFiveYearNote] = useState(null);
     const refreshKey = useRefreshKey(); // app only: pull to refresh reloads in place
@@ -36,17 +39,22 @@ function HoldingChart({symbol, type, coinId = null, initialRange = "1M", compact
                     note: res.note ?? null,
                 });
                 if (range === "5Y") setFiveYearNote(res.covered_range && res.note ? res.note : null);
-                setError(null);
+                setFailure(null);
             })
             .catch((err) => {
-                if (!ignore) setError(err.message);
+                if (!ignore) setFailure({range, message: err.message});
             });
 
         return () => {
             ignore = true;
         };
-    }, [symbol, range, type, coinId, refreshKey]);
+    }, [symbol, range, type, coinId, refreshKey, attempt]);
 
+    const error = failure?.range === range ? failure.message : null;
+    const retry = () => {
+        setFailure(null);
+        setAttempt((n) => n + 1);
+    };
     const data = shown?.data ?? [];
     const pending = !error && shown?.range !== range; // a new range is loading
     const isUp = data.length > 1 && data[data.length - 1].price >= data[0].price;
@@ -76,7 +84,12 @@ function HoldingChart({symbol, type, coinId = null, initialRange = "1M", compact
             </div>
         );
     } else if (failed) {
-        body = <div className="state-message"><p className="alert-error">{error}</p></div>;
+        body = (
+            <div className="state-message">
+                <p className="alert-error" role="alert">{error}</p>
+                <button type="button" className="btn" onClick={retry}>Try again</button>
+            </div>
+        );
     } else if (data.length === 0) {
         body = <div className="state-message">No price data available for this range.</div>;
     } else {

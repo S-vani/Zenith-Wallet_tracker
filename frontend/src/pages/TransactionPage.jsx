@@ -1,5 +1,5 @@
 import {useEffect, useRef, useState} from "react";
-import {Link} from "react-router-dom";
+import {Link, useLocation} from "react-router-dom";
 import {getTransactions} from "../services/api";
 import useRefreshKey from "../native/useRefreshKey.js";
 import TransactionList from "../Transactions/TransactionList";
@@ -34,6 +34,15 @@ function TransactionsPage() {
     const [searchText, setSearchText] = useState(""); // typed in the dialog's symbol search
     const [confirmDiscard, setConfirmDiscard] = useState(false);
     const focusBeforeDiscard = useRef(null);
+
+    // App only: the "Add trade" Home Screen quick action or Siri shortcut opens this page with {openAdd: true}.
+    // Handled once per navigation (its location key), also when the page was already open.
+    const location = useLocation();
+    const [openedFor, setOpenedFor] = useState(null);
+    if (location.state?.openAdd && openedFor !== location.key) {
+        setOpenedFor(location.key);
+        setStep("search");
+    }
 
     useEffect(() => {
         let ignore = false; // drop responses for filters the user has already changed
@@ -163,7 +172,7 @@ function TransactionsPage() {
                 {/* the bulk tools live on their own pages; linked here because this is where trades are managed */}
                 <nav className="page-links" aria-label="More for your trades">
                     <Link to="/import">Import &amp; export CSV</Link>
-                    <Link to="/reports">Capital gains report</Link>
+                    <Link to="/reports">Tax report</Link>
                 </nav>
             </header>
 

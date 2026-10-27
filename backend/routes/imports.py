@@ -345,7 +345,7 @@ async def _commit(body: ImportCommitRequest, session: AsyncSession, current_user
         if culprit is not None and culprit.id in line_of:
             where = f"the sell on line {line_of[culprit.id]} is more {name} than you owned at that point"
         elif culprit is not None:
-            day = culprit.created_at.date().isoformat()
+            day = asset_services.toronto_date(culprit.created_at).isoformat()  # the date the user sees, not UTC's
             where = f"your existing {name} sell on {day} would be short (the file sells some of it earlier)"
         else:
             where = f"your {name} history would sell more than you owned"

@@ -611,6 +611,63 @@ describe("requests in the app", () => {
         expect(requestTimeout("/transactions")).toBe(12000);
     });
 
+    it("give changes a minute, since giving up early on one being saved invited a duplicate", async () => {
+        const {requestTimeout} = await import("../src/native/connectivity.js");
+        expect(requestTimeout("/transactions", "POST")).toBe(60000);
+        expect(requestTimeout("/transactions/abc", "put")).toBe(60000);
+        expect(requestTimeout("/transactions", "GET")).toBe(12000);
+        expect(requestTimeout("/transactions/import", "POST")).toBe(120000);
+    });
+
+    it("say a change that timed out may have been saved, instead of \"try again\"", async () => {
+        vi.useFakeTimers();
+        fetchMock.mockImplementation(hang);
+        const result = api.createTransaction({symbol: "AAPL"});
+        const check = expect(result).rejects.toThrow("may or may not have been saved");
+        await vi.advanceTimersByTimeAsync(60000);
+        await check;
+    });
+
+    it("don't let a late 401 for an old token sign out a newer sign in", async () => {
+        api.saveToken("old-token");
+        let answer;
+        fetchMock.mockImplementation(() => new Promise((resolve) => (answer = resolve)));
+        const pending = api.getHoldings();
+        api.saveToken("new-token"); // signed in again meanwhile
+        answer({ok: false, status: 401, json: async () => ({})});
+        await expect(pending).rejects.toThrow("session has expired");
+        expect(api.getToken()).toBe("new-token");
+        expect(events).not.toContain("auth:expired");
+    });
+
+    it("sign out on a 401 for the current token", async () => {
+        api.saveToken("current-token");
+        fetchMock.mockImplementation(async () => ({ok: false, status: 401, json: async () => ({})}));
+        await expect(api.getHoldings()).rejects.toThrow("session has expired");
+        expect(api.getToken()).toBeNull();
+        expect(events).toContain("auth:expired");
+    });
+
+    it("renew a sign in that's over a week old, once", async () => {
+        const payload = (days) => btoa(JSON.stringify({exp: Math.floor(Date.now() / 1000) + days * 86400}));
+        api.saveToken(`h.${payload(20)}.s`); // 10 days old
+        fetchMock.mockImplementation(reply({access_token: "fresh-token"}));
+        await api.renewSessionIfOld();
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(fetchMock.mock.calls[0][0]).toBe("http://api.test/user/token");
+        expect(api.getToken()).toBe("fresh-token");
+        await api.renewSessionIfOld(); // at most one try an hour
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("leave a recent sign in alone", async () => {
+        const payload = btoa(JSON.stringify({exp: Math.floor(Date.now() / 1000) + 29 * 86400}));
+        api.saveToken(`h.${payload}.s`);
+        await api.renewSessionIfOld();
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(api.tokenAgeDays("not a token")).toBeNull();
+    });
+
     it("don't save a reply that arrives after signing out", async () => {
         await cacheHoldings();
         let answer;
@@ -620,5 +677,60 @@ describe("requests in the app", () => {
         answer({ok: true, status: 200, json: async () => ({value: 1})});
         await pending;
         expect([...store.keys()].filter((k) => k.startsWith("offline"))).toEqual([]);
+    });
+});
+
+describe("screens opened by Siri and the Home Screen quick actions", () => {
+    function withPreferences(saved) {
+        const prefs = {
+            get: async ({key}) => ({value: saved.get(key) ?? null}),
+            set: async ({key, value}) => saved.set(key, value),
+            remove: async ({key}) => saved.delete(key),
+        };
+        vi.doMock("../src/native/platform.js", () => ({
+            isNative: true,
+            loadPlugin: () => () => Promise.resolve({Preferences: prefs}),
+        }));
+    }
+
+    it("open only the screens on the list, once", async () => {
+        const saved = new Map([["pendingScreen", "add-trade"]]);
+        withPreferences(saved);
+        const {takeScreenRequest} = await import("../src/native/screens.js");
+        const {takePendingAppLink} = await import("../src/native/appLinks.js");
+        await takeScreenRequest();
+        expect(takePendingAppLink()).toEqual({path: "/transactions", state: {openAdd: true}});
+        expect(saved.has("pendingScreen")).toBe(false);
+
+        saved.set("pendingScreen", "user"); // not a screen native code may open: ignored, but still cleared
+        await takeScreenRequest();
+        expect(takePendingAppLink()).toBeNull();
+        expect(saved.has("pendingScreen")).toBe(false);
+    });
+
+    it("keep the sentence Siri reads, and forget it on sign out", async () => {
+        const saved = new Map();
+        withPreferences(saved);
+        const {rememberPortfolioForSiri, forgetPortfolioForSiri} = await import("../src/native/screens.js");
+        await rememberPortfolioForSiri({value: 12345.67, curr_timeperiod: -123.45, basis: 12469.12}, "CAD");
+        expect(saved.get("siriPortfolio")).toMatch(/^Your portfolio is worth CA\$12,345\.67, down CA\$123\.45 \(0\.99%\) today\. Updated /);
+        await forgetPortfolioForSiri();
+        expect(saved.has("siriPortfolio")).toBe(false);
+    });
+
+    it("say \"unchanged\" for no change, and leave out a % without a basis", async () => {
+        const {portfolioSentence} = await import("../src/native/screens.js");
+        const at = new Date(2026, 9, 27, 14, 5);
+        expect(portfolioSentence({value: 100, change: 0, basis: 100, currency: "USD", at}))
+            .toMatch(/^Your portfolio is worth US\$100\.00, unchanged today\. Updated /);
+        expect(portfolioSentence({value: 50, change: 50, basis: 0, currency: "CAD", at}))
+            .toMatch(/^Your portfolio is worth CA\$50\.00, up CA\$50\.00 today\./);
+    });
+
+    it("do nothing on the website", async () => {
+        const {takeScreenRequest, rememberPortfolioForSiri} = await import("../src/native/screens.js");
+        await takeScreenRequest();
+        await rememberPortfolioForSiri({value: 1, curr_timeperiod: 0, basis: 1}, "CAD");
+        expect(events).toEqual([]);
     });
 });

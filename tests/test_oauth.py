@@ -6,8 +6,11 @@ import uuid
 from urllib.parse import parse_qs, urlparse
 
 import pytest
+from sqlalchemy import update
 
 import backend.routes.oauth as oauth
+from backend.db.database import async_session_maker
+from backend.db_models.assets import User
 from tests.conftest import PASSWORD, login, register, unique_email
 
 FRONTEND = "http://localhost:5173"
@@ -164,6 +167,50 @@ def test_google_links_to_existing_password_account_and_keeps_its_data(client, go
     assert me["hasPassword"] is False
 
 
+def move_email(run, old, new, **values):
+    async def go():
+        async with async_session_maker() as session:
+            await session.execute(update(User).where(User.email == old).values(email=new, **values))
+            await session.commit()
+    run(go)
+
+
+def test_returning_google_user_who_changed_email_keeps_password_and_is_not_new(client, google, db, run):
+    google_email = unique_email("google")
+    google(email=google_email, account_id="moved-google-id")
+    _, state = start(client)
+    assert fragment(finish(client, state))["new"] == "1"
+
+    # later the user chose a password and moved their Zenith account to another (confirmed) address
+    moved = unique_email("moved")
+    move_email(run, google_email, moved, has_password=True, is_verified=True)
+
+    client.cookies.clear()
+    google(email=google_email, account_id="moved-google-id")
+    _, state = start(client)
+    data = fragment(finish(client, state))
+    assert data["new"] == "0"
+    assert "notice" not in data
+    assert db.get_user(moved).has_password is True  # used to be marked unknown, blocking password changes
+
+
+def test_google_doesnt_verify_an_address_it_didnt_check(client, google, db, run):
+    google_email = unique_email("google")
+    google(email=google_email, account_id="typo-google-id")
+    _, state = start(client)
+    finish(client, state)
+
+    # the user changed their Zenith email to an address they haven't confirmed (maybe a typo)
+    typo = unique_email("typo")
+    move_email(run, google_email, typo, is_verified=False)
+
+    client.cookies.clear()
+    google(email=google_email, account_id="typo-google-id")
+    _, state = start(client)
+    finish(client, state)
+    assert db.get_user(typo).is_verified is False
+
+
 def test_google_verifies_an_unverified_password_account(client, google, db):
     email = unique_email("pending")
     assert register(client, email=email).status_code == 201
@@ -206,7 +253,8 @@ def test_callback_when_google_rejects_the_code(client, google):
     assert query(finish(client, state))["oauth_error"] == "google_error"
 
 
-@pytest.mark.parametrize("unsafe", ["https://evil.example.com", "//evil.example.com", "javascript:alert(1)"])
+@pytest.mark.parametrize("unsafe", ["https://evil.example.com", "//evil.example.com", "javascript:alert(1)",
+                                    "/\evil.example.com", "/	evil"])
 def test_next_cannot_point_outside_the_site(client, google, unsafe):
     google(email=unique_email())
     _, state = start(client, unsafe)

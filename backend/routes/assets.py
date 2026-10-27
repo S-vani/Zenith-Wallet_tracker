@@ -283,6 +283,7 @@ async def return_holdings_with_filter(
 
     result = await session.execute(query.order_by(Transaction.created_at.desc()))
     result = result.scalars().all()
+    await end_read(session)  # an exchange-rate refresh can be slow: don't hold a pooled connection meanwhile
 
     rates = await get_all_conversion_rates()
     conversion = get_conversion_factor(rates, current_user.currency)
@@ -379,11 +380,14 @@ async def portfolio_stats(
     Return the total portfolio value, the profit in the time period sent in (daily, weekly, monthly, yearly or all
     time) and `basis`, what that profit is measured against for the return %: the value at the start of the period
     plus the money put in (buys) during it, which for all time is the cost of every buy.
-    Holdings that no source has a price for are left out of all three and listed in `unpriced`.
+    Holdings that no source has a price for are left out of all three and listed in `unpriced`. `has_trades` tells
+    an empty chart for someone who sold everything apart from a brand new account.
     """
     now = datetime.now(timezone.utc)
     currency = current_user.currency
 
+    has_trades = (await session.execute(
+        select(Transaction.id).where(Transaction.user_id == current_user.id).limit(1))).first() is not None
     # The connection is given back before each wait on a price source (see end_read) and taken again for queries
     await end_read(session)
     holdings = await get_holdings_at_time(session,
@@ -419,6 +423,7 @@ async def portfolio_stats(
             "curr_timeperiod": unrealized_profit + realized_profit,
             "basis": invested,
             "unpriced": sorted(unpriced),
+            "has_trades": has_trades,
         }
 
     time_map = {
@@ -450,6 +455,7 @@ async def portfolio_stats(
         "curr_timeperiod": profit,
         "basis": past_value + inflows,
         "unpriced": sorted(unpriced),
+        "has_trades": has_trades,
     }
 
 
@@ -693,14 +699,17 @@ async def find_stock_listings(term: str, user_id=None) -> list[dict]:
     if user_id is not None:
         _check_search_rate(user_id)
 
-    async with httpx.AsyncClient(timeout=10) as client:
-        response = await client.get(
-            "https://api.twelvedata.com/symbol_search",
-            # more rows than the default 30: a popular ticker's listings on other continents came first and pushed
-            # the Canadian one out
-            params={"symbol": term, "outputsize": 120, "show_plan": True, "apikey": os.getenv("API_KEY")}
-        )
-    body = response.json()
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                "https://api.twelvedata.com/symbol_search",
+                # more rows than the default 30: a popular ticker's listings on other continents came first and pushed
+                # the Canadian one out
+                params={"symbol": term, "outputsize": 120, "show_plan": True, "apikey": os.getenv("API_KEY")}
+            )
+        body = response.json()
+    except (httpx.HTTPError, ValueError):  # network errors, timeouts, a non-JSON body (e.g. a proxy's HTML page)
+        raise HTTPException(status_code=503, detail="Stock search is temporarily unavailable")
 
     # errors come back as {"code": 429, "status": "error", "message": ...} with no "data" key
     if not isinstance(body, dict) or body.get("status") == "error" or "data" not in body:
@@ -1023,6 +1032,19 @@ async def change_password(
         "If this wasn't you, use \"Forgot password\" on the login page right away to choose a new one.\n",
     )
     return {"message": "Password changed", "access_token": await strategy.write_token(user), "token_type": "bearer"}
+
+
+@router.post("/user/token")
+async def renew_token(
+        current_user: User = Depends(current_active_user),
+        strategy=Depends(auth_backend.get_strategy),
+):
+    """
+    A fresh token for a still-valid one, with the same lifetime as a new sign-in from this client. The iPhone app
+    renews its 30-day token while it's in use, so a daily user is never sent back to the login screen (and the Face
+    ID lock they turned on stays on). It can't bring back a revoked token: those fail current_active_user.
+    """
+    return {"access_token": await strategy.write_token(current_user), "token_type": "bearer"}
 
 
 @router.post("/user/logout-all")

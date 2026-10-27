@@ -54,6 +54,41 @@
       </array>
     </dict>
 	</dict>
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>ca.zenithwalletracker.app.add-trade</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Add Trade</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>plus.circle</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>ca.zenithwalletracker.app.search</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Search</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>magnifyingglass</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>ca.zenithwalletracker.app.holdings</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Holdings</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>list.bullet.rectangle</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>ca.zenithwalletracker.app.dashboard</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Dashboard</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>chart.pie</string>
+		</dict>
+	</array>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Zenith uses Face ID to unlock the app, so only you can see your portfolio.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>

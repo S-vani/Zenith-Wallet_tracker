@@ -14,6 +14,16 @@ function GoogleButton({label = "Continue with Google", next}) {
         getAuthProviders().then((providers) => setEnabled(Boolean(providers.google))).catch(() => null);
     }, []);
 
+    // Back from Google's page restores this one from the browser's back-forward cache, still "Redirecting…" and
+    // disabled: make the button usable again
+    useEffect(() => {
+        const onShow = (e) => {
+            if (e.persisted) setRedirecting(false);
+        };
+        window.addEventListener("pageshow", onShow);
+        return () => window.removeEventListener("pageshow", onShow);
+    }, []);
+
     if (!enabled) return null;
 
     return (

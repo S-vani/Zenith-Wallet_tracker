@@ -39,6 +39,15 @@ export function UserProvider({children}) {
             });
     }, []);
 
+    // A user the page saved itself (the Account page's answer): it's newer than any /user request still on its way,
+    // e.g. one started by a window focus just before Save, which would otherwise bring back the old settings
+    const updateUser = useCallback((data) => {
+        latestRequest.current += 1;
+        setLoading(false);
+        setUser(data);
+        setError(null);
+    }, []);
+
     // "Try again" after a failed load: back to loading, then fetch again
     const reload = useCallback(() => {
         setLoading(true);
@@ -85,7 +94,7 @@ export function UserProvider({children}) {
 
     const value = {
         user,
-        setUser,
+        setUser: updateUser,
         currency: user ? normalizeCurrency(user.currency) : null,
         loading: loading && !user,
         error: user ? null : error,

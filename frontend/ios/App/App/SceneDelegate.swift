@@ -21,6 +21,22 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window?.makeKeyAndVisible()
 
         SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)
+
+        // launched from a Home Screen quick action: the web view opens that screen once it has loaded
+        if let item = connectionOptions.shortcutItem, let screen = ZenithScreen(shortcutItem: item) {
+            ScreenRequest.open(screen)
+        }
+    }
+
+    // a Home Screen quick action while the app was already running
+    func windowScene(_ windowScene: UIWindowScene, performActionFor shortcutItem: UIApplicationShortcutItem,
+                     completionHandler: @escaping (Bool) -> Void) {
+        guard let screen = ZenithScreen(shortcutItem: shortcutItem) else {
+            completionHandler(false)
+            return
+        }
+        ScreenRequest.open(screen)
+        completionHandler(true)
     }
 
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
@@ -45,6 +61,13 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         cover.isUserInteractionEnabled = false
         window.addSubview(cover)
         privacyCover = cover
+    }
+
+    // Leaving with the Face ID lock on: a share sheet or the in-app Safari sheet is a native screen above the web
+    // view, so it would still be open (and usable) over "Zenith is locked" on the way back. Close it.
+    func sceneDidEnterBackground(_ scene: UIScene) {
+        guard UserDefaults.standard.string(forKey: SceneDelegate.lockSettingKey) == "on" else { return }
+        window?.rootViewController?.presentedViewController?.dismiss(animated: false)
     }
 
     func sceneDidBecomeActive(_ scene: UIScene) {

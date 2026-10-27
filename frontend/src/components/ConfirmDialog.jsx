@@ -12,6 +12,15 @@ function ConfirmDialog({open, title, message, confirmLabel = "Confirm", onConfir
         if (!open && dialog.open) dialog.close();
     }, [open]);
 
+    // The app's Face ID lock (or "Update required" screen) is covering the page: cancel, because a modal dialog
+    // would keep that screen's buttons from working (everything outside a modal <dialog> is inert)
+    useEffect(() => {
+        if (!open) return;
+        const onCovered = () => onCancel();
+        window.addEventListener("app:locked", onCovered);
+        return () => window.removeEventListener("app:locked", onCovered);
+    }, [open, onCancel]);
+
     return (
         <dialog
             ref={ref}

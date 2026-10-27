@@ -10,13 +10,24 @@
 	<array/>
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array>
-		<!-- @capacitor/preferences stores the "Face ID lock" setting in UserDefaults, read only by this app -->
+		<!-- @capacitor/preferences stores app settings (the "Face ID lock" setting, the screen a Home Screen quick
+		     action or Siri asked for, the portfolio total Siri reads out) in UserDefaults, read only by this app -->
 		<dict>
 			<key>NSPrivacyAccessedAPIType</key>
 			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
 			<key>NSPrivacyAccessedAPITypeReasons</key>
 			<array>
 				<string>CA92.1</string>
+			</array>
+		</dict>
+		<!-- @capacitor/filesystem (its ion-ios-filesystem library reads file metadata): CSV exports are written to
+		     the app's own cache folder before the share sheet hands them over -->
+		<dict>
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>C617.1</string>
 			</array>
 		</dict>
 	</array>

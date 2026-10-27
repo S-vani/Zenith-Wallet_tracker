@@ -105,9 +105,16 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
   (`tabOrder.js`; the website keeps Search first) (`html.native` CSS in `Native.css`), splash/status bar, no pinch
   zoom, iOS Text Size via `@capacitor/text-zoom` (`textZoom.js`, capped at 130%, re-read on resume; tab labels stay
   fixed like a native tab bar), outside `http(s)` links opened in an in-app Safari sheet via `@capacitor/browser`
-  (`externalLinks.js`, one capture-phase click listener; `mailto:` untouched). In the app `/` skips the marketing page and
+  (`externalLinks.js`, one capture-phase click listener; `mailto:` untouched), Siri / Shortcuts / Spotlight App
+  Shortcuts + Home Screen quick actions (`ios/App/App/ZenithShortcuts.swift`, `UIApplicationShortcutItems` in
+  Info.plist; the screen goes through UserDefaults key `CapacitorStorage.pendingScreen` + a `zenith:screen` window
+  event to `native/screens.js`, which only accepts its `SCREENS`; "Portfolio value" reads a sentence the dashboard
+  saves as `siriPortfolio`, never while the Face ID lock is on), CSV exports shared as real files
+  (`@capacitor/filesystem` into the cache folder, `shareFile` in `share.js`), token renewal while in use
+  (`renewSessionIfOld`: `POST /user/token` once the 30-day token is a week old). Writes get a 60 s timeout (GETs 12 s)
+  and a timed-out write says it may have been saved. In the app `/` skips the marketing page and
   Google sign-in is hidden (web views can't use it; would also need Sign in with Apple). Backend CORS always allows
-  `capacitor://localhost`.
+  `capacitor://localhost`. The website's "Open the Zenith app" button only shows once `VITE_IOS_APP_STORE_URL` is set.
   - Build the app with `npm run build:ios` (`vite build --mode ios` into `dist-ios/` using the committed
     `frontend/.env.ios`, drops website-only files like the demo video and fails unless the bundle has an https API
     URL, then `cap sync ios`); the website's `dist/` is separate. iOS 17+, iPhone only. Cloud builds:

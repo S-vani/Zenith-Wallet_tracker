@@ -121,7 +121,7 @@ describe("zenithwallet:// links in the app", () => {
         handleAppUrl("zenithwallet://login");
         expect(eventTypes()).toEqual(["app:navigate"]);
         expect(events[0].detail).toEqual({path: "/login"});
-        expect(takePendingAppLink()).toBe("/login");
+        expect(takePendingAppLink()).toEqual({path: "/login"});
         expect(takePendingAppLink()).toBeNull(); // read once
     });
 });

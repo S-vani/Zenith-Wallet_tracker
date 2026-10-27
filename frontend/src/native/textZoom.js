@@ -23,6 +23,7 @@ export async function applyPreferredTextSize() {
         const {TextZoom} = await textZoomPlugin();
         const {value} = await TextZoom.getPreferred();
         await TextZoom.set({value: textZoomFor(value)});
+        window.dispatchEvent(new Event("app:text-size")); // big amounts fit themselves again (fitNumbers.js)
     } catch {
         // keep the current size
     }

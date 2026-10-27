@@ -79,7 +79,12 @@ html.native.app-locked .app-lock {
 
 html.native .transaction-create-overlay,
 html.native .demo-overlay {
-    padding-top: env(safe-area-inset-top);
+    padding-top: var(--top-inset); /* below the offline strip too, which sits over the top of the screen */
+}
+
+/* the add / edit sheet never reaches up under the Dynamic Island or the offline strip */
+html.native .transaction-create-box {
+    max-height: calc(100dvh - var(--top-inset) - 0.5rem);
 }
 
 /* feel like an app, not a web page: no grey tap flashes, no long-press text menus, no rubber-band

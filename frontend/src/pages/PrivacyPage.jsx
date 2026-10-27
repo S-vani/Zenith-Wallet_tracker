@@ -5,7 +5,7 @@ import LegalLayout from "../components/LegalLayout.jsx";
 import {BRAND_NAME} from "../utils/brand.js";
 
 // Shown publicly and required by the app stores. Keep it in step with what the app actually collects and sends.
-const EFFECTIVE_DATE = "October 24, 2026";
+const EFFECTIVE_DATE = "October 27, 2026";
 
 const SECTIONS = [
     ["disclaimer", "Not financial advice"],
@@ -125,6 +125,14 @@ function PrivacyPage() {
                     store your face data, only whether the check succeeded. So the app can show your portfolio
                     without a connection, it keeps a copy of your most recently loaded screens on your phone;
                     signing out or deleting your account removes it.
+                </p>
+                <p>
+                    So Siri and the Shortcuts app can answer "What's my portfolio worth in Zenith", the app keeps
+                    one sentence on your phone with your portfolio's value and today's change from the last time
+                    the dashboard loaded. It isn't sent to us or anyone else. Siri only reads it out with your
+                    iPhone unlocked, never while the Face ID lock is on, and signing out removes it. A CSV you
+                    export in the app is saved briefly in the app's own temporary folder so the share sheet can
+                    hand it over.
                 </p>
                 <p>
                     In the app, links to other websites (such as a Market Analyst source or our data

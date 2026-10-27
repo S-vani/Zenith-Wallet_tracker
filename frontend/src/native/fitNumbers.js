@@ -8,6 +8,8 @@ const SELECTOR = ".stat-value, .holding-item > span, .holdings-totals-row > span
 const MIN_SCALE = 0.6;
 
 const fitted = new WeakMap(); // element -> "text|width" it was last fitted for, so unchanged ones are skipped
+// bumped when the iPhone's Text Size changes: the text and width stay the same, but every fit is out of date
+let textSizeGeneration = 0;
 
 // The font size that makes content of naturalWidth fit in availableWidth, never below MIN_SCALE of the base size.
 // null = it already fits. Pure, for the tests.
@@ -18,7 +20,7 @@ export function fittedSize({baseSize, naturalWidth, availableWidth}) {
 
 function fit(element) {
     const width = element.clientWidth;
-    const signature = `${element.textContent}|${width}`;
+    const signature = `${textSizeGeneration}|${element.textContent}|${width}`;
     if (!width || fitted.get(element) === signature) return;
     fitted.set(element, signature);
 
@@ -49,4 +51,8 @@ export function watchNumbers() {
     // style / class changes made here are attribute changes, which aren't observed, so this can't loop
     new MutationObserver(schedule).observe(document.body, {childList: true, subtree: true, characterData: true});
     window.addEventListener("resize", schedule);
+    window.addEventListener("app:text-size", () => {
+        textSizeGeneration += 1;
+        schedule();
+    });
 }

@@ -20,6 +20,8 @@ import OfflineBanner from "./native/OfflineBanner.jsx";
 import PullToRefresh from "./native/PullToRefresh.jsx";
 import UpdateRequired from "./native/UpdateRequired.jsx";
 import AppLinkNavigator from "./native/AppLinkNavigator.jsx";
+import AccountLoadError from "./components/AccountLoadError.jsx";
+import ScrollToTop from "./components/ScrollToTop.jsx";
 
 // signed in pages (and the charting library they use) load on demand to keep the landing page fast
 const DashboardPage = lazy(() => import("./pages/DashboardPage.jsx"));
@@ -62,6 +64,7 @@ function ProtectedLayout() {
             {isNative && <PullToRefresh/>}
             <NavBar/>
             <main className="main-content" id="main-content" tabIndex={-1}>
+                <AccountLoadError/>
                 <Suspense fallback={pageFallback}>
                     <Outlet/>
                 </Suspense>
@@ -75,6 +78,7 @@ function App({lockEnabled = false}) {
     return (
         <>
         <SkipLink/>
+        <ScrollToTop/>
         <Toaster/>
         {isNative && <OfflineBanner/>}
         {isNative && <AppLock initiallyEnabled={lockEnabled}/>}

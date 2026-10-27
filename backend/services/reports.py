@@ -19,7 +19,8 @@ Rules (individual investor):
 import csv
 import io
 import re
-from bisect import bisect_right
+import heapq
+from bisect import bisect_left, bisect_right
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
@@ -185,8 +186,23 @@ class _Pool:
     quantity: Decimal = Decimal(0)
     cost: Decimal = Decimal(0)  # total ACB in CAD of what is held
     currencies: set = field(default_factory=set)  # non-CAD currencies of the buys still in the pool
-    # possible superficial losses whose taxable repurchase is in this pool: (from when, sale date, amount)
-    linked_losses: list = field(default_factory=list)
+    # possible superficial losses whose taxable repurchase may still be bought: a heap of (from when, sale date,
+    # amount). Once a sale comes after "from when" the loss moves into the totals below, which every later sale of
+    # the pool shares. Kept as running totals, not a list each sale rescans: a long buy/sell history (an import of
+    # thousands of rows) would otherwise make the report quadratic in time and in size.
+    pending_losses: list = field(default_factory=list)
+    linked_count: int = 0
+    linked_total: Decimal = Decimal(0)
+    linked_first: date | None = None
+    linked_last: date | None = None
+
+    def link_due_losses(self, sale_key) -> None:
+        while self.pending_losses and self.pending_losses[0][0] < sale_key:
+            _, day, amount = heapq.heappop(self.pending_losses)
+            self.linked_count += 1
+            self.linked_total += amount
+            self.linked_first = day if self.linked_first is None else min(self.linked_first, day)
+            self.linked_last = day if self.linked_last is None else max(self.linked_last, day)
 
 
 class _Holdings:
@@ -196,6 +212,11 @@ class _Holdings:
         self.days: list[date] = []  # trade date of each trade, in ledger order (so never decreasing)
         self.running: list[Decimal] = []  # quantity held (all accounts) after each trade
         self.buys: list[tuple[date, tuple, Decimal, bool]] = []  # (day, ledger key, quantity, taxable)
+        self.buy_days: list[date] = []  # the day of each buy (never decreasing), to find a window by bisection
+        # running totals over the buys, so a window's sums cost two lookups instead of a pass over every buy in it
+        self.bought_before: list[Decimal] = [Decimal(0)]  # [i] = quantity of the first i buys
+        self.taxable_before: list[int] = [0]  # [i] = how many of the first i buys are taxable
+        self.taxable_index: list[int] = []  # positions in `buys` of the taxable buys, in order
 
     def add(self, t):
         qty = as_quantity(t.quantity)
@@ -205,10 +226,21 @@ class _Holdings:
         self.days.append(day)
         self.running.append(held)
         if str(t.action) == "BUY":
-            self.buys.append((day, ledger_key(t), qty, is_taxable(t)))
+            taxable = is_taxable(t)
+            if taxable:
+                self.taxable_index.append(len(self.buys))
+            self.buys.append((day, ledger_key(t), qty, taxable))
+            self.buy_days.append(day)
+            self.bought_before.append(self.bought_before[-1] + qty)
+            self.taxable_before.append(self.taxable_before[-1] + taxable)
 
-    def bought_between(self, first: date, last: date) -> list[tuple[date, tuple, Decimal, bool]]:
-        return [b for b in self.buys if first <= b[0] <= last]
+    def window(self, first: date, last: date) -> tuple[Decimal, int, int, tuple | None]:
+        """Buys from `first` to `last`: (quantity bought, how many, how many taxable, key of the first taxable)."""
+        lo, hi = bisect_left(self.buy_days, first), bisect_right(self.buy_days, last)
+        taxable = self.taxable_before[hi] - self.taxable_before[lo]
+        # buys are in ledger order, so the first taxable one at or after `lo` has the smallest key of the window
+        first_taxable = self.buys[self.taxable_index[bisect_left(self.taxable_index, lo)]][1] if taxable else None
+        return self.bought_before[hi] - self.bought_before[lo], hi - lo, taxable, first_taxable
 
     def held_at_end_of(self, day: date) -> Decimal:
         i = bisect_right(self.days, day)
@@ -240,8 +272,8 @@ def _superficial(sale, loss: Decimal, holdings: _Holdings, today: date) -> _Supe
     still_open = last_day >= today
 
     sold = as_quantity(sale.quantity)
-    window_buys = holdings.bought_between(sale_day - timedelta(days=SUPERFICIAL_DAYS), last_day)
-    bought = sum((b[2] for b in window_buys), Decimal(0))
+    bought, buy_count, taxable_count, first_taxable = holdings.window(sale_day - timedelta(days=SUPERFICIAL_DAYS),
+                                                                       last_day)
     held_at_end = holdings.held_at_end_of(last_day)
     denied_units = min(sold, bought, held_at_end)
 
@@ -259,17 +291,15 @@ def _superficial(sale, loss: Decimal, holdings: _Holdings, today: date) -> _Supe
         f"Possible superficial loss: you bought {_qty(bought)} of this security within 30 days before or after this "
         f"sale (in any account, TFSA and RRSP included) and held {_qty(held_at_end)} at the end of the 30 days "
         f"after it. CRA may deny all or part of this loss; by its formula that's {portion} (about "
-        f"${result.denied:,.2f} CAD).")
+        f"CA${result.denied:,.2f}).")
 
-    registered = [b for b in window_buys if not b[3]]
-    taxable = [b for b in window_buys if b[3]]
-    if taxable:
+    if taxable_count:
         result.notes.append("A denied loss isn't lost: it's added to the ACB of the shares bought back in your "
                             "non-registered account, which lowers the gain (or raises the loss) when you sell them.")
+        # from this sale on if a taxable repurchase came before it, otherwise from the first one after it
         sale_key = ledger_key(sale)
-        before = [b for b in taxable if b[1] <= sale_key]
-        result.taxable_repurchase_from = sale_key if before else min(b[1] for b in taxable)
-    if registered:
+        result.taxable_repurchase_from = sale_key if first_taxable <= sale_key else first_taxable
+    if buy_count > taxable_count:
         result.notes.append("When the shares bought back are in a TFSA, RRSP or other registered account, the "
                             "denied part is lost for good: it isn't added to any ACB.")
     if still_open:
@@ -333,7 +363,8 @@ def capital_gains(trades, year: int, now: datetime | None = None) -> dict:
 
         # possible superficial losses earlier on whose taxable repurchase is part of what this sale takes out
         sale_key = ledger_key(t)
-        linked = [(day, amount) for since, day, amount in pool.linked_losses if since < sale_key]
+        pool.link_due_losses(sale_key)
+        linked = (pool.linked_count, pool.linked_total, pool.linked_first, pool.linked_last)
 
         if oversold or qty >= pool.quantity - sell_tolerance(pool.quantity):
             pools[key] = pool = _Pool()
@@ -345,22 +376,31 @@ def capital_gains(trades, year: int, now: datetime | None = None) -> dict:
         acb = _cents(acb)
         gain = proceeds - acb
 
+        settles = settlement_date(t)
         superficial = _Superficial()
-        if gain < 0:
+        # a sale settling after the year can't change this year's report: the losses it could link only reach later
+        # sales of the same security, which settle later still
+        if gain < 0 and settles.year <= year:
             superficial = _superficial(t, -gain, holdings[key], today)
             if superficial.taxable_repurchase_from is not None:
                 # the repurchase may still be bought later; sales from then on carry a note (see below)
-                pool.linked_losses.append((superficial.taxable_repurchase_from, trade_date(t), superficial.denied))
+                heapq.heappush(pool.pending_losses,
+                               (superficial.taxable_repurchase_from, trade_date(t), superficial.denied))
 
-        settles = settlement_date(t)
         if settles.year != year:
             continue
 
         notes.extend(superficial.notes)
-        for day, amount in linked:
-            notes.append(f"Its ACB may be too low: the possible superficial loss on {day.isoformat()} (up to "
-                         f"${amount:,.2f} CAD) would be added to the ACB of the shares bought back, which raises the "
-                         f"ACB of this sale if CRA denies it.")
+        linked_count, linked_total, first_day, last_day = linked
+        if linked_count == 1:
+            notes.append(f"Its ACB may be too low: the possible superficial loss on {first_day.isoformat()} (up to "
+                         f"CA${linked_total:,.2f}) would be added to the ACB of the shares bought back, which raises "
+                         f"the ACB of this sale if CRA denies it.")
+        elif linked_count > 1:
+            notes.append(f"Its ACB may be too low: {linked_count} possible superficial losses from "
+                         f"{first_day.isoformat()} to {last_day.isoformat()} (up to CA${linked_total:,.2f} in all) "
+                         f"would be added to the ACB of the shares bought back, which raises the ACB of this sale if "
+                         f"CRA denies them.")
         foreign = _foreign(t)
         if foreign:
             notes.append(f"Entered in {foreign}: converted to CAD with Yahoo Finance's daily {foreign}/CAD close for "
@@ -389,7 +429,7 @@ def capital_gains(trades, year: int, now: datetime | None = None) -> dict:
             "foreign_currency": bool(foreign or acb_currencies),
             "superficial_loss": superficial.flagged,
             "superficial_amount": _money(superficial.denied),
-            "acb_may_rise": bool(linked),
+            "acb_may_rise": linked_count > 0,
             "interlisted": bool(pair),
             "oversold": oversold,
             "notes": notes,

@@ -112,6 +112,36 @@ def test_stock_search_other_provider_errors_are_503(client, user, search_http):
     assert "invalid api key" not in res.text  # provider details stay server-side
 
 
+def test_stock_search_unreachable_provider_is_503(client, user, search_http):
+    # a timeout or connection error used to escape as a 500 ("Something went wrong") instead of the search message
+    def timeout(_params):
+        raise search_http.HTTPError("timed out")
+
+    search_http.responses[TWELVE_SEARCH] = timeout
+    res = client.get("/assets/search/stock?asset=nvda", headers=user.headers)
+    assert res.status_code == 503
+    assert res.json()["detail"] == "Stock search is temporarily unavailable"
+
+
+def test_stock_search_non_json_body_is_503(client, user, search_http, monkeypatch):
+    class HtmlPage:  # e.g. a proxy's 502 page in front of TwelveData
+        status_code = 502
+
+        def json(self):
+            raise ValueError("Expecting value")
+
+    original_get = search_http.AsyncClient.get
+
+    async def get(self, url, params=None, **kwargs):
+        if url == TWELVE_SEARCH:
+            return HtmlPage()
+        return await original_get(self, url, params, **kwargs)
+
+    monkeypatch.setattr(search_http.AsyncClient, "get", get)
+    res = client.get("/assets/search/stock?asset=nvda", headers=user.headers)
+    assert res.status_code == 503
+
+
 def test_stock_search_reuses_matches_for_repeat_queries(client, user, search_http):
     search_http.responses[TWELVE_SEARCH] = {"data": [stock("AAPL")]}
     for query in ("aapl", "AAPL ", "aapl"):

@@ -8,6 +8,7 @@ import {dashboardKey, readDashboardCache, writeDashboardCache} from "../Dashboar
 import {useUser} from "../context/UserContext.jsx";
 import usePageTitle from "../utils/usePageTitle.js";
 import useRefreshKey from "../native/useRefreshKey.js";
+import {rememberPortfolioForSiri} from "../native/screens.js";
 
 import "../css/Dashboard.css";
 
@@ -49,7 +50,9 @@ function DashboardPage() {
     usePageTitle("Dashboard");
 
     const {user, currency, error: userError, reload: reloadUser} = useUser();
-    const [error, setError] = useState(null);
+    // {key, message}: the error belongs to the range (and currency) that failed, so it goes away when another one,
+    // already loaded, is picked
+    const [failure, setFailure] = useState(null);
     const [attempt, setAttempt] = useState(0); // bumped by "Try again" to fetch the selected range again
     const [activeRange, setActiveRange] = useState("day");
     const [clock, setClock] = useState(currentTime); // "now" for cache ages, moved on by range clicks
@@ -67,8 +70,12 @@ function DashboardPage() {
     // Stats, chart and allocation always come from the same load and are swapped together, so the chart's colour
     // and the return next to it can never disagree, and neither can the value card and the allocation total
     const current = key ? loaded[key] ?? readDashboardCache(key, clock) : undefined;
-    const shown = current ?? (key && loaded[shownKey]) ?? null;
+    // another range stays on screen meanwhile, but only one loaded in this currency: amounts in the old currency
+    // would otherwise show under the new one's symbol (the currency can change in another tab)
+    const previous = key ? loaded[shownKey] : undefined;
+    const shown = current ?? (previous?.currency === currency ? previous : null);
     const pending = !current; // the selected range is still loading; an older one stays on screen, dimmed
+    const error = failure?.key === key ? failure.message : null;
     // nothing to show and the load failed (or the account couldn't be loaded): "—" and the error, not skeletons
     const loadError = error ?? (currency ? null : userError);
     const failed = !shown && Boolean(loadError);
@@ -87,22 +94,24 @@ function DashboardPage() {
             .then((reply) => ({allocation: reply}), (err) => ({allocationError: err.message}));
         Promise.all([getDashboardStats(activeRange), getPortfolioHistory(days), allocation])
             .then(([stats, chart, split]) => {
-                const entry = {range: activeRange, days: chartDays(days, chart), stats, chart, ...split};
+                const entry = {range: activeRange, days: chartDays(days, chart), stats, chart, currency, ...split};
                 writeDashboardCache(key, entry);
                 setLoaded((all) => ({...all, [key]: entry}));
                 // even a range the user already left is a better placeholder than nothing while the next one loads
                 setShownKey(key);
-                if (!ignore) setError(null);
+                setFailure((f) => (f?.key === key ? null : f));
+                // app only: what Siri reads out for "What's my portfolio worth" (value + today's change)
+                if (activeRange === "day") rememberPortfolioForSiri(stats, currency);
             })
             .catch((err) => {
                 delete fetchedWith.current[key]; // try again next time
-                if (!ignore) setError(err.message);
+                if (!ignore) setFailure({key, message: err.message});
             });
 
         return () => {
             ignore = true;
         };
-    }, [key, activeRange, days, refreshKey, attempt]);
+    }, [key, activeRange, days, refreshKey, attempt, currency]);
 
     const selectRange = (value) => {
         setClock(currentTime());
@@ -110,7 +119,7 @@ function DashboardPage() {
     };
 
     const retry = () => {
-        setError(null); // back to the loading skeletons while it tries again
+        setFailure(null); // back to the loading skeletons while it tries again
         if (!currency) reloadUser();
         setAttempt((n) => n + 1);
     };

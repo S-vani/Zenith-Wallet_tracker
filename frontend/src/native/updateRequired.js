@@ -39,6 +39,7 @@ export function requireUpdate(text) {
     if (next === message) return;
     message = next;
     document.documentElement.classList.add("update-required");
+    window.dispatchEvent(new Event("app:locked")); // closes an open "are you sure?" box, which would block this screen
     listeners.forEach((listener) => listener());
 }
 

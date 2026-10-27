@@ -71,7 +71,7 @@ def test_holdings_with_unknown_price_are_unavailable(client, user, buy):
 @pytest.mark.parametrize("period", ["day", "week", "month", "year", "all"])
 def test_dashboard_empty(client, user, period):
     res = client.get(f"/dashboard?current_timeperiod={period}", headers=user.headers)
-    assert res.json() == {"value": 0.0, "curr_timeperiod": 0.0, "basis": 0.0, "unpriced": []}
+    assert res.json() == {"value": 0.0, "curr_timeperiod": 0.0, "basis": 0.0, "unpriced": [], "has_trades": False}
 
 
 def test_dashboard_all_time_includes_realized_and_unrealized_profit(client, user, buy, sell):
@@ -81,6 +81,17 @@ def test_dashboard_all_time_includes_realized_and_unrealized_profit(client, user
     res = client.get("/dashboard?current_timeperiod=all", headers=user.headers).json()
     assert res["value"] == pytest.approx(2 * AAPL_CAD)
     assert res["curr_timeperiod"] == pytest.approx(2 * (AAPL_CAD - 100) + 50)
+
+
+@pytest.mark.parametrize("period", ["day", "all"])
+def test_dashboard_says_whether_there_are_any_trades(client, user, buy, sell, period):
+    # an all-zero chart means "add your first trade" only when there's no trade at all, not after selling everything
+    assert client.get(f"/dashboard?current_timeperiod={period}", headers=user.headers).json()["has_trades"] is False
+    buy(user, "AAPL", 1, 100)
+    sell(user, "AAPL", 1, 120)
+    res = client.get(f"/dashboard?current_timeperiod={period}", headers=user.headers).json()
+    assert res["value"] == 0
+    assert res["has_trades"] is True
 
 
 def test_dashboard_handles_crypto_with_lowercase_ids(client, user, buy):

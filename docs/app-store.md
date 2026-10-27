@@ -29,7 +29,7 @@ The demo account's email must use a real domain: sign-up and password reset reje
 | Copyright | 2026 *your legal name* |
 | Age rating | Answer the questionnaire honestly (no objectionable content, no unrestricted web access: outside links open specific pages in a Safari sheet), then choose **13+** so it matches the Terms and privacy policy (not meant for children under 13) |
 | App Privacy | Must match `frontend/ios/App/App/PrivacyInfo.xcprivacy`: Name, Email, User ID, Other Financial Info (linked to the user, App Functionality, not tracking); Search History (not linked, App Functionality). No tracking. |
-| Screenshots | iPhone 6.9" (1320×2868 or 1290×2796), taken in the simulator signed in to the demo account |
+| Screenshots | iPhone 6.9" (1320×2868) and 6.3" (1206×2622, iPhone 17 Pro simulator), signed in to the demo account, showing the app in use (not the login screen) |
 
 Description must say plainly: manual record-keeping only; it does not connect to banks, brokers or exchanges, hold
 or move money, execute trades, or give financial advice.
@@ -43,10 +43,19 @@ or move money, execute trades, or give financial advice.
 >
 > Demo account (already verified, with sample trades): *email* / *password*
 >
-> Native features: Face ID app lock (Account → Security; the card appears when the device has Face ID or a passcode
-> set up), Keychain storage of the sign-in, haptics, the iOS share sheet (Search → select a result → "Share <TICKER>"
-> under the expanded result), offline mode (turn on Airplane Mode and reopen Dashboard or Holdings: saved data shows
-> under a "You're offline" banner), pull to refresh, iOS Text Size support, in-app Safari for outside links.
+> Native features:
+> - Siri and Shortcuts (App Shortcuts, no setup needed): "What's my portfolio worth in Zenith" answers with the
+>   value and today's change without opening the app; "Add a trade in Zenith", "Open my Zenith dashboard", "Show my
+>   Zenith holdings" and "Search in Zenith" open those screens. They also appear in Spotlight, the Shortcuts app and
+>   on the Action button. Open the dashboard once after signing in so the value is available.
+> - Home Screen quick actions: press and hold the app icon for Add Trade, Search, Holdings and Dashboard.
+> - Face ID app lock (Account → Security; the card appears when the device has Face ID or a passcode set up). While
+>   it's on, Siri doesn't read out the value, and the app switcher shows a cover instead of the portfolio.
+> - Offline mode: turn on Airplane Mode and reopen Dashboard or Holdings; saved data shows under a "You're
+>   offline" banner.
+> - CSV export and the tax report's CSV go through the iOS share sheet as real .csv files (Save to Files, Mail).
+> - Keychain storage of the sign-in, haptics, the share sheet for search results (Search → select a result →
+>   "Share <TICKER>"), pull to refresh, iOS Text Size support, in-app Safari for outside links.
 >
 > The analyst's scenario ranges are historical-volatility ranges, not price targets, and the app says so next to
 > them. Its text is written by built-in rules; when an optional AI service is enabled it only rewords the same
@@ -66,7 +75,12 @@ or move money, execute trades, or give financial advice.
 - Market data licences: Yahoo Finance (via yfinance), TwelveData's free plan and CoinGecko's Demo plan don't allow
   display in a public app. Move to licensed providers before or soon after launch (deliberately left out of the
   launch work).
-- A home-screen widget (WidgetKit) would further reduce the "repackaged website" (4.2) risk; it needs a Mac and an
-  App Group to build.
+- A home-screen widget (WidgetKit) would further reduce the "repackaged website" (4.2) risk. It's a separate
+  extension target with its own bundle id and an App Group (enabled on both ids in the Apple Developer portal, plus
+  a second provisioning profile in Codemagic), so it's left for later; Siri / Shortcuts and the quick actions cover
+  4.2 without that setup.
+- After approval: set `VITE_IOS_APP_STORE_URL` in `frontend/.env.ios` (the "Update required" screen's link) **and**
+  in the website's `frontend/.env` on the server, then deploy: the "Open the Zenith app" button on the verify and
+  reset-password pages only shows once it's set (before release it led nowhere).
 - Universal Links instead of the custom `zenithwallet://` scheme need your Apple Team ID for the
   `apple-app-site-association` file.

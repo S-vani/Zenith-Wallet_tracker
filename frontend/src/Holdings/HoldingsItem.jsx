@@ -20,6 +20,7 @@ function HoldingsItem({holding, index}) {
     // null current_price = no source has a price for it: show "—" instead of $0 / −100%
     const priced = isPriced(holding);
     const gain = priced ? holding.current_price - holding.price_paid : null;
+    // null too when nothing was paid (free coins): a return % of nothing is unknown, not 0.00%
     const gainPct = priced && holding.price_paid > 0 ? (gain / holding.price_paid) * 100 : null;
     const classReturn = `change-pct ${changeClass(gain)}`;
     // per unit, so formatPrice: a tiny coin's average cost never shows as $0.00
@@ -41,7 +42,7 @@ function HoldingsItem({holding, index}) {
                 <span className="holding-cell holding-avg-cost" data-label="Avg cost"
                       title={AVG_COST_NOTE}>{avgCost === null ? "—" : <Amount text={avgCostText}/>}</span>
                 <span className={`holding-cell ${classReturn}`} data-label="Return">{priced ? <Amount text={formatSignedMoney(gain, currency)}/> : "—"}</span>
-                <span className={`holding-cell ${classReturn}`} data-label="Return %">{priced ? <Amount text={formatPercent(gainPct)}/> : "—"}</span>
+                <span className={`holding-cell ${classReturn}`} data-label="Return %">{gainPct !== null ? <Amount text={formatPercent(gainPct)}/> : "—"}</span>
 
                 <span className="expand-icon" aria-hidden="true">▾</span>
             </button>

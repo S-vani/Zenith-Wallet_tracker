@@ -556,6 +556,24 @@ def test_app_logins_get_a_30_day_token_and_the_website_1_hour(client, user):
     assert client.get("/user", headers=bearer(app.json()["access_token"])).status_code == 401
 
 
+def test_the_app_renews_its_token_while_it_is_still_valid(client, user):
+    app_headers = {"X-Zenith-Client": "ios-app"}
+    old = client.post("/auth/jwt/login", data={"username": user.email, "password": PASSWORD},
+                      headers=app_headers).json()["access_token"]
+    renewed = client.post("/user/token", headers={**bearer(old), **app_headers})
+    assert renewed.status_code == 200
+    assert APP_TOKEN_LIFETIME - 60 < _lifetime(renewed) <= APP_TOKEN_LIFETIME
+    assert client.get("/user", headers=bearer(renewed.json()["access_token"])).status_code == 200
+    # the website keeps its one-hour token
+    web = client.post("/user/token", headers=user.headers)
+    assert WEB_TOKEN_LIFETIME - 60 < _lifetime(web) <= WEB_TOKEN_LIFETIME
+
+
+def test_a_revoked_token_cant_be_renewed(client, user):
+    client.post("/user/logout-all", headers=user.headers)
+    assert client.post("/user/token", headers=user.headers).status_code == 401
+
+
 # =====================================================================================================================
 # 9. Production hygiene: no public API docs, security headers
 # =====================================================================================================================

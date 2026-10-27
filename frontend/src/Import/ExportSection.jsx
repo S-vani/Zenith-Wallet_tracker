@@ -2,6 +2,7 @@ import {useState} from "react";
 import {exportTradesCsv, getImportTemplate} from "../services/api.js";
 import {showToast} from "../utils/toast.js";
 import {saveCsv} from "./saveCsv.js";
+import {isNative} from "../native/platform.js";
 
 // Download every trade (Zenith's template, which imports back in) or an empty template to fill in by hand
 function ExportSection() {
@@ -14,7 +15,9 @@ function ExportSection() {
         try {
             const file = kind === "export" ? await exportTradesCsv() : await getImportTemplate();
             if (await saveCsv(file)) {
-                showToast(kind === "export" ? "Your trades were downloaded" : "Template downloaded");
+                // in the app the file went to the share sheet (Files, Mail...), not to a downloads folder
+                const done = isNative ? "shared" : "downloaded";
+                showToast(kind === "export" ? `Your trades were ${done}` : `Template ${done}`);
             }
         } catch (err) {
             setError(err.message);

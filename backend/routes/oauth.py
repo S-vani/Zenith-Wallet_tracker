@@ -51,8 +51,10 @@ def callback_url() -> str:
 
 
 def safe_next(path: str | None) -> str:
-    # only allow paths inside our own site, never a full URL to somewhere else
-    if path and path.startswith("/") and not path.startswith("//"):
+    # only allow paths inside our own site, never a full URL to somewhere else. Browsers read a backslash as a
+    # slash, so "/\evil.com" is "//evil.com" to them; control characters have no place in a path either
+    if (path and path.startswith("/") and not path.startswith("//") and "\\" not in path
+            and not any(ord(c) < 32 for c in path)):
         return path
     return "/dashboard"
 
@@ -128,12 +130,17 @@ async def google_callback(
     existing = True
     password_replaced = False
     try:
-        existing_user = await user_manager.get_by_email(account_email)
+        # already linked: found by the Google id, since the account may have moved to another email since (and
+        # whoever has the Google address in Zenith now, if anyone, mustn't be touched)
+        await user_manager.get_by_oauth_account("google", account_id)
     except Exception:
-        existing = False
-    else:
-        already_linked = any(account.oauth_name == "google" for account in existing_user.oauth_accounts)
-        if not already_linked:
+        try:
+            existing_user = await user_manager.get_by_email(account_email)
+        except Exception:
+            existing = False
+        else:
+            linked_elsewhere = any(account.oauth_name == "google" for account in existing_user.oauth_accounts)
+        if existing and not linked_elsewhere:
             # The first time Google is linked to an account that was made with a password, that password could
             # belong to someone else: an attacker can register victim@gmail.com with their own password, and the
             # victim may even click the verification link later. Google has just proved who owns the address, so
@@ -157,8 +164,9 @@ async def google_callback(
         return fail("inactive")
 
     changes = {}
-    if not user.is_verified or not user.ever_verified:
-        # Google has verified this address, so an account waiting on email verification can be trusted now
+    if (not user.is_verified or not user.ever_verified) and user.email.lower() == account_email.lower():
+        # Google has verified this address, so an account waiting on email verification can be trusted now (only
+        # when it is still the account's address: after an email change the new one must be confirmed by email)
         changes.update(is_verified=True, ever_verified=True)
     if not existing and user.has_password:
         changes["has_password"] = False  # made by Google with a random password the owner never saw
