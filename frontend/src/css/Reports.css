@@ -78,7 +78,7 @@
 }
 
 .reports-total {
-    background: linear-gradient(145deg, #1e2433, #161b28);
+    background: var(--card-bg);
     border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: var(--radius);
     padding: 1rem 1.25rem;
@@ -130,7 +130,7 @@
 /* sales table */
 .reports-table-wrap {
     overflow-x: auto;
-    background: linear-gradient(145deg, #1e2433, #161b28);
+    background: var(--card-bg);
     border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: 1.25rem;
 }
@@ -241,7 +241,7 @@
     flex-direction: column;
     gap: 0.75rem;
     padding: 1rem;
-    background: linear-gradient(145deg, #1e2433, #161b28);
+    background: var(--card-bg);
     border: 1px solid rgba(255, 255, 255, 0.07);
     border-radius: var(--radius);
     min-width: 0;

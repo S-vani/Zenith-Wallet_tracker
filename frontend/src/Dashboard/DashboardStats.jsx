@@ -1,5 +1,6 @@
 import {changeClass, formatMoney, formatPercent, formatSignedMoney} from "../utils/format.js";
 import {unpricedNote} from "./dashboardText.js";
+import RollingNumber from "../components/RollingNumber.jsx";
 
 const RANGE_LABELS = {
     day: "Today's return",
@@ -17,8 +18,13 @@ const RANGE_LABELS = {
 function Amount({text}) {
     return (
         <span className="stat-amount" style={{"--chars": text.length}}
-              title={text.length > 16 ? text : undefined}>{text}</span>
+              title={text.length > 16 ? text : undefined}><RollingNumber text={text}/></span>
     );
+}
+
+// a real but tiny change reads "<0.01%" (in its gain / loss colour), not a red "0.00%" next to a loss
+function percentText(change, pct) {
+    return Math.abs(pct) < 0.005 && Math.abs(change) >= 0.005 ? "<0.01%" : formatPercent(pct);
 }
 
 function DashboardStats({stats, loading, valueLoading = loading, unavailable = false, currency, range}) {
@@ -34,7 +40,7 @@ function DashboardStats({stats, loading, valueLoading = loading, unavailable = f
     return (
         <>
             <div className="dashboard-stats">
-                <div className="stat-card">
+                <div className="stat-card stat-card-hero">
                     <div className="stat-label">Portfolio value</div>
                     {unavailable ? (
                         <div className="stat-value">—</div>
@@ -55,7 +61,7 @@ function DashboardStats({stats, loading, valueLoading = loading, unavailable = f
                         <div className={`stat-value ${changeClass(change)}`}>
                             <Amount text={formatSignedMoney(change, currency)}/>
                             {changePct !== null && (
-                                <span className="stat-pct">{formatPercent(changePct)}</span>
+                                <span className="stat-pct">{percentText(change, changePct)}</span>
                             )}
                         </div>
                     )}

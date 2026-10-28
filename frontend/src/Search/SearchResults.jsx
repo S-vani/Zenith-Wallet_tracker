@@ -1,4 +1,5 @@
 import { useState } from "react";
+import AssetAvatar from "../components/AssetAvatar.jsx";
 import { useUser } from "../context/UserContext.jsx";
 import { formatPercent, formatPrice, listingName } from "../utils/format.js";
 import HoldingsChart from "../Holdings/HoldingsChart.jsx";
@@ -27,10 +28,12 @@ function SearchResults({ results }) {
                                 onClick={() => setExpandedId(isExpanded ? null : result.api_id)}
                                 aria-expanded={isExpanded}>
                             <div className="search-result-left">
-                                {/* no logo (or a broken one) means no image at all, rather than an empty circle */}
-                                {result.image && !brokenImages.has(result.api_id) && (
+                                {/* the coin's own logo when CoinGecko has one, otherwise a lettered badge (stocks) */}
+                                {result.image && !brokenImages.has(result.api_id) ? (
                                     <img className="search-result-image" src={result.image} alt=""
                                          onError={() => hideImage(result.api_id)}/>
+                                ) : (
+                                    <AssetAvatar symbol={result.symbol} type={result.type}/>
                                 )}
                                 <div className="search-result-info">
                                     <span className="search-result-symbol">{result.symbol}</span>

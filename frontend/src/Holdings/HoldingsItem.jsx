@@ -1,4 +1,5 @@
 import HoldingsChart from "./HoldingsChart.jsx"
+import AssetAvatar from "../components/AssetAvatar.jsx";
 import {useState} from "react";
 import {useUser} from "../context/UserContext.jsx";
 import {changeClass, formatMoney, formatPercent, formatPrice, formatQuantity, formatSignedMoney} from "../utils/format.js";
@@ -28,11 +29,16 @@ function HoldingsItem({holding, index}) {
     const avgCostText = avgCost === null ? "—" : formatPrice(avgCost, currency);
 
     return (
-        <div className={`holding-item-wrapper${isOpen ? " open" : ""}`} style={{animationDelay: `${index * 60}ms`}}>
+        <div className={`holding-item-wrapper${isOpen ? " open" : ""}`} style={{animationDelay: `${Math.min(index, 10) * 50}ms`}}>
             <button className="holding-item" onClick={() => setIsOpen(!isOpen)} aria-expanded={isOpen}>
                 <div className="position-column">
-                    <span className="position-symbol">{holding.symbol}</span>
-                    <span className="position-type">{holding.type}</span>
+                    <AssetAvatar symbol={holding.symbol} type={holding.type}/>
+                    <div className="position-text">
+                        <span className="position-symbol">{holding.symbol}</span>
+                        <span className="position-type">{holding.type}</span>
+                        {/* phones: the compact row says how many instead of the type */}
+                        <span className="position-qty">{formatQuantity(holding.quantity)} {holding.type === "crypto" ? "coins" : "shares"}</span>
+                    </div>
                 </div>
 
                 <span className="holding-cell" data-label="Value"
@@ -49,6 +55,11 @@ function HoldingsItem({holding, index}) {
 
             {isOpen && (
                 <div className="holding-chart-panel">
+                    {/* phones: the compact row leaves these out, so the open panel has them */}
+                    <p className="holding-panel-avg-cost">
+                        Return <span className={`holding-panel-amount ${classReturn}`}>
+                            {priced ? formatSignedMoney(gain, currency) : "—"}</span>
+                    </p>
                     <p className="holding-panel-avg-cost">
                         Average cost <span className="holding-panel-amount">{avgCostText}</span>
                         {" "}per {holding.type === "stock" ? "share" : "coin"}

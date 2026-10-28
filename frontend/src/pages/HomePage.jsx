@@ -83,8 +83,8 @@ function HomePage() {
                         </div>
                         <div className="hero-stat-divider"/>
                         <div className="hero-stat">
-                            <span className="hero-stat-value">0</span>
-                            <span className="hero-stat-label">Spreadsheets needed</span>
+                            <span className="hero-stat-value">ACB</span>
+                            <span className="hero-stat-label">Canadian tax report</span>
                         </div>
                     </div>
                 </div>
@@ -95,8 +95,8 @@ function HomePage() {
                             <span className="preview-label">Portfolio value</span>
                             <span className="range-pill active">1Y</span>
                         </div>
-                        <div className="preview-value">$84,920.18</div>
-                        <div className="preview-change positive">+ $9,213.42 (12.2%)</div>
+                        <div className="preview-value">CA$84,920.18</div>
+                        <div className="preview-change positive">+CA$9,213.42 (+12.2%)</div>
 
                         <svg className="preview-chart" viewBox="0 0 320 120" preserveAspectRatio="none" aria-hidden="true">
                             <defs>
@@ -106,14 +106,19 @@ function HomePage() {
                                 </linearGradient>
                             </defs>
                             <path
+                                className="preview-fill"
                                 d="M0,90 L20,85 L40,92 L60,70 L80,75 L100,60 L120,65 L140,45 L160,55 L180,38 L200,42 L220,28 L240,35 L260,20 L280,25 L300,10 L320,15 L320,120 L0,120 Z"
                                 fill="url(#chartFill)"
                             />
+                            {/* draws itself when the page opens (Home.css) */}
                             <path
+                                className="preview-line"
+                                pathLength="1"
                                 d="M0,90 L20,85 L40,92 L60,70 L80,75 L100,60 L120,65 L140,45 L160,55 L180,38 L200,42 L220,28 L240,35 L260,20 L280,25 L300,10 L320,15"
                                 fill="none"
                                 stroke="#3b82f6"
                                 strokeWidth="2"
+                                vectorEffect="non-scaling-stroke"
                             />
                         </svg>
 
@@ -123,7 +128,7 @@ function HomePage() {
                                     <span className="ticker-dot aapl"/>
                                     <span>AAPL</span>
                                 </div>
-                                <span className="preview-holding-value">$12,480.00</span>
+                                <span className="preview-holding-value">CA$12,480.00</span>
                                 <span className="preview-holding-change positive">+1.8%</span>
                             </div>
                             <div className="preview-holding-row">
@@ -131,7 +136,7 @@ function HomePage() {
                                     <span className="ticker-dot nvda"/>
                                     <span>NVDA</span>
                                 </div>
-                                <span className="preview-holding-value">$9,150.50</span>
+                                <span className="preview-holding-value">CA$9,150.50</span>
                                 <span className="preview-holding-change positive">+4.2%</span>
                             </div>
                             <div className="preview-holding-row">
@@ -139,32 +144,45 @@ function HomePage() {
                                     <span className="ticker-dot btc"/>
                                     <span>BTC</span>
                                 </div>
-                                <span className="preview-holding-value">$6,310.90</span>
-                                <span className="preview-holding-change negative">-0.6%</span>
+                                <span className="preview-holding-value">CA$6,310.90</span>
+                                <span className="preview-holding-change negative">−0.6%</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </main>
 
-            <section className="home-features" id="features">
+            <section className="home-features" id="features" aria-labelledby="features-heading">
+                <h2 id="features-heading" className="features-heading">Built for Canadian investors</h2>
                 <div className="feature-card">
-                    <span className="feature-icon">⟳</span>
+                    <span className="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 16V9M10 16V5M14 16v-6M18 16V8"/></svg></span>
+                    <h3>Canadian tax report</h3>
+                    <p>Capital gains with your ACB pooled across years, settlement dates and possible superficial losses flagged, ready to download as a CSV. Informational, not tax advice.</p>
+                </div>
+                <div className="feature-card">
+                    <span className="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg></span>
+                    <h3>Import from your broker</h3>
+                    <p>Bring in a Wealthsimple or Questrade activity export, check every row in a preview, then save them all at once.</p>
+                </div>
+                <div className="feature-card">
+                    <span className="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg></span>
+                    <h3>TFSA, RRSP, FHSA and more</h3>
+                    <p>Tag each trade with its account and see your allocation by account, asset type and currency.</p>
+                </div>
+                <div className="feature-card">
+                    <span className="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></span>
+                    <h3>Market analyst</h3>
+                    <p>A plain-language read on any stock or coin: trend, momentum, risk and typical price ranges, built from the numbers it shows. Not financial advice.</p>
+                </div>
+                <div className="feature-card">
+                    <span className="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></svg></span>
                     <h3>Up-to-date prices</h3>
-                    <p>
-                        Prices are fetched each time you open a page. Market data can be delayed, and nothing
-                        here is financial advice.
-                    </p>
+                    <p>Prices refresh each time you open a page, with charts from a day to all time. Market data can be delayed.</p>
                 </div>
                 <div className="feature-card">
-                    <span className="feature-icon">▤</span>
-                    <h3>Unified holdings</h3>
-                    <p>US stocks, ETFs and crypto in one view, with the value and return of every position.</p>
-                </div>
-                <div className="feature-card">
-                    <span className="feature-icon">↗</span>
-                    <h3>Transaction history</h3>
-                    <p>Every buy and sell you log, filterable by symbol, type and date, so nothing slips through the cracks.</p>
+                    <span className="feature-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z"/><path d="M3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9Z"/></svg></span>
+                    <h3>Stocks and crypto, in your currency</h3>
+                    <p>US and Canadian listings and thousands of coins in one portfolio, shown in CAD, USD or EUR.</p>
                 </div>
             </section>
 

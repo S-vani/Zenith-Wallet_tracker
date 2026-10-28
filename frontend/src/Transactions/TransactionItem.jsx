@@ -1,4 +1,5 @@
 import {useEffect, useRef, useState} from "react";
+import AssetAvatar from "../components/AssetAvatar.jsx";
 import {deleteTransaction} from "../services/api.js";
 import {useUser} from "../context/UserContext.jsx";
 import {changeClass, formatMoney, formatQuantity} from "../utils/format.js";
@@ -7,7 +8,7 @@ import {accountLabel} from "../utils/accounts.js";
 import TransactionEdit from "./TransactionEdit.jsx";
 import {fullMoney, fullPrice, fullSignedMoney, ledgerErrorMessage} from "./tradeForm.js";
 
-function TransactionItem({transaction, index, onChanged, onDeleted}) {
+function TransactionItem({transaction, index, onChanged, onDeleted, justAdded = false}) {
     const [expanded, setExpanded] = useState(false);
     const [mode, setMode] = useState("view"); // "view" | "edit" | "delete" (asking to confirm)
     const [deleting, setDeleting] = useState(false);
@@ -24,6 +25,12 @@ function TransactionItem({transaction, index, onChanged, onDeleted}) {
             returnFocus.current = null;
         }
     }, [mode]);
+
+    // the trade that was just saved: brought into view (it may be backdated, far down the list) and lit up once
+    const wrapperRef = useRef(null);
+    useEffect(() => {
+        if (justAdded) wrapperRef.current?.scrollIntoView?.({block: "nearest"});
+    }, [justAdded]);
 
     const created = new Date(transaction.created_at);
     const total = transaction.price_of_one * transaction.quantity;
@@ -53,12 +60,13 @@ function TransactionItem({transaction, index, onChanged, onDeleted}) {
     };
 
     return (
-        <div className={`transaction-item-wrapper${expanded ? " open" : ""}`}
+        <div ref={wrapperRef} className={`transaction-item-wrapper${expanded ? " open" : ""}${justAdded ? " just-added" : ""}`}
              style={{animationDelay: `${Math.min(index, 15) * 40}ms`}}>
             <button className="transaction-item" ref={rowButtonRef} onClick={() => setExpanded(!expanded)}
                     aria-expanded={expanded}>
                 <div className="transaction-left">
                     <span className="transaction-symbol">
+                        <AssetAvatar symbol={transaction.symbol} type={transaction.asset_type} size="sm"/>
                         {transaction.symbol}
                     </span>
                     <div className="asset-action">

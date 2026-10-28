@@ -70,7 +70,7 @@
     display: flex;
     flex-direction: column;
     width: 100%;
-    animation: fadeIn 0.3s ease;
+    animation: rise-in 0.3s var(--ease-out) both;
 }
 
 .search-result-item {
@@ -104,8 +104,8 @@
 
 .search-result-image {
     flex-shrink: 0;
-    width: 1.8rem;
-    height: 1.8rem;
+    width: 2.25rem; /* the same size as the lettered badges (AssetAvatar) */
+    height: 2.25rem;
     border-radius: 50%;
 }
 
@@ -216,20 +216,9 @@
     border-radius: 1rem;
     border: 1px solid rgba(255, 255, 255, 0.06);
     background: linear-gradient(145deg, #070b14, #05070d);
-    animation: fadeIn 0.3s ease;
+    animation: rise-in 0.3s var(--ease-out) both;
 }
 
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-0.5rem);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
 
 @media (max-width: 640px) {
     .search-form {

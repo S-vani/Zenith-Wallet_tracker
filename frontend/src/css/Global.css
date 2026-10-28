@@ -20,6 +20,16 @@
     --accent-soft: #93c5fd;
     --accent-bg: linear-gradient(180deg, #1d3461, #162344);
     --accent-border: rgba(59, 130, 246, 0.35);
+    /* the one solid accent, for the main action on a screen (white text on #2563eb is ~5.2:1) */
+    --accent-solid: linear-gradient(180deg, #3b82f6, #2563eb);
+
+    /* one card surface everywhere (there used to be three slightly different ones) */
+    --card-bg: linear-gradient(150deg, #1c2335, #141a28);
+    --card-border: rgba(255, 255, 255, 0.07);
+    --card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 0.75rem 2rem -1rem rgba(0, 0, 0, 0.75);
+
+    /* motion: quick and calm (finance, not a game); everything also stops under prefers-reduced-motion */
+    --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 
     --positive: #22c55e;
     --negative: #ef4444;
@@ -76,6 +86,11 @@ ol {
    a scroll container of its own and there's no second gutter. Overlay scrollbars (phones, the app) are unaffected */
 html {
     scrollbar-gutter: stable;
+}
+
+/* figures line up in columns and don't jiggle when they change (Lato has tabular digits) */
+body {
+    font-variant-numeric: tabular-nums;
 }
 
 body {
@@ -259,12 +274,70 @@ button:disabled {
     }
 }
 
+/* a placeholder in the shape of what's loading; the light sweeps across with a transform (the GPU moves it) rather
+   than an animated background, which repainted every frame */
 .skeleton {
     display: inline-block;
+    position: relative;
+    overflow: hidden;
     border-radius: 0.4rem;
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04));
-    background-size: 200% 100%;
-    animation: shimmer 1.4s ease-in-out infinite;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.07), transparent);
+    animation: sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes sweep {
+    to {
+        transform: translateX(100%);
+    }
+}
+
+/* how cards, rows and panels arrive: a short rise and fade (one shared keyframe; there used to be three copies) */
+@keyframes rise-in {
+    from {
+        opacity: 0;
+        transform: translateY(0.5rem);
+    }
+}
+
+.page-fallback {
+    animation: appear 0s 250ms both;
+}
+
+@keyframes appear {
+    from {
+        opacity: 0;
+    }
+}
+
+/* a chart that's still loading: a faint line in the chart's place instead of a lone spinner */
+.chart-skeleton {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 0.75rem;
+}
+
+.chart-skeleton svg {
+    width: 100%;
+    height: 100%;
+}
+
+.chart-skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+    animation: sweep 1.6s ease-in-out infinite;
 }
 
 /* a chart whose next range is loading: the old one stays in place, dimmed, instead of a blank skeleton */
@@ -277,13 +350,62 @@ button:disabled {
     pointer-events: none;
 }
 
-@keyframes shimmer {
-    from {
-        background-position: 200% 0;
-    }
-    to {
-        background-position: -200% 0;
-    }
+/* odometer digits (components/RollingNumber.jsx): each column shows one line of its 0-9 strip */
+.rolling-digits {
+    display: inline-flex;
+    line-height: 1.15;
+}
+
+.rolling-col,
+.rolling-static {
+    display: inline-block;
+    height: 1.15em;
+}
+
+.rolling-col {
+    overflow: hidden;
+}
+
+.rolling-strip {
+    display: flex;
+    flex-direction: column;
+    transform: translateY(calc(var(--d, 0) * -1.15em));
+    transition: transform 0.7s var(--ease-out);
+    transition-delay: calc(var(--i, 0) * 22ms);
+}
+
+.rolling-strip > span {
+    height: 1.15em;
+}
+
+/* a stock's / coin's lettered badge (components/AssetAvatar.jsx) */
+.asset-avatar {
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.7rem;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    line-height: 1;
+}
+
+.asset-avatar.crypto {
+    border-radius: 50%;
+}
+
+.asset-avatar.sm {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 0.55rem;
+    font-size: 0.62rem;
+}
+
+.asset-avatar.sm.crypto {
+    border-radius: 50%;
 }
 
 /* Primary / secondary buttons used on the signed in pages */
@@ -307,15 +429,34 @@ button:disabled {
     transform: translateY(-1px);
 }
 
+/* the main action: a solid blue that reads as "press me" (the old navy one looked half disabled) */
 .btn-primary {
+    border-color: transparent;
+    background: var(--accent-solid);
+    color: #fff;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0.5rem 1.25rem -0.5rem rgba(59, 130, 246, 0.7);
+}
+
+.btn-primary:hover:not(:disabled) {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 0.6rem 1.6rem -0.4rem rgba(59, 130, 246, 0.8);
+}
+
+/* the old quiet navy style, for second actions next to a primary one */
+.btn-secondary {
     border-color: var(--accent-border);
     background: var(--accent-bg);
     color: var(--accent-soft);
 }
 
-.btn-primary:hover:not(:disabled) {
-    border-color: rgba(59, 130, 246, 0.6);
-    box-shadow: 0 0 1rem rgba(59, 130, 246, 0.3);
+/* everything you press gives a little: buttons, segmented options, tabs, list rows */
+.btn:active:not(:disabled),
+.segmented button:active,
+.nav-link:active,
+.holding-item:active,
+.transaction-item:active,
+.search-result-item:active {
+    transform: scale(0.97);
+    transition: transform 60ms ease;
 }
 
 /* #15803d → #166534 keeps white text at 5:1 or more everywhere (the old #16a34a top was only ~3.1:1) */
@@ -363,6 +504,37 @@ button:disabled {
     color: var(--accent-soft);
 }
 
+/* the sliding pill under the chosen option (components/SegmentedThumbs.jsx sets where it goes) */
+.segmented {
+    position: relative;
+}
+
+.segmented button {
+    position: relative;
+    z-index: 1;
+}
+
+.segmented.has-thumb::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: var(--thumb-w);
+    height: var(--thumb-h);
+    transform: translate(var(--thumb-x), var(--thumb-y));
+    border-radius: 0.5rem;
+    background: #1d3461;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.segmented.thumb-ready::before {
+    transition: transform 0.28s var(--ease-out), width 0.28s var(--ease-out);
+}
+
+.segmented.has-thumb button.active {
+    background: transparent;
+}
+
 @media (max-width: 768px) {
     .main-content {
         padding-left: 1rem;
@@ -408,36 +580,34 @@ body::before {
     radial-gradient(circle at 55% 55%, #0f1f45 0%, transparent 65%),
     radial-gradient(circle at 45% 60%, #050912 0%, transparent 65%);
 
+    /* the blur is drawn once; only transform and opacity move (an animated filter re-blurred the whole screen
+       every frame, which cost battery and could make scrolling stutter on iPhones) */
     filter: blur(3.2rem);
     opacity: 1;
+    will-change: transform, opacity;
 
     animation: bg-pulse 12s ease-in-out infinite;
 }
 
 @keyframes bg-pulse {
-    0% {
+    0%, 100% {
         transform: translate3d(-6%, -6%, 0) scale(1.05);
-        filter: blur(3.8rem) brightness(0.45);
+        opacity: 0.55;
     }
 
     25% {
         transform: translate3d(4%, -2%, 0) scale(1.15);
-        filter: blur(3.1rem) brightness(1.15);
+        opacity: 0.95;
     }
 
     50% {
         transform: translate3d(0%, 6%, 0) scale(1.2);
-        filter: blur(2.9rem) brightness(1.3);
+        opacity: 1;
     }
 
     75% {
         transform: translate3d(-3%, 2%, 0) scale(1.12);
-        filter: blur(3.4rem) brightness(0.9);
-    }
-
-    100% {
-        transform: translate3d(-6%, -6%, 0) scale(1.05);
-        filter: blur(3.8rem) brightness(0.45);
+        opacity: 0.85;
     }
 }
 
@@ -510,9 +680,27 @@ body::before {
     width: min(22rem, calc(100% - 2rem));
     border-radius: 1rem;
     border: 1px solid var(--border-strong);
-    background: linear-gradient(145deg, #1e2433, #161b28);
+    background: var(--card-bg);
     color: var(--text);
     box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.5);
+}
+
+.confirm-dialog[open] {
+    animation: dialog-in 0.22s var(--ease-out) both;
+}
+
+/* dialogs settle in from slightly smaller; on phones the add-trade sheet slides up (Transaction.css) */
+@keyframes dialog-in {
+    from {
+        opacity: 0;
+        transform: translateY(0.5rem) scale(0.97);
+    }
+}
+
+@keyframes sheet-in {
+    from {
+        transform: translateY(100%);
+    }
 }
 
 .confirm-dialog::backdrop {
@@ -575,7 +763,63 @@ body::before {
     font-size: 0.9rem;
     font-weight: 600;
     backdrop-filter: blur(0.5rem);
-    animation: toast-in 0.25s ease-out;
+    position: relative;
+    overflow: hidden;
+    animation: toast-in 0.3s var(--ease-out);
+}
+
+/* a thin line along the bottom that runs out as the toast's time does */
+.toast::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 2px;
+    background: rgba(34, 197, 94, 0.45);
+    transform-origin: left;
+    animation: toast-time var(--toast-ms, 3000ms) linear both;
+}
+
+.toast.error::after {
+    background: rgba(239, 68, 68, 0.5);
+}
+
+.toast.leaving {
+    animation: toast-out 0.2s ease-in both;
+}
+
+@keyframes toast-time {
+    to {
+        transform: scaleX(0);
+    }
+}
+
+@keyframes toast-out {
+    to {
+        opacity: 0;
+        transform: translateX(1rem);
+    }
+}
+
+.toast-icon svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.toast-icon path {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: draw 0.35s 0.15s var(--ease-out) forwards;
+}
+
+@keyframes draw {
+    to {
+        stroke-dashoffset: 0;
+    }
 }
 
 .toast.error {

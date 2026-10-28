@@ -42,6 +42,10 @@ function NavBar() {
 
     return (
         <nav className="navbar" aria-label="Main">
+            {/* the brand mark at the top left (desktop; the phone tab bar has no room for it) */}
+            <NavLink to="/dashboard" className="nav-brand" aria-label="Zenith, dashboard" tabIndex={-1}>
+                <img src="/zenith-logo.svg" alt="" width="36" height="36"/>
+            </NavLink>
             <div className="navbar-links">
                 {TABS.map(({to, label, Icon}) => (
                     <NavLink

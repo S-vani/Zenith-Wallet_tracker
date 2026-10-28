@@ -3,6 +3,7 @@ import {getPriceHistory} from "../services/api.js";
 import {AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer} from "recharts";
 import {useUser} from "../context/UserContext.jsx";
 import useRefreshKey from "../native/useRefreshKey.js";
+import ChartSkeleton from "../components/ChartSkeleton.jsx";
 import {formatMoney, formatPrice} from "../utils/format.js";
 import {
     CHART_DOWN, CHART_UP, INITIAL_DIMENSION, TOOLTIP_STYLE, axisMoneyOptions, axisTicks, formatAxisTick, niceAxis,
@@ -77,12 +78,7 @@ function HoldingChart({symbol, type, coinId = null, initialRange = "1M", compact
     let body;
     if (!shown && !error) {
         // a spinner alone says nothing to a screen reader
-        body = (
-            <div className="state-message" role="status">
-                <div className="spinner" aria-hidden="true"/>
-                <span className="visually-hidden">Loading {label} price chart…</span>
-            </div>
-        );
+        body = <ChartSkeleton label={`Loading ${label} price chart…`}/>;
     } else if (failed) {
         body = (
             <div className="state-message">
@@ -95,7 +91,7 @@ function HoldingChart({symbol, type, coinId = null, initialRange = "1M", compact
     } else {
         body = (
             <ResponsiveContainer width="100%" height="100%" initialDimension={INITIAL_DIMENSION}>
-                <AreaChart data={data} margin={{top: 10, right: 10, left: 0, bottom: 0}}>
+                <AreaChart key={shown.range} data={data} margin={{top: 10, right: 10, left: 0, bottom: 0}}>
                     <defs>
                         <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stopColor={color} stopOpacity={0.25}/>

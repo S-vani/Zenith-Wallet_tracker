@@ -9,6 +9,7 @@ import {useUser} from "../context/UserContext.jsx";
 import usePageTitle from "../utils/usePageTitle.js";
 import useRefreshKey from "../native/useRefreshKey.js";
 import {rememberPortfolioForSiri} from "../native/screens.js";
+import {haptic} from "../native/haptics.js";
 
 import "../css/Dashboard.css";
 
@@ -114,6 +115,7 @@ function DashboardPage() {
     }, [key, activeRange, days, refreshKey, attempt, currency]);
 
     const selectRange = (value) => {
+        if (value !== activeRange) haptic("light"); // app only: a light tick, like a native segmented control
         setClock(currentTime());
         setActiveRange(value);
     };

@@ -22,6 +22,7 @@ import UpdateRequired from "./native/UpdateRequired.jsx";
 import AppLinkNavigator from "./native/AppLinkNavigator.jsx";
 import AccountLoadError from "./components/AccountLoadError.jsx";
 import ScrollToTop from "./components/ScrollToTop.jsx";
+import SegmentedThumbs from "./components/SegmentedThumbs.jsx";
 
 // signed in pages (and the charting library they use) load on demand to keep the landing page fast
 const DashboardPage = lazy(() => import("./pages/DashboardPage.jsx"));
@@ -36,8 +37,10 @@ const SupportPage = lazy(() => import("./pages/SupportPage.jsx"));
 const ImportPage = lazy(() => import("./pages/ImportPage.jsx"));
 
 // shown while a page's code loads; the hidden text tells screen readers what the spinner means
+// shown only if a page's code takes over a quarter second to load (page-fallback in Global.css): a quick load shows
+// nothing at all instead of a spinner flashing on and off
 const pageFallback = (
-    <div className="state-message" role="status">
+    <div className="state-message page-fallback" role="status">
         <div className="spinner" aria-hidden="true"/>
         <span className="visually-hidden">Loading…</span>
     </div>
@@ -79,6 +82,7 @@ function App({lockEnabled = false}) {
         <>
         <SkipLink/>
         <ScrollToTop/>
+        <SegmentedThumbs/>
         <Toaster/>
         {isNative && <OfflineBanner/>}
         {isNative && <AppLock initiallyEnabled={lockEnabled}/>}

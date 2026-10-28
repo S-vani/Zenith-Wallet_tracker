@@ -6,6 +6,30 @@ import {
     formatAxisTick, niceAxis, tickUnit, tooltipDate,
 } from "../utils/chart.js";
 import {dashboardChartSummary} from "./dashboardText.js";
+import ChartSkeleton from "../components/ChartSkeleton.jsx";
+
+// The values' own range with 15% room above and below (not below 0 for money that never went negative), so a small
+// move fills the chart instead of a share of the whole amount
+function paddedRange(values) {
+    const numbers = values.map(Number).filter(Number.isFinite);
+    if (numbers.length === 0) return values;
+    const min = Math.min(...numbers);
+    const max = Math.max(...numbers);
+    const pad = (max - min) * 0.15;
+    return [min >= 0 ? Math.max(0, min - pad) : min - pad, max + pad];
+}
+
+// "Now": a dot on the latest point that appears once the line has drawn in and pulses twice (CSS .now-dot), in the
+// gain / loss colour. Every other point draws nothing.
+function NowDot({cx, cy, index, last, color}) {
+    if (index !== last || !Number.isFinite(cx) || !Number.isFinite(cy)) return <g/>;
+    return (
+        <g className="now-dot" aria-hidden="true">
+            <circle className="now-dot-pulse" cx={cx} cy={cy} r={4} fill={color}/>
+            <circle cx={cx} cy={cy} r={4} fill={color} stroke="#0b1220" strokeWidth={2}/>
+        </g>
+    );
+}
 
 // `entry` is one range's {days, stats, chart}, loaded by the page; `updating` dims it while another range loads
 function DashboardChart({entry, updating = false, currency, error}) {
@@ -18,11 +42,14 @@ function DashboardChart({entry, updating = false, currency, error}) {
     // card above (never the line's own start vs end, which deposits make look like a gain)
     const color = Number(entry?.stats?.curr_timeperiod) >= 0 ? CHART_UP : CHART_DOWN;
     const unit = tickUnit(data);
-    const axisValues = data.flatMap((d) => (hasInvested ? [d.value, d.invested] : [d.value]));
+    // A day or a week: the value line alone on its own scale, the way finance apps chart intraday moves. With the
+    // invested line on the same axis a 1% day was a flat line far above it. From a month up both lines are drawn.
+    const showInvested = hasInvested && days > 7;
+    const axisValues = data.flatMap((d) => (showInvested ? [d.value, d.invested] : [d.value]));
     // round ticks a nice step apart (CA$0 / 10K / 20K / 30K), labelled with just the decimals that step needs
     // with ~10% headroom around the data so the value and invested lines sit closer together instead of the gap
     // between them filling the whole height (a tight axis made a 15% gain look enormous)
-    const yAxis = niceAxis(axisValues, 5, {headroom: 0.1});
+    const yAxis = showInvested ? niceAxis(axisValues, 5, {headroom: 0.1}) : niceAxis(paddedRange(axisValues), 5);
     const valueOptions = yAxis ? axisMoneyOptions(yAxis.ticks, yAxis.step) : axisMoneyOptions(axisValues);
 
     let body;
@@ -30,12 +57,7 @@ function DashboardChart({entry, updating = false, currency, error}) {
         // not role="alert": the page announces the error once, next to its Try again button
         body = <div className="state-message"><p className="alert-error">{error}</p></div>;
     } else if (!entry) {
-        body = (
-            <div className="state-message">
-                <div className="spinner"/>
-                Building your portfolio history…
-            </div>
-        );
+        body = <ChartSkeleton label="Building your portfolio history…"/>;
     } else if (!hasValues && entry.stats?.has_trades) {
         // everything was sold before this period, or nothing held has a price: not a new account
         body = (
@@ -57,10 +79,12 @@ function DashboardChart({entry, updating = false, currency, error}) {
     } else {
         body = (
             <ResponsiveContainer width="100%" height="100%" initialDimension={INITIAL_DIMENSION}>
-                <AreaChart data={data} margin={{top: 8, right: 8, left: 0, bottom: 0}}>
+                {/* keyed by range: a new range draws in fresh instead of morphing through shapes that mean nothing
+                    (a 1D line bending into a 1Y one); a refresh of the same range still updates in place */}
+                <AreaChart key={entry.range} data={data} margin={{top: 8, right: 8, left: 0, bottom: 0}}>
                     <defs>
                         <linearGradient id="dashboardFill" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor={color} stopOpacity={0.3}/>
+                            <stop offset="0%" stopColor={color} stopOpacity={0.18}/>
                             <stop offset="100%" stopColor={color} stopOpacity={0}/>
                         </linearGradient>
                     </defs>
@@ -99,10 +123,12 @@ function DashboardChart({entry, updating = false, currency, error}) {
                         stroke={color}
                         strokeWidth={2}
                         fill="url(#dashboardFill)"
-                        dot={false}
+                        dot={(props) => <NowDot key={props.index} {...props} last={data.length - 1} color={color}/>}
                         activeDot={{r: 4, fill: color, strokeWidth: 0}}
+                        animationDuration={800}
+                        animationEasing="ease-out"
                     />
-                    {hasInvested && (
+                    {showInvested && (
                         <Area
                             type="monotone"
                             dataKey="invested"
@@ -114,6 +140,9 @@ function DashboardChart({entry, updating = false, currency, error}) {
                             fill="none"
                             dot={false}
                             activeDot={{r: 3, fill: CHART_INVESTED, strokeWidth: 0}}
+                            animationBegin={120}
+                            animationDuration={800}
+                            animationEasing="ease-out"
                         />
                     )}
                 </AreaChart>
@@ -128,7 +157,7 @@ function DashboardChart({entry, updating = false, currency, error}) {
             {/* the chart is a picture to a screen reader, so it gets the numbers as text */}
             {charted && <p className="chart-sr-summary">{dashboardChartSummary(data, entry?.range, currency)}</p>}
             <div className="chart-wrapper-dashboard">
-                {charted && hasInvested && (
+                {charted && showInvested && (
                     <div className="chart-legend" aria-hidden="true">
                         <span className="chart-legend-item">
                             <span className="chart-legend-swatch" style={{borderColor: color}}/>Value
@@ -142,7 +171,7 @@ function DashboardChart({entry, updating = false, currency, error}) {
             </div>
             {charted && (
                 <figcaption className="chart-note">
-                    {hasInvested
+                    {showInvested
                         ? "The solid line is your portfolio's value and the dashed line is what you paid for what " +
                         "you still hold, so buys and sells move both and the gap between them is your unrealized " +
                         "gain or loss. The return above leaves buys and sells out."

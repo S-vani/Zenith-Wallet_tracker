@@ -33,6 +33,7 @@ function TransactionsPage() {
     const focusAfterDelete = useRef(null); // position of a just-deleted trade, until the reloaded list is shown
     const [searchText, setSearchText] = useState(""); // typed in the dialog's symbol search
     const [confirmDiscard, setConfirmDiscard] = useState(false);
+    const [justAdded, setJustAdded] = useState(null); // the trade just saved: its row glows once in the list
     const focusBeforeDiscard = useRef(null);
 
     // App only: the "Add trade" Home Screen quick action or Siri shortcut opens this page with {openAdd: true}.
@@ -158,7 +159,8 @@ function TransactionsPage() {
             </div>
         );
     } else {
-        content = <TransactionList transactions={transactions} onChanged={reload} onDeleted={deleted}/>;
+        content = <TransactionList transactions={transactions} onChanged={reload} onDeleted={deleted}
+                                   justAdded={justAdded}/>;
     }
 
     return (
@@ -256,7 +258,8 @@ function TransactionsPage() {
                                 key={symbolData.api_id}
                                 data={symbolData}
                                 onClose={closeModal}
-                                onCreated={() => {
+                                onCreated={(id) => {
+                                    setJustAdded(id ?? null);
                                     reload();
                                     closeModal();
                                 }}

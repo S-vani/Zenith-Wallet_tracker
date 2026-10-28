@@ -7,7 +7,7 @@ let lastSort = DEFAULT_TRANSACTION_SORT;
 
 // onDeleted gets the deleted trade's position in the order shown (the page focuses the row now at that position),
 // so the index comes from the sorted list, not the loaded one
-function TransactionList({transactions, onChanged, onDeleted}) {
+function TransactionList({transactions, onChanged, onDeleted, justAdded = null}) {
     const [sort, setSort] = useState(lastSort);
     const sortId = useId();
     const shown = sortTransactions(transactions, sort);
@@ -30,7 +30,7 @@ function TransactionList({transactions, onChanged, onDeleted}) {
             <div className="transaction-list">
                 {shown.map((t, i) => (
                     <TransactionItem key={t.id} transaction={t} index={i} onChanged={onChanged}
-                                     onDeleted={() => onDeleted(i)}/>
+                                     onDeleted={() => onDeleted(i)} justAdded={t.id === justAdded}/>
                 ))}
             </div>
         </>

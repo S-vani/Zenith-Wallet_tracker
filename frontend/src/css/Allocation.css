@@ -32,14 +32,22 @@
 }
 
 /* four tabs don't fit on one line in a 320px wide card, so they wrap instead of overflowing the page */
+/* one row that scrolls sideways on a narrow phone, instead of leaving "Currency" alone on a second line */
 .allocation-tabs {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-self: flex-start;
     max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.allocation-tabs::-webkit-scrollbar {
+    display: none;
 }
 
 .allocation-tabs button {
-    flex: 1 1 auto;
+    flex: 1 0 auto;
+    white-space: nowrap;
 }
 
 .allocation-figure {

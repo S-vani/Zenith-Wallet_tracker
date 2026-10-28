@@ -3,6 +3,7 @@ import {createTransaction, getHoldings} from "../services/api.js";
 import {useUser} from "../context/UserContext.jsx";
 import {formatMoney, formatQuantity, priceInputValue} from "../utils/format.js";
 import {showToast} from "../utils/toast.js";
+import {haptic} from "../native/haptics.js";
 import {loadLastAccount, saveLastAccount} from "../utils/accounts.js";
 import HoldingsChart from "../Holdings/HoldingsChart.jsx";
 import TradeFields from "./TradeFields.jsx";
@@ -78,10 +79,11 @@ function TransactionCreate({onClose, onCreated, data}) {
         setError(null);
 
         try {
-            await createTransaction(createPayload(form, initialDate));
+            const created = await createTransaction(createPayload(form, initialDate));
             saveLastAccount(form.account_type); // "Not set" forgets it
+            haptic("success"); // app only
             showToast(`${form.action === "BUY" ? "Buy" : "Sell"} of ${data.symbol.toUpperCase()} saved`);
-            onCreated();
+            onCreated(created?.id);
         } catch (err) {
             setError(ledgerErrorMessage(err, {mode: "create", symbol: data.symbol, action: form.action, backdated}));
             setSubmitting(false);

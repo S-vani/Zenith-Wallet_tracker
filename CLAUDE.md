@@ -88,7 +88,12 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
     `formatPrice` for asset prices so tiny coins never show $0.00; a null currency gives "—"), `utils/chart.js`,
     `utils/toast.js` (`showToast`). Quantity/price inputs are `type="text" inputMode="decimal"` and accept "1,5" or
     "1.5" (`parseDecimalInput` in `Transactions/tradeForm.js`) for comma-decimal regions.
-  - CSS in `src/css/` with design tokens in `Global.css` (navy theme). Phones get a bottom tab bar (≤768px).
+  - CSS in `src/css/` with design tokens in `Global.css` (navy theme): one card surface (`--card-bg`/`--card-border`/
+    `--card-shadow`), `--accent-solid` for the main action (`.btn-primary`, `.signup-btn`), `--ease-out` for motion,
+    tabular figures on `body`. Motion is short and calm, transform/opacity only, one shared `rise-in` keyframe, and
+    the global `prefers-reduced-motion` rule turns it off. `RollingNumber` (dashboard odometer), `AssetAvatar`
+    (lettered badges), `ChartSkeleton`, `SegmentedThumbs` (sliding pill under every `.segmented`, skips Buy/Sell).
+    Phones get a bottom tab bar (≤768px).
   - Accessibility: `components/SkipLink.jsx` ("Skip to main content") is the first Tab stop on every page; each page
     renders one `<main id="main-content" tabIndex={-1}>` as its target. On login, "Forgot password?" sits after the
     password field so Tab goes email → password.

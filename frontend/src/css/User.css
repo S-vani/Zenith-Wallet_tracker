@@ -66,7 +66,7 @@
 
     padding: 1.75rem;
 
-    background: linear-gradient(145deg, #070b14, #05070d);
+    background: var(--card-bg);
 
     border: 0.1rem solid #0f1725;
     border-radius: 1.25rem;

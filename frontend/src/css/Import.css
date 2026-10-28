@@ -7,10 +7,10 @@
     padding: 1.5rem;
     min-width: 0;
 
-    background: linear-gradient(145deg, #070b14, #05070d);
-    border: 0.1rem solid #0f1725;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
     border-radius: 1.25rem;
-    box-shadow: 0 0 0 0.05rem #070b12, 0 0.5rem 2.5rem #000000cc;
+    box-shadow: var(--card-shadow);
 }
 
 .import-card-title {

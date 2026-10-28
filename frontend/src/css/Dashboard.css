@@ -1,12 +1,14 @@
 .dashboard-stats {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    /* the value is the hero; the period's return sits beside it */
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
     gap: 1rem;
 }
 
 .stat-card {
-    background: linear-gradient(145deg, #1e2433, #161b28);
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    box-shadow: var(--card-shadow);
     border-radius: 1rem;
     padding: 1.25rem 1.5rem;
     display: flex;
@@ -46,12 +48,44 @@
     color: var(--positive);
 }
 
+/* the hero number is about 3x the size of the labels around it, the way finance apps lead with the balance */
+.stat-card-hero {
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card-hero .stat-value {
+    font-size: clamp(2.1rem, 3.2vw, 2.9rem);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+
+/* a soft blue light along the top edge of the hero card */
+.stat-card-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(96, 165, 250, 0.55), transparent);
+}
+
+/* the return % as a tinted pill in the gain / loss colour */
 .stat-pct {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 700;
-    padding: 0.15rem 0.5rem;
-    border-radius: 0.4rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
     background: rgba(255, 255, 255, 0.06);
+}
+
+.stat-value.positive .stat-pct {
+    background: rgba(34, 197, 94, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.25);
+}
+
+.stat-value.negative .stat-pct {
+    background: rgba(239, 68, 68, 0.12);
+    box-shadow: inset 0 0 0 1px rgba(239, 68, 68, 0.25);
 }
 
 .stat-skeleton {
@@ -145,6 +179,29 @@ html:not(.native) .stat-amount {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--border);
     border-radius: 0.75rem;
+}
+
+/* the chart's "now" dot (DashboardChart NowDot): shows up as the line finishes drawing, then pulses twice */
+.now-dot {
+    animation: appear 0s 0.8s both;
+}
+
+.now-dot-pulse {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: now-pulse 1.4s ease-out 0.9s 2 both;
+}
+
+@keyframes now-pulse {
+    from {
+        opacity: 0.55;
+        transform: scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: scale(3.2);
+    }
 }
 
 /* "Value" / "Invested" key above the chart */
