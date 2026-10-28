@@ -279,6 +279,27 @@ def test_a_token_with_a_forged_version_is_rejected(client, user):
     assert client.get("/user", headers=bearer(forged)).status_code == 401
 
 
+@pytest.mark.parametrize("claims", [
+    {"ver": 0},  # no "sub"
+    {"sub": None, "ver": 0},
+    {"sub": ["not", "an", "id"], "ver": 0},
+    {"sub": "USER", "ver": 0, "nbf": [1]},
+])
+def test_signed_but_malformed_tokens_are_401_not_500(client, user, claims):
+    # only someone with the SECRET could make these, but they must still be refused, not crash the request
+    claims = {k: (user.id if v == "USER" else v) for k, v in claims.items()}
+    token = jwt.encode({**claims, "aud": ["fastapi-users:auth"], "exp": int(time.time()) + 3600}, SECRET, "HS256")
+    assert client.get("/user", headers=bearer(token)).status_code == 401
+
+
+def test_a_reset_token_whose_fingerprint_isnt_a_hash_is_refused(client, user):
+    from fastapi_users.jwt import generate_jwt
+
+    token = generate_jwt({"sub": user.id, "password_fgpt": "plain-0", "aud": "fastapi-users:reset"}, SECRET, 3600)
+    res = client.post("/auth/reset-password", json={"token": token, "password": "Totally-new-pass-1"})
+    assert res.status_code == 400 and res.json()["detail"] == "RESET_PASSWORD_BAD_TOKEN"
+
+
 # =====================================================================================================================
 # 4. Sensitive actions need the current password; change password
 # =====================================================================================================================
@@ -564,9 +585,12 @@ def test_the_app_renews_its_token_while_it_is_still_valid(client, user):
     assert renewed.status_code == 200
     assert APP_TOKEN_LIFETIME - 60 < _lifetime(renewed) <= APP_TOKEN_LIFETIME
     assert client.get("/user", headers=bearer(renewed.json()["access_token"])).status_code == 200
-    # the website keeps its one-hour token
-    web = client.post("/user/token", headers=user.headers)
-    assert WEB_TOKEN_LIFETIME - 60 < _lifetime(web) <= WEB_TOKEN_LIFETIME
+
+    # a website token can't be turned into a 30-day one (or kept alive by renewing it), asked for as the app or not
+    assert client.post("/user/token", headers={**user.headers, **app_headers}).status_code == 403
+    assert client.post("/user/token", headers=user.headers).status_code == 403
+    # nor can the app's token be renewed by a client that doesn't say it's the app
+    assert client.post("/user/token", headers=bearer(old)).status_code == 403
 
 
 def test_a_revoked_token_cant_be_renewed(client, user):

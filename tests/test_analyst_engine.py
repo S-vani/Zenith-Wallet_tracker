@@ -436,3 +436,9 @@ def test_asset_info():
     assert report.asset.price == pytest.approx(make_closes("up", 365)[-1])
     assert report.metrics[0].label == "Last price" and report.metrics[0].value.startswith("€")
     assert report.disclaimer == engine.DISCLAIMER
+
+
+@pytest.mark.parametrize("price", [1e-13, 4.2e-15, 1e-16])
+def test_tiny_prices_never_show_as_zero(price):
+    text = fmt_money(price, "CAD")
+    assert text.startswith("CA$0.0") and float(text.removeprefix("CA$")) == pytest.approx(price, rel=1e-3)

@@ -5,6 +5,7 @@ refused only when it makes some sell's shortfall worse, so older data stays edit
 """
 import itertools
 import random
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -135,3 +136,35 @@ def test_account_split_matches_the_allocation_view():
 ])
 def test_account_oversell_added(before, after, refused):
     assert services.account_oversell_added(before, after) is refused
+
+
+def _days_ago(days):
+    return (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+
+
+def test_a_new_buy_is_never_refused_for_another_accounts_shortfall(client, user):
+    # an untagged sell draws from the largest account; a backdated TFSA buy made the TFSA the largest, so that sell
+    # "took" TFSA shares and the later TFSA sell looked short: the buy used to be refused, though it only adds shares
+    post(client, user, quantity=5, account_type="TFSA", created_at=_days_ago(40))
+    post(client, user, quantity=5, account_type="RRSP", created_at=_days_ago(39))
+    post(client, user, action="SELL", quantity=3, created_at=_days_ago(30))
+    post(client, user, action="SELL", quantity=5, account_type="TFSA", created_at=_days_ago(20))
+    post(client, user, quantity=1, account_type="TFSA", created_at=_days_ago(35))
+    assert holding(client, user)["quantity"] == 3
+
+
+def test_deleting_a_sell_is_never_refused_for_another_accounts_shortfall(client, user):
+    post(client, user, quantity=5, account_type="TFSA", created_at=_days_ago(40))
+    post(client, user, quantity=4, account_type="RRSP", created_at=_days_ago(39))
+    first = post(client, user, action="SELL", quantity=2, created_at=_days_ago(30))
+    post(client, user, action="SELL", quantity=4, created_at=_days_ago(25))
+    post(client, user, action="SELL", quantity=3, account_type="TFSA", created_at=_days_ago(20))
+    res = client.delete(f"/transactions/{first['id']}", headers=user.headers)
+    assert res.status_code == 200, res.text
+    assert holding(client, user)["quantity"] == 2
+
+
+def test_a_tagged_sell_is_still_checked_against_its_account(client, user):
+    post(client, user, quantity=5, account_type="TFSA")
+    post(client, user, quantity=5, account_type="RRSP")
+    post(client, user, expect=409, action="SELL", quantity=6, account_type="TFSA")

@@ -1,7 +1,7 @@
 import {describe, expect, it} from "vitest";
 import {
-    MONTHS, RANGE_PHRASES, axisMoneyOptions, axisTicks, chartSummary, dailyTicks, formatAxisTick, priceChartSummary,
-    tickUnit, tooltipDate,
+    MONTHS, RANGE_PHRASES, axisMoneyOptions, axisTicks, chartSummary, dailyTicks, formatAxisTick, niceAxis,
+    priceChartSummary, tickUnit, tooltipDate,
 } from "../src/utils/chart.js";
 import {formatMoney} from "../src/utils/format.js";
 
@@ -209,6 +209,23 @@ describe("axisMoneyOptions", () => {
 
     it("handles a portfolio that starts at zero", () => {
         expect(tickLabels(0, 60_000)).toEqual(["CA$0", "CA$15K", "CA$30K", "CA$45K", "CA$60K"]);
+    });
+});
+
+describe("axes at the extremes", () => {
+    const labels = (values, maxTicks) => {
+        const axis = niceAxis(values, maxTicks);
+        return axis.ticks.map((t) => formatMoney(t, "EUR", axisMoneyOptions(axis.ticks, axis.step)));
+    };
+
+    it("labels a trillion-scale axis with distinct, correct values", () => {
+        expect(labels([1.4e12, 1.43e12], 4)).toEqual(["€1.4T", "€1.41T", "€1.42T", "€1.43T"]);
+        expect(labels([1.75e12, 2.5e12], 4)).toEqual(["€1.75T", "€2T", "€2.25T", "€2.5T"]);
+    });
+
+    it("gives a range across zero the third tick it needs, even when asked for 2", () => {
+        expect(niceAxis([-1, 2], 2)).toEqual({domain: [-2, 2], ticks: [-2, 0, 2], step: 2});
+        expect(niceAxis([-5, -1], 2).ticks).toHaveLength(2);
     });
 });
 

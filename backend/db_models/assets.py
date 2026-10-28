@@ -154,8 +154,11 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
             raise exceptions.InvalidResetPasswordToken()
 
         user = await self.get(parsed_id)
-        valid_password_fingerprint, _ = await asyncio.to_thread(
-            self.password_helper.verify_and_update, user.hashed_password, password_fingerprint)
+        try:
+            valid_password_fingerprint, _ = await asyncio.to_thread(
+                self.password_helper.verify_and_update, user.hashed_password, password_fingerprint)
+        except Exception:  # not a hash at all (or not a string): a forged token, not a server error
+            raise exceptions.InvalidResetPasswordToken()
         if not valid_password_fingerprint:
             raise exceptions.InvalidResetPasswordToken()
         if not user.is_active:

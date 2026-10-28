@@ -36,7 +36,8 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
     `asset_services.py`, 409 "Insufficient holdings in that account"): a sell tagged with an account may use that
     account's shares plus the "not set" ones; a sell with no account is only checked overall; a change is refused
     only if it makes some sell's shortfall bigger than before, so older data (sells tagged to another account than
-    their buys) stays editable. `/holdings` rows carry `accounts` ({account|UNSET: qty}) for the add form's
+    their buys) stays editable. New buys and deleted sells skip it (they only add shares; untagged sells draw from
+    the largest account, so either could shift a later draw and look like a shortfall). `/holdings` rows carry `accounts` ({account|UNSET: qty}) for the add form's
     account-aware "You own N" hint (`ownedForAccount` in `tradeForm.js`). CSV import only checks per symbol.
   - `routes/imports.py` + `services/imports.py` — `GET /transactions/export` (CSV of every trade, Zenith template,
     formula-injection guarded), `GET /transactions/import/template`, `POST /transactions/import/preview` (parses
@@ -111,7 +112,8 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
   event to `native/screens.js`, which only accepts its `SCREENS`; "Portfolio value" reads a sentence the dashboard
   saves as `siriPortfolio`, never while the Face ID lock is on), CSV exports shared as real files
   (`@capacitor/filesystem` into the cache folder, `shareFile` in `share.js`), token renewal while in use
-  (`renewSessionIfOld`: `POST /user/token` once the 30-day token is a week old). Writes get a 60 s timeout (GETs 12 s)
+  (`renewSessionIfOld`: `POST /user/token` once the 30-day token is a week old; only tokens with the `app` claim,
+  asked for with the app header, renew — a website token gets 403). Writes get a 60 s timeout (GETs 12 s)
   and a timed-out write says it may have been saved. In the app `/` skips the marketing page and
   Google sign-in is hidden (web views can't use it; would also need Sign in with Apple). Backend CORS always allows
   `capacitor://localhost`. The website's "Open the Zenith app" button only shows once `VITE_IOS_APP_STORE_URL` is set.

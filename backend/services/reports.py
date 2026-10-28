@@ -308,8 +308,10 @@ def _superficial(sale, loss: Decimal, holdings: _Holdings, today: date) -> _Supe
     return result
 
 
-def _money(value: Decimal) -> float:
-    return float(value)
+def _money(value: Decimal) -> Decimal:
+    # exact cents in the report and its CSV; the API's response model turns them into JSON numbers. As floats here
+    # the CSV lost cents on amounts past ~CA$10^14 (a float holds ~16 digits).
+    return _cents(value)
 
 
 def capital_gains(trades, year: int, now: datetime | None = None) -> dict:
@@ -367,7 +369,9 @@ def capital_gains(trades, year: int, now: datetime | None = None) -> dict:
         linked = (pool.linked_count, pool.linked_total, pool.linked_first, pool.linked_last)
 
         if oversold or qty >= pool.quantity - sell_tolerance(pool.quantity):
-            pools[key] = pool = _Pool()
+            # a fresh pool, but losses whose buy-back is still to come stay with it: the shares bought back go into
+            # this new pool, so its later sales may get the denied loss added to their ACB
+            pools[key] = pool = _Pool(pending_losses=pool.pending_losses)
         else:
             pool.quantity -= qty
             pool.cost -= acb
@@ -481,8 +485,8 @@ def safe_cell(value) -> str:
     return text
 
 
-def _amount(value: float) -> str:
-    return f"{Decimal(str(value)).quantize(CENT):f}"
+def _amount(value) -> str:
+    return f"{(value if isinstance(value, Decimal) else Decimal(str(value))).quantize(CENT):f}"
 
 
 CSV_HEADER = ["Trade date", "Settlement date", "Symbol", "Type", "Quantity", "Proceeds (CAD)", "ACB (CAD)",

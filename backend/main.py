@@ -141,6 +141,8 @@ UPDATE_REQUIRED = {"detail": "This version of Zenith is out of date. Please upda
 
 def parse_version(value: str) -> tuple[int, ...] | None:
     """ "1.2.3" -> (1, 2, 3); None for anything that isn't dot-separated numbers."""
+    if len(value or "") > 32:  # no real version is this long, and int() refuses over 4,300 digits (a 500)
+        return None
     parts = (value or "").strip().split(".")
     if not all(part.isdigit() and part.isascii() for part in parts):
         return None

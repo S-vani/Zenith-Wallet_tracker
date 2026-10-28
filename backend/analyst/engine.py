@@ -58,7 +58,9 @@ def fmt_money(value: float, currency: str) -> str:
     elif v == 0:
         body = "0.00"
     else:
-        decimals = min(12, max(2, math.ceil(-math.log10(v)) + 3))  # keep ~4 significant digits for tiny prices
+        # keep ~4 significant digits for tiny prices, up to 20 decimals like the website's formatPrice (12 showed
+        # anything under ~CA$0.0000000000005 as zero)
+        decimals = min(20, max(2, math.ceil(-math.log10(v)) + 3))
         body = f"{v:.{decimals}f}"
     return (MINUS if value < 0 else "") + sym + body
 

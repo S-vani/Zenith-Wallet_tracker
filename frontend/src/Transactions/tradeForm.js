@@ -49,11 +49,15 @@ export function amountHint(quantity, price) {
 }
 
 // A quantity as plain text for the input: String(0.0000001) is "1e-7", which the field wouldn't accept back.
-// Quantities are stored with 10 decimals, so that's all that's kept.
+// Quantities are stored with 10 decimals, so that's all that's kept. The shortest form of the rounded number is
+// used where it has no exponent: toFixed(10) alone wrote binary noise for big ones ("1234567.1000000001").
 export function quantityInputValue(value) {
     const n = Number(value);
     if (!Number.isFinite(n) || n < 0) return "";
-    return n.toFixed(10).replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
+    const rounded = Number(n.toFixed(10));
+    const shortest = String(rounded);
+    if (!/e/i.test(shortest)) return shortest;
+    return rounded.toFixed(10).replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
 }
 
 // What the add-trade form starts from when a search result is picked. The coin's CoinGecko id has to come along:

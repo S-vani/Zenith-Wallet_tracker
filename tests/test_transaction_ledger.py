@@ -307,3 +307,15 @@ def test_usd_dashboard_realized_profit_does_not_drift_with_fx(client, make_user,
     after = all_time_return()
     assert before["curr_timeperiod"] == pytest.approx(20)
     assert after["curr_timeperiod"] == pytest.approx(20)
+
+
+def test_a_sell_edited_into_a_buy_has_no_realized_profit(client, user):
+    post(client, user, action="BUY", quantity=10, price_of_one=100,
+         created_at=(datetime.now(timezone.utc) - timedelta(days=20)).isoformat())
+    sale = post(client, user, action="SELL", quantity=5, price_of_one=150,
+                created_at=(datetime.now(timezone.utc) - timedelta(days=10)).isoformat()).json()
+    assert listed(client, user, sale["id"])["profit"] == pytest.approx(250)
+    res = client.put(f"/transactions/{sale['id']}", headers=user.headers, json={"action": "BUY"})
+    assert res.status_code == 200, res.text
+    edited = listed(client, user, sale["id"])
+    assert edited["action"] == "BUY" and edited["profit"] == 0

@@ -308,6 +308,8 @@ def test_analyst_waits_on_market_data_without_a_database_connection(client, user
 # =====================================================================================================================
 @pytest.mark.parametrize("version, expected", [
     ("1.1", 426), ("1.1.9", 426), ("0.9", 426), ("abc", 426), ("", 426), ("1.2.x", 426),
+    ("9" * 4301, 426),  # too many digits for int(): used to escape as a bare 500 without the security headers
+    ("1." * 40 + "1", 426),
     ("1.2", 200), ("1.2.0", 200), ("1.2.1", 200), ("1.10", 200), ("2", 200),
 ])
 def test_outdated_app_versions_get_426(client, monkeypatch, version, expected):

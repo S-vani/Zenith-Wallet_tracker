@@ -129,6 +129,14 @@ def parse_number(value, label: str, decimal_comma: bool = False) -> Decimal | No
         return None
     if isinstance(value, bool):
         raise RowError(f"{label} isn't a number")
+    if isinstance(value, Decimal):
+        # already read from its cell (the broker formats work prices out first): re-reading its text in a
+        # semicolon file took "1.913" for an ambiguous thousands separator
+        if not value.is_finite():
+            raise RowError(f"{label} isn't a number")
+        if value and value.adjusted() > MAX_MAGNITUDE:
+            raise RowError(f"{label} is too large")
+        return value
     if isinstance(value, (int, float)):
         if not math.isfinite(value):
             raise RowError(f"{label} isn't a number")
@@ -171,6 +179,9 @@ def parse_number(value, label: str, decimal_comma: bool = False) -> Decimal | No
 
 
 ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+# "20240105", ISO's basic form: a day like any other (Python would read it as midnight UTC, the evening before in
+# Toronto, so the trade landed on the previous day, and on Jan 1 in the previous tax year)
+COMPACT_DATE = re.compile(r"(\d{4})(\d{2})(\d{2})")
 # Questrade: "2026-02-17 12:00:00 AM"
 AM_PM = re.compile(r"(\d{4}-\d{2}-\d{2})[ T](\d{1,2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?\s*([AaPp][Mm])")
 # A day and a time with no time zone: Zenith's own rows are UTC; Excel re-saves Questrade's "12:00:00 AM" as
@@ -178,6 +189,14 @@ AM_PM = re.compile(r"(\d{4}-\d{2}-\d{2})[ T](\d{1,2}):(\d{2})(?::(\d{2})(?:\.\d+
 NAIVE_TIME = re.compile(r"(\d{4}-\d{2}-\d{2})[ T](\d{1,2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?")
 YMD_SLASH = re.compile(r"(\d{4})/(\d{1,2})/(\d{1,2})(?:[ T].*)?")
 DMY_OR_MDY = re.compile(r"(\d{1,2})[/.](\d{1,2})[/.](\d{4})(?:[ T].*)?")
+
+
+def _real_day(year: int, month: int, day: int) -> bool:
+    try:
+        datetime(year, month, day)
+        return True
+    except ValueError:
+        return False
 
 
 def _date_only(year: int, month: int, day: int) -> datetime:
@@ -242,6 +261,8 @@ def _read_date(text: str, day_first: bool | None) -> tuple[datetime, bool]:
         return datetime.fromisoformat(day).replace(hour=hour, minute=minute, second=second), False
     if ISO_DATE.fullmatch(text):
         return _date_only(*map(int, text.split("-"))), True
+    if (m := COMPACT_DATE.fullmatch(text)):
+        return _date_only(*map(int, m.groups())), True
     m = NAIVE_TIME.fullmatch(text)
     if m:
         day, hour, minute, second = m.groups()
@@ -254,16 +275,17 @@ def _read_date(text: str, day_first: bool | None) -> tuple[datetime, bool]:
     if (m := DMY_OR_MDY.fullmatch(text)):
         # a spreadsheet re-saved the date in its own style: read it the one way it can be, or the file's way
         first, second, year = map(int, m.groups())
-        if first > 12 >= second:
-            day, month = first, second
-        elif second > 12 >= first:
-            day, month = second, first
-        elif first == second:
-            day = month = first
-        elif day_first is not None:
+        as_dmy, as_mdy = _real_day(year, second, first), _real_day(year, first, second)
+        if as_dmy and as_mdy and first != second:
+            if day_first is None:
+                raise RowError(f"Date \"{_short(text)}\" could be read two ways: use YYYY-MM-DD")
             day, month = (first, second) if day_first else (second, first)
-        else:
-            raise RowError(f"Date \"{_short(text)}\" could be read two ways: use YYYY-MM-DD")
+        elif as_dmy:
+            day, month = first, second
+        elif as_mdy:
+            day, month = second, first
+        else:  # "25/14/2024": neither reading is a day, so it isn't ambiguous, just wrong
+            raise RowError(f"Date \"{_short(text)}\" isn't a real calendar date")
         return _date_only(year, month, day), True
     try:
         moment = datetime.fromisoformat(text.removesuffix(" UTC"))

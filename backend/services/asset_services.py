@@ -1039,6 +1039,8 @@ def _replay_ledger(transactions, set_profits: bool = True) -> _Replay:
         typed_in = _typed_currency(t)
 
         if str(t.action) == "BUY":
+            if set_profits and getattr(t, "profit", None):
+                t.profit = 0  # a sell edited into a buy kept the profit of the sale it used to be
             total = state.quantity + qty
             if typed_in and typed_in not in state.in_currency:
                 state.in_currency[typed_in] = (Decimal(0), state.avg_cad)

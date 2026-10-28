@@ -162,7 +162,8 @@ export function niceAxis(values, maxTicks = 5, {headroom = 0} = {}) {
         max += pad;
     }
 
-    const count = Math.max(2, maxTicks);
+    // a range across 0 always needs 3 ticks (0 is one of them): with 2 the step grew without end
+    const count = Math.max(min < 0 && max > 0 ? 3 : 2, maxTicks);
     let step = niceStep((max - min) / (count - 1));
     let low = Math.floor(min / step) * step;
     let high = Math.ceil(max / step) * step;
@@ -200,7 +201,12 @@ export function axisMoneyOptions(values, tickStep) {
         const unit = max >= 1e12 ? 1e12 : max >= 1e9 ? 1e9 : max >= 1e6 ? 1e6 : 1e3;
         const digits = spread > 0 ? places(step / unit) : 1;
         if (digits <= 1) return {notation: "compact", minimumFractionDigits: 0, maximumFractionDigits: digits};
-        // compact labels would all read "CA$114k", so show the full amount instead
+        // From a trillion formatMoney is always compact, so the labels keep as many decimals as the step needs
+        // ("€1.75T, €2T, €2.25T"); one decimal had them all read "€1.4T"
+        if (unit === 1e12) {
+            return {notation: "compact", minimumFractionDigits: 0, maximumFractionDigits: Math.min(digits, 6)};
+        }
+        // below that, compact labels would all read "CA$114k", so show the full amount instead
     }
 
     const digits = spread > 0 ? places(step) : (max >= 1 ? 2 : decimalsFor(max / 1000));

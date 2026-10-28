@@ -8,13 +8,14 @@ from dotenv import load_dotenv
 import httpx
 from decimal import Decimal
 
-from fastapi import HTTPException, Depends, APIRouter, Query
+from fastapi import HTTPException, Depends, APIRouter, Query, Request
 from fastapi_users import exceptions
 from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.exc import StaleDataError
 
-from backend.authentication.authentication import auth_backend, current_active_user, get_user_manager
+from backend.authentication.authentication import (auth_backend, bearer_transport, current_active_user,
+                                                     get_user_manager, is_app_request, is_app_token)
 from backend.authentication.cleanup import delete_users
 from backend.authentication.schemas import ChangeEmail, ChangePassword, ConfirmPassword
 from backend.db.database import get_async_session
@@ -133,7 +134,11 @@ async def delete_transaction_with_id(
         raise HTTPException(status_code=404, detail="Transaction not found")
 
     symbol = result.symbol
-    before = await account_shortfalls(session, current_user.id, {symbol})
+    # Deleting a sell only leaves more shares, so it can't make another sale impossible. The per-account check is
+    # skipped for it: untagged sells draw from the largest account, and removing one could shift a later untagged
+    # sell onto another account and report a shortfall the user never caused.
+    check_accounts = str(result.action) != "SELL"
+    before = await account_shortfalls(session, current_user.id, {symbol}) if check_accounts else {}
     await session.delete(result)
     await session.flush()
 
@@ -141,7 +146,8 @@ async def delete_transaction_with_id(
     if not await rebuild_symbol_ledger(session, current_user.id, symbol):
         await session.rollback()
         raise HTTPException(status_code=409, detail=OVERSOLD_AFTER_DELETE)
-    if account_oversell_added(before, await account_shortfalls(session, current_user.id, {symbol})):
+    if check_accounts and account_oversell_added(
+            before, await account_shortfalls(session, current_user.id, {symbol})):
         await session.rollback()
         raise HTTPException(status_code=409, detail=ACCOUNT_OVERSOLD)
 
@@ -309,7 +315,10 @@ async def make_transaction(
     # in USD / EUR is converted at the rate of its own date (to_cad_on_trade_date), which the ACB report relies on.
     await check_transaction_limit(session, current_user.id)
     await check_symbol_limit(session, current_user.id, data.api_id)
-    before = await account_shortfalls(session, current_user.id, {data.symbol})
+    # A new buy only adds shares, so it can't make a sale impossible: no per-account check (an untagged sell draws
+    # from the largest account, and a buy that changes which one that is used to be refused as a "shortfall")
+    check_accounts = data.action == "SELL"
+    before = await account_shortfalls(session, current_user.id, {data.symbol}) if check_accounts else {}
 
     await end_read(session)  # nothing written yet; don't hold a connection while the rates (maybe Yahoo's) load
     rates = await get_all_conversion_rates()
@@ -339,7 +348,8 @@ async def make_transaction(
         await session.rollback()
         raise HTTPException(status_code=409, detail=OVERSOLD)  # Error if you are trying to sell more than you have
     # a sell tagged with an account can't take more than that account (plus "not set" shares) held then
-    if account_oversell_added(before, await account_shortfalls(session, current_user.id, {data.symbol})):
+    if check_accounts and account_oversell_added(
+            before, await account_shortfalls(session, current_user.id, {data.symbol})):
         await session.rollback()
         raise HTTPException(status_code=409, detail=ACCOUNT_OVERSOLD)
 
@@ -1036,14 +1046,19 @@ async def change_password(
 
 @router.post("/user/token")
 async def renew_token(
+        request: Request,
+        token: str = Depends(bearer_transport.scheme),
         current_user: User = Depends(current_active_user),
         strategy=Depends(auth_backend.get_strategy),
 ):
     """
-    A fresh token for a still-valid one, with the same lifetime as a new sign-in from this client. The iPhone app
-    renews its 30-day token while it's in use, so a daily user is never sent back to the login screen (and the Face
-    ID lock they turned on stays on). It can't bring back a revoked token: those fail current_active_user.
+    A fresh 30-day token for a still-valid app one. The iPhone app renews its token while it's in use, so a daily
+    user is never sent back to the login screen (and the Face ID lock they turned on stays on). Only an app sign in
+    asking as the app can renew: a website token (1 hour) could otherwise be turned into a 30-day one and kept
+    alive for good. A revoked token can't be renewed either: those fail current_active_user.
     """
+    if not (is_app_token(token) and is_app_request(request)):
+        raise HTTPException(status_code=403, detail="Only the iPhone app's sign in can be renewed.")
     return {"access_token": await strategy.write_token(current_user), "token_type": "bearer"}
 
 

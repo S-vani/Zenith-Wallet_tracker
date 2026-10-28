@@ -114,6 +114,11 @@ describe("decimal input", () => {
     it("prefills quantities without exponents or float noise", () => {
         expect(quantityInputValue(0.0000001)).toBe("0.0000001");
         expect(quantityInputValue(2)).toBe("2");
+        // big holdings: no binary noise from toFixed ("1234567.1000000001" was more than was owned)
+        expect(quantityInputValue(1234567.1)).toBe("1234567.1");
+        expect(quantityInputValue(5562614.353)).toBe("5562614.353");
+        expect(quantityInputValue("999999999.9999999999")).toBe("1000000000");
+        expect(quantityInputValue(0.12345678901)).toBe("0.123456789");
         expect(quantityInputValue(1.5)).toBe("1.5");
         expect(quantityInputValue(0.1 + 0.2)).toBe("0.3");
         expect(quantityInputValue(1e9)).toBe("1000000000");

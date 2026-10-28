@@ -5,6 +5,7 @@ import csv
 import io
 import itertools
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
@@ -156,9 +157,21 @@ def test_rounding_to_cents_keeps_rows_and_totals_consistent():
               sell(1, 11, d(2024, 2, 2))]
     r = report(trades, 2024)
     for s in r["sales"]:
-        assert round(s["proceeds"] - s["acb"], 2) == s["gain"]
-        assert s["acb"] == 10.01  # 10.005 rounds half up
-    assert r["totals"]["net"] == round(sum(s["gain"] for s in r["sales"]), 2)
+        assert s["proceeds"] - s["acb"] == s["gain"]  # exact cents
+        assert s["acb"] == Decimal("10.01")  # 10.005 rounds half up
+    assert r["totals"]["net"] == sum(s["gain"] for s in r["sales"])
+
+
+def test_amounts_keep_their_cents_at_the_largest_allowed_sizes():
+    # quantity and price can each reach 1e9: as floats these rows lost their cents past ~CA$10^14
+    trades = [buy(123456789, 87654321.12, d(2024, 1, 2)), sell(123456789, 87654320.01, d(2024, 2, 1))]
+    r = report(trades, 2024)
+    [row] = r["sales"]
+    assert row["proceeds"] == Decimal("10821520890413047.89")
+    assert row["acb"] == Decimal("10821521027450083.68")
+    assert row["gain"] == row["proceeds"] - row["acb"]
+    line = report_csv(r).splitlines()[1]
+    assert "10821520890413047.89" in line and "10821521027450083.68" in line
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -520,6 +533,18 @@ def test_a_sale_before_the_repurchase_has_no_acb_note():
     middle, last = [s for s in report(trades, 2024)["sales"] if s["date"] != "2024-03-01"]
     assert middle["acb_may_rise"] is False
     assert last["acb_may_rise"] is True
+
+
+def test_emptying_the_pool_before_the_repurchase_keeps_the_acb_note():
+    # loss, then the rest is sold (the pool is empty), then the buy-back: CRA adds the denied loss to the ACB of
+    # the shares bought back, so their later sale must still say its ACB may rise
+    trades = [buy(10, 100, d(2024, 1, 2)), sell(5, 80, LOSS_DAY), sell(5, 120, LOSS_DAY + timedelta(days=4)),
+              buy(5, 85, LOSS_DAY + timedelta(days=10)), sell(5, 90, d(2024, 9, 3))]
+    sales = {s["date"]: s for s in report(trades, 2024)["sales"]}
+    assert sales["2024-03-01"]["superficial_loss"] is True
+    assert sales["2024-03-05"]["acb_may_rise"] is False  # sold before the buy-back
+    assert sales["2024-09-03"]["acb_may_rise"] is True
+    assert any("Its ACB may be too low" in n and "2024-03-01" in n for n in sales["2024-09-03"]["notes"])
 
 
 def test_losses_total_says_how_much_is_possibly_superficial():

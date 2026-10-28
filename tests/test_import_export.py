@@ -11,7 +11,7 @@ import pytest
 
 import backend.routes.imports as import_routes
 import backend.services.imports as importer
-from backend.services.imports import (FileError, csv_safe, map_account_type, parse_csv, parse_number,
+from backend.services.imports import (FileError, RowError, csv_safe, map_account_type, parse_csv, parse_number,
                                       parse_trade_date, questrade_symbol)
 
 from conftest import RATES
@@ -218,10 +218,52 @@ def test_numbers_and_dates():
     assert parse_trade_date("2024-06-01", now=now) == (now, True)
 
 
+def test_compact_dates_are_days():
+    # "20240101" used to be read as midnight UTC: Dec 31 in Toronto, and the previous tax year
+    assert parse_trade_date("20240101") == parse_trade_date("2024-01-01") == (datetime(2024, 1, 1, 21), True)
+    with pytest.raises(RowError, match="isn't a real calendar date"):
+        parse_trade_date("20240230")
+
+
+@pytest.mark.parametrize("value", ["25/14/2024", "0/9/1994", "31/02/2024", "13.13.2024"])
+def test_slash_dates_that_are_wrong_both_ways_say_so(value):
+    with pytest.raises(RowError, match="isn't a real calendar date"):
+        parse_trade_date(value)
+
+
+def test_slash_dates_still_need_the_files_order_when_both_readings_are_real():
+    with pytest.raises(RowError, match="could be read two ways"):
+        parse_trade_date("01/09/2024")
+    assert parse_trade_date("01/09/2024", day_first=True)[0].month == 9
+    assert parse_trade_date("13/02/2024")[0].date().isoformat() == "2024-02-13"
+    assert parse_trade_date("02/13/2024")[0].date().isoformat() == "2024-02-13"
+
+
 def test_semicolon_files_with_decimal_commas():
     text = "date;action;symbol;quantity;price;currency\n2024-01-02;BUY;SAP;1,5;120,25;EUR\n"
     [row] = parse_csv(text).rows
     assert (row.quantity, row.price, row.currency) == (Decimal("1.5"), Decimal("120.25"), "EUR")
+
+
+@pytest.mark.parametrize("quantity,price,expected_quantity,expected_price", [
+    ("1,913", "30,5", "1.913", "30.5"),  # three decimals used to be refused as an ambiguous thousands separator
+    ("2", "8,690", "2", "8.69"),
+    ("1.234,5", "1,25", "1234.5", "1.25"),
+])
+def test_semicolon_broker_files_with_three_decimals(quantity, price, expected_quantity, expected_price):
+    wealthsimple = ("transaction_date;account_type;activity_type;activity_sub_type;symbol;currency;quantity;"
+                    f"unit_price;net_cash_amount\n2024-01-02;TFSA;Trade;BUY;XEQT.TO;CAD;{quantity};{price};-100\n")
+    [row] = parse_csv(wealthsimple).rows
+    assert row.status == "ok", row
+    assert (row.quantity, row.price) == (Decimal(expected_quantity), Decimal(expected_price))
+
+
+def test_semicolon_broker_price_worked_out_from_a_three_decimal_net_amount():
+    text = ("transaction_date;account_type;activity_type;activity_sub_type;symbol;currency;quantity;unit_price;"
+            "net_cash_amount\n2024-01-02;TFSA;Trade;BUY;XEQT.TO;CAD;1;;-3,455\n")
+    [row] = parse_csv(text).rows
+    assert row.status == "ok", row
+    assert row.price == Decimal("3.455")
 
 
 def test_size_and_row_limits():
