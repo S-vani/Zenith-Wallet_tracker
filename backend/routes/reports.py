@@ -25,6 +25,7 @@ FIRST_YEAR = 2000
 
 
 class Sale(BaseModel):
+    """One taxable sale in the report."""
     id: str
     date: str  # YYYY-MM-DD, the trade date in Toronto
     settlement_date: str  # decides the tax year (stocks T+1 / T+2 business days, crypto the trade date)
@@ -46,6 +47,7 @@ class Sale(BaseModel):
 
 
 class Totals(BaseModel):
+    """The year's sums (as shown, in cents) and the informational 50% inclusion amount."""
     proceeds: float
     acb: float
     net: float
@@ -56,6 +58,7 @@ class Totals(BaseModel):
 
 
 class CapitalGainsReport(BaseModel):
+    """The capital-gains report for one tax year."""
     year: int
     currency: str
     sales: list[Sale]
@@ -70,6 +73,7 @@ class ReportYears(BaseModel):
 
 
 def _check_year(year: int) -> int:
+    """`year` when it's one the report covers, else 422."""
     # a stock sold on the last trading day of the year settles (and counts) in the next one
     current = datetime.now(timezone.utc).year + 1
     if not FIRST_YEAR <= year <= current:
@@ -78,6 +82,7 @@ def _check_year(year: int) -> int:
 
 
 async def _all_trades(session: AsyncSession, user: User):
+    """All of the user's trades in ledger order."""
     # every year and every account: ACB carries over from earlier years, and registered buys still count for
     # the superficial loss check
     result = await session.execute(

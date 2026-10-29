@@ -12,6 +12,7 @@ const EXAMPLES = {
 
 const MAX_QUERY_LENGTH = 20; // the backend rejects longer searches
 
+// Stock and crypto search, with each result's chart and market analyst.
 function SearchPage() {
     usePageTitle("Search");
 

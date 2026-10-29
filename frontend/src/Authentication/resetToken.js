@@ -4,6 +4,7 @@
 
 const SAVED_TOKEN_KEY = "resetToken";
 
+// The reset token moved out of the address bar earlier, or null.
 export function readSavedToken() {
     try {
         return sessionStorage.getItem(SAVED_TOKEN_KEY);

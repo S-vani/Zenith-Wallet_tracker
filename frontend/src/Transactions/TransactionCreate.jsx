@@ -14,6 +14,7 @@ import {
 
 import "../css/Holdings.css";
 
+// The add-trade form for the picked asset: buy or sell, amount, price, date, account.
 function TransactionCreate({onClose, onCreated, data}) {
     const {currency} = useUser();
     // the date starts at "now"; it's only sent if the user changes it (see createPayload)

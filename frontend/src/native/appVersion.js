@@ -14,6 +14,7 @@ export function cleanVersion(value) {
     return /^[0-9A-Za-z][0-9A-Za-z.+-]{0,31}$/.test(trimmed) ? trimmed : null;
 }
 
+// Reads the app's version once at startup, for the X-Zenith-App-Version header.
 export function loadAppVersion() {
     if (!isNative) return Promise.resolve(null);
     return appPlugin()

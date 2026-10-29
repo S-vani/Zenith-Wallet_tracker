@@ -1,3 +1,7 @@
+"""
+Prices and portfolio maths: Yahoo / CoinGecko price histories (cached, "the latest close known at that time"), exchange
+rates, holdings and returns, and the ledger replay that keeps every trade's history valid.
+"""
 import asyncio
 import functools
 import math
@@ -16,7 +20,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db_models.assets import Transaction
-from backend.schemas.assets import ACCOUNT_UNSET, CreateTransaction
+from backend.schemas.assets import ACCOUNT_UNSET
 import logging
 import time
 
@@ -155,6 +159,7 @@ def has_cached_rates() -> bool:
 
 
 async def _refresh_conversion_rates() -> dict:
+    """Fetches fresh exchange rates (one request at a time), falling back to the last good ones on failure."""
     global _rates_cache, _rates_cache_time, _rates_retry_at, _rates_failed_at
 
     now = time.time()
@@ -267,20 +272,6 @@ async def end_read(db: AsyncSession) -> None:
     await db.commit()
 
 
-async def get_holdings_from_symbol(db: AsyncSession, user_id: UUID, symbol: str):
-    """
-    Return a list of Transactions objects of that specific symbol
-    """
-    result = await db.execute(
-        select(Transaction).where(
-            Transaction.user_id == user_id,
-            Transaction.symbol == symbol
-        )
-    )
-
-    return result.scalars().all()
-
-
 async def get_curr_holdings_prices(holdings: dict[str, dict[str, float | str]], currency: str):
     """
     Return a dictionary in the form {api_id: curr_price}, with None for a holding no source has a price for
@@ -294,20 +285,21 @@ def holding_coin_ids(holdings: dict) -> dict[str, str]:
     return {str(api_id): data["coin_id"] for api_id, data in holdings.items() if data.get("coin_id")}
 
 
-def _naive_utc(value: datetime) -> datetime:
-    """Transactions are stored as naive UTC, so compare against naive UTC."""
+def naive_utc(value: datetime) -> datetime:
+    """Trades are stored as naive UTC: a time with an offset is converted to UTC first, a naive one is kept as is."""
     return value.astimezone(timezone.utc).replace(tzinfo=None) if value.tzinfo else value
 
 
 async def _trades(db: AsyncSession, user_id: UUID, exclude=(), action: str | None = None,
                   start: datetime | None = None, end: datetime | None = None):
+    """The user's trades, optionally only one action, a time span, and without some symbols."""
     query = select(Transaction).where(Transaction.user_id == user_id)
     if action:
         query = query.where(Transaction.action == action)
     if start is not None:
-        query = query.where(Transaction.created_at > _naive_utc(start))
+        query = query.where(Transaction.created_at > naive_utc(start))
     if end is not None:
-        query = query.where(Transaction.created_at <= _naive_utc(end))
+        query = query.where(Transaction.created_at <= naive_utc(end))
     if exclude:
         query = query.where(Transaction.api_id.notin_(list(exclude)))
     return (await db.execute(query)).scalars().all()
@@ -490,6 +482,7 @@ async def _refresh_usd_cross_rates() -> None:
 
 
 async def _fetch_usd_cross_rates(now: float) -> None:
+    """Refreshes the USD cross rates used to turn listing currencies (EUR, GBp...) into CAD."""
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             res = await client.get("https://open.er-api.com/v6/latest/USD")
@@ -614,6 +607,7 @@ _series_inflight: dict[tuple, asyncio.Task] = {}
 
 @dataclass
 class PriceSeries:
+    """One asset's price history, oldest first, with when each close became known."""
     labels: list[str] = field(default_factory=list)  # bar times as the source gave them (for the charts)
     times: list[datetime] = field(default_factory=list)
     known: list[datetime] = field(default_factory=list)  # when each close was known (see above)
@@ -650,6 +644,7 @@ class PriceSeries:
 
 
 def lookup_spec(age: timedelta) -> tuple[str, str]:
+    """The Yahoo period and interval of the finest history that reaches back `age`."""
     for max_age, period, interval in LOOKUP_SPECS:
         if age <= max_age:
             return period, interval
@@ -657,6 +652,7 @@ def lookup_spec(age: timedelta) -> tuple[str, str]:
 
 
 def _as_utc(value) -> datetime:
+    """A pandas / ISO / naive time as an aware UTC datetime."""
     value = value.to_pydatetime() if hasattr(value, "to_pydatetime") else value
     if isinstance(value, str):
         value = datetime.fromisoformat(value)
@@ -664,6 +660,7 @@ def _as_utc(value) -> datetime:
 
 
 def _series_from_history(hist, bar: timedelta, fetched: datetime) -> PriceSeries | None:
+    """A PriceSeries from a Yahoo history (rows without a real close are skipped), or None when there's none."""
     if hist is None or hist.empty or "Close" not in hist.columns:
         return None
     volumes = hist["Volume"] if "Volume" in hist.columns else None
@@ -709,6 +706,7 @@ async def _cached_series(key: tuple, ttl: float, fetch, empty_ttl: float | None 
 
 
 def _series_fetch_done(key: tuple, task: asyncio.Task) -> None:
+    """Forgets a finished fetch and keeps its result from being reported as an unhandled error."""
     if _series_inflight.get(key) is task:
         del _series_inflight[key]
     if not task.cancelled():
@@ -716,6 +714,7 @@ def _series_fetch_done(key: tuple, task: asyncio.Task) -> None:
 
 
 async def _fill_series(key: tuple, ttl: float, fetch, empty_ttl: float | None) -> PriceSeries | None:
+    """Fetches a series for the cache (sharing one fetch between callers), keeping the old one if it fails."""
     now = time.time()
     entry = _series_cache.get(key)
     stale = entry["series"] if entry and entry["series"] is not None and now - entry["fetched"] < STALE_SECONDS \
@@ -746,6 +745,7 @@ async def _yahoo_series(ticker: str, period: str, interval: str) -> PriceSeries 
     """One Yahoo price history (in the ticker's own currency), or None when Yahoo has no prices for it."""
 
     async def fetch():
+        """Yahoo's history for the ticker as a PriceSeries."""
         requested_at = datetime.now(timezone.utc)
         hist = await run_yahoo(yf.Ticker(ticker).history, period=period, interval=interval)
         return _series_from_history(hist, BAR_LENGTH[interval], requested_at)
@@ -822,6 +822,7 @@ async def _coingecko_series(symbol: str, range_code: str, coin_id: str | None = 
     range_code = "1Y" if range_code in ("5Y", "MAX") else range_code  # its free plan stops at 365 days either way
 
     async def fetch():
+        """CoinGecko's history for the coin as a PriceSeries in CAD."""
         from backend.analyst import data as market_data  # imported here: analyst.data imports this module
         points = await market_data.coingecko_chart(symbol, range_code, "CAD", coin_id=coin_id)
         series = PriceSeries()
@@ -896,6 +897,7 @@ async def get_prices_at(assets: dict[str, str], timestamp: datetime, currency: s
     period, interval = lookup_spec(datetime.now(timezone.utc) - timestamp)
 
     async def fetch_one(api_id, asset_type):
+        """One asset's price at the timestamp, or None when no source has it."""
         try:
             series, to_cad, _ = await _asset_series(api_id, asset_type, period, interval,
                                                     coin_id=(coin_ids or {}).get(api_id))
@@ -932,6 +934,7 @@ async def get_latest_stock_quotes(symbols: list[str]) -> dict[str, dict[str, flo
     which costs one of the 8 free credits per minute for every symbol. Symbols Yahoo has no data for are left out.
     """
     async def fetch_one(symbol):
+        """The latest close and the change since the one before, for one ticker."""
         hist = await run_yahoo(yf.Ticker(symbol).history, period="5d", interval="1d")
         closes = hist["Close"].dropna() if not hist.empty else []
         if len(closes) == 0:
@@ -941,6 +944,7 @@ async def get_latest_stock_quotes(symbols: list[str]) -> dict[str, dict[str, flo
         return symbol, {"close": close, "previous_close": previous}
 
     async def safe_fetch(symbol):
+        """fetch_one, with any error read as "no quote" so one ticker can't break the search."""
         try:
             return await fetch_one(symbol)
         except Exception:  # one bad ticker shouldn't empty the whole search
@@ -948,21 +952,6 @@ async def get_latest_stock_quotes(symbols: list[str]) -> dict[str, dict[str, flo
 
     results = await asyncio.gather(*[safe_fetch(symbol) for symbol in symbols])
     return {symbol: quote for symbol, quote in results if quote is not None}
-
-
-async def calculate_profit_for_one_transaction(db: AsyncSession, user_id: UUID, data: CreateTransaction, currency: str):
-    """
-    Calculate the amount (in CAD) a user would profit from selling `data` (price in CAD) after their logged trades
-    of that symbol, from the average cost at that point (or at data.created_at for a backdated sell).
-    The routes use rebuild_symbol_ledger, which also handles prices typed in USD/EUR; this is the plain CAD version.
-    """
-    query = select(Transaction).where(Transaction.user_id == user_id, Transaction.symbol == data.symbol)
-    if data.created_at is not None:
-        query = query.where(Transaction.created_at <= data.created_at)
-    result = await db.execute(query.order_by(*LEDGER_ORDER))
-
-    replay = _replay_ledger(result.scalars().all(), set_profits=False)
-    return float((Decimal(str(data.price_of_one)) - replay.avg_cad) * as_quantity(data.quantity))
 
 
 def create_holding_filter(
@@ -980,11 +969,8 @@ def create_holding_filter(
     query = select(Transaction).where(Transaction.user_id == user_id)
 
     # transactions are stored in UTC without a timezone, so convert filter dates the same way
-    def to_utc(value: datetime) -> datetime:
-        return value.astimezone(timezone.utc).replace(tzinfo=None) if value.tzinfo else value
-
-    start_date = to_utc(start_date) if start_date else None
-    end_date = to_utc(end_date) if end_date else None
+    start_date = naive_utc(start_date) if start_date else None
+    end_date = naive_utc(end_date) if end_date else None
 
     if symbol:
         # escape LIKE wildcards so typing "_" or "%" doesn't match everything
@@ -1014,6 +1000,7 @@ class _Replay:
     """Running state while replaying one symbol's trades in date order (average cost method)."""
 
     def __init__(self):
+        """An empty position: no quantity, no cost."""
         self.quantity = Decimal(0)
         self.avg_cad = Decimal(0)
         # Average cost in a currency C, written as a + b * rate: `a` comes from buys typed in C (their typed price)
@@ -1170,23 +1157,6 @@ def account_oversell_added(before: dict[str, Decimal], after: dict[str, Decimal]
     return any(short > before.get(tid, Decimal(0)) + QTY_STEP for tid, short in after.items())
 
 
-async def current_quantity(db: AsyncSession, user_id: UUID, symbol: str) -> Decimal:
-    """
-    Calculate how much of a specific symbol a user has, for example how much BTC is currently in their account.
-    Quantities are summed as exact Decimals (see as_quantity) so 0.3 - 0.1 is exactly 0.2
-    """
-    lst = await get_holdings_from_symbol(db, user_id, symbol)
-    selling = Decimal(0)
-    buying = Decimal(0)
-    for trans in lst:
-        if str(trans.action) == "SELL":
-            selling += as_quantity(trans.quantity)
-        else:
-            buying += as_quantity(trans.quantity)
-
-    return buying - selling
-
-
 def turn_list_to_dict(lst, conversion: float = 1.0, currency: str | None = None):
     """
     loop through a list of transactions and turn it into a list of dictionaries that are easier to use,
@@ -1232,19 +1202,6 @@ async def get_position_values_at(
         api_id: float(prices[api_id]) * float(data["quantity"]) if prices.get(api_id) is not None else None
         for api_id, data in holdings.items()
     }
-
-
-async def get_portfolio_value_at(
-        db: AsyncSession,
-        user_id: UUID,
-        timestamp: datetime,
-        currency: str
-):
-    """
-    Get the portfolios value at a specific time in the form of a float. Holdings with no price are left out.
-    """
-    values = await get_position_values_at(db, user_id, timestamp, currency)
-    return sum(value for value in values.values() if value is not None)
 
 
 async def get_history_of_prices(
@@ -1346,7 +1303,7 @@ async def get_portfolio_value_history(
 
     result = await db.execute(
         select(Transaction)
-        .where(Transaction.user_id == user_id, Transaction.created_at <= _naive_utc(now))
+        .where(Transaction.user_id == user_id, Transaction.created_at <= naive_utc(now))
         .order_by(*LEDGER_ORDER)  # same order as get_holdings_at_time
     )
     transactions = result.scalars().all()  # read once and replayed below, instead of one query per point
@@ -1362,6 +1319,7 @@ async def get_portfolio_value_history(
         period, interval = lookup_spec(now - timestamps[0])  # one history per holding that reaches the first point
 
         async def load(api_id):
+            """One holding's series and its rate to CAD (None, None when no source has it)."""
             try:
                 series, to_cad, _ = await _asset_series(api_id, types[api_id], period, interval,
                                                         coin_id=coin_ids.get(api_id))
@@ -1374,7 +1332,7 @@ async def get_portfolio_value_history(
 
         i = 0
         for ts in timestamps[:-1]:
-            while i < len(transactions) and _naive_utc(transactions[i].created_at) <= _naive_utc(ts):
+            while i < len(transactions) and naive_utc(transactions[i].created_at) <= naive_utc(ts):
                 apply_trade(positions, transactions[i], currency, conversion)
                 i += 1
 

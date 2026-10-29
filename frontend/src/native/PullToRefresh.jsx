@@ -11,6 +11,7 @@ const MAX = 110;
 // touches that start on these are someone using a chart, form or scrolling list, not pulling the page
 const IGNORE = ".recharts-wrapper, input, textarea, select, [role=dialog], .search-results-list svg";
 
+// Resolves after `ms`.
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Pull down at the top of a page to reload it, like a native list. Only on the pages that reload (useRefreshKey):

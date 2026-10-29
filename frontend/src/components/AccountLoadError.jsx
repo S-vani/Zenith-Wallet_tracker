@@ -5,6 +5,7 @@ import {useUser} from "../context/UserContext.jsx";
 // say why and offer Try again, instead of a page of dashes. The dashboard and the Account page show their own.
 const OWN_MESSAGE = ["/dashboard", "/user"];
 
+// The banner itself; renders nothing while the account loads fine.
 function AccountLoadError() {
     const {error, reload} = useUser();
     const {pathname} = useLocation();

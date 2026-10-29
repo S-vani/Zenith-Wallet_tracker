@@ -8,6 +8,7 @@ import "../css/Home.css"
 import "../css/Auth.css"
 import "../css/Login.css"
 
+// Confirms an email address from the link in the verification email.
 function VerifyPage() {
     usePageTitle("Verify email");
 

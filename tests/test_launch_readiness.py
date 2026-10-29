@@ -15,7 +15,6 @@ import httpx
 import pytest
 
 import backend.analyst.data as market_data
-import backend.analyst.service as analyst_service
 import backend.db_models.assets as models_module
 import backend.main as main_module
 import backend.routes.assets as routes_module

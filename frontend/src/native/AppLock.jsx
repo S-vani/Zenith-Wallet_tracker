@@ -9,6 +9,7 @@ import {initiallyLocked, onLeave, onReturn, onStartup} from "./lockRules.js";
 // how long a slow start may keep waiting for the Keychain and the setting before showing the normal lock screen
 const SLOW_START_WAIT_MS = 10000;
 
+// `promise`, or `fallback` once `ms` have passed.
 const within = (promise, ms, fallback) =>
     Promise.race([promise, new Promise((resolve) => setTimeout(() => resolve(fallback), ms))]);
 

@@ -6,6 +6,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
 // Toasts and the offline banner must keep announcing, and the app's own lock screen must stay usable
 const KEEP_REACHABLE = '[aria-live], [role="status"], [role="alert"], [role="dialog"], script, style';
 
+// The dialog's focusable elements that are actually showing.
 function focusables(root) {
     // skip hidden ones (e.g. the price chart's controls while it's collapsed)
     return [...root.querySelectorAll(FOCUSABLE)].filter((el) => el.getClientRects().length > 0);

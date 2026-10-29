@@ -14,6 +14,7 @@ const PUBLIC_PAGES = {
     "/support": "Help with Zenith Wallet Tracker: contact us, verify your email, reset your password, change currency or delete your account.",
 };
 
+// Sets a <meta> tag's content, adding the tag when it's missing.
 function setMeta(selector, create, value) {
     let element = document.head.querySelector(selector);
     if (!element) {
@@ -23,6 +24,7 @@ function setMeta(selector, create, value) {
     element.setAttribute(element.tagName === "LINK" ? "href" : "content", value);
 }
 
+// Sets the tab title (and the page's share text) for this page.
 export default function usePageTitle(title) {
     useEffect(() => {
         document.title = title ? `${title} · Zenith Wallet Tracker` : HOME_TITLE;

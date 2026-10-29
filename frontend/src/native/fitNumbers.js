@@ -18,6 +18,7 @@ export function fittedSize({baseSize, naturalWidth, availableWidth}) {
     return Math.max(Math.floor(baseSize * (availableWidth / naturalWidth) * 10) / 10, baseSize * MIN_SCALE);
 }
 
+// Shrinks one amount to fit its box, remembering what it was fitted for.
 function fit(element) {
     const width = element.clientWidth;
     const signature = `${textSizeGeneration}|${element.textContent}|${width}`;
@@ -36,6 +37,7 @@ function fit(element) {
     if (element.scrollWidth > element.clientWidth + 1) element.classList.add("fit-wrap");
 }
 
+// Fits every big amount now and whenever the page, its size or the Text Size changes (app only).
 export function watchNumbers() {
     if (!isNative || typeof MutationObserver === "undefined") return;
     let queued = false;

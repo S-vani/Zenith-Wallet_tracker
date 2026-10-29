@@ -9,7 +9,6 @@ import pytest
 
 import backend.services.asset_services as services
 from backend.db.database import async_session_maker
-from backend.schemas.assets import CreateTransaction
 from conftest import RATES, REAL_GET_ALL_CONVERSION_RATES
 
 
@@ -197,19 +196,6 @@ async def _call_with_session(fn, *args):
         return await fn(session, *args)
 
 
-def test_current_quantity_uses_exact_decimal_math(run, user, buy, sell):
-    buy(user, "ETH", 0.3, 2000, asset_type="crypto")
-    sell(user, "ETH", 0.1, 2000, asset_type="crypto")
-
-    qty = run(_call_with_session, services.current_quantity, uuid.UUID(user.id), "ETH")
-    assert isinstance(qty, Decimal)
-    assert qty == Decimal("0.2")
-
-
-def test_current_quantity_unknown_symbol_is_zero(run, user):
-    assert run(_call_with_session, services.current_quantity, uuid.UUID(user.id), "NOTHING") == 0
-
-
 def test_holdings_at_time_averages_buys_and_drops_sold_positions(run, user, buy, sell):
     buy(user, "AAPL", 2, 100)
     buy(user, "AAPL", 2, 200)
@@ -238,16 +224,6 @@ def test_holdings_at_time_converts_average_price(run, make_user, buy):
     holdings = run(_call_with_session, services.get_holdings_at_time, uuid.UUID(usd_user.id),
                    datetime.now(timezone.utc), "USD")
     assert holdings["AAPL"]["avg_price"] == pytest.approx(70)
-
-
-def test_profit_for_one_transaction_uses_average_cost(run, user, buy):
-    buy(user, "AAPL", 2, 100)
-    buy(user, "AAPL", 2, 200)
-    sale = CreateTransaction(symbol="AAPL", action="SELL", asset_type="stock", price_of_one=180, quantity=1,
-                             api_id="AAPL")
-
-    profit = run(_call_with_session, services.calculate_profit_for_one_transaction, uuid.UUID(user.id), sale, "CAD")
-    assert profit == pytest.approx(30)
 
 
 def test_realized_profit_and_cash_flow(run, user, buy, sell):

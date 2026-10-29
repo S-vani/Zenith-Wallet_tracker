@@ -59,6 +59,7 @@ export function hideSplash() {
     splashPlugin().then(({SplashScreen}) => SplashScreen.hide()).catch(() => null);
 }
 
+// Turns the app's lifecycle into window events: app:background, app:pause, app:resume (with time away).
 function watchAppState() {
     let backgroundedAt = null;
     appPlugin().then(({App}) => {
@@ -93,6 +94,7 @@ function watchAppState() {
     }).catch(() => null);
 }
 
+// Keeps the online / offline state (and the banner) up to date, and reloads after being offline.
 function watchNetwork() {
     networkPlugin().then(async ({Network}) => {
         // listen first, then read the current state, so a change in between isn't lost
@@ -142,6 +144,7 @@ function privacyBackGoesBack() {
     }, true);
 }
 
+// A light haptic when a tab, range or toggle actually changes.
 function addHaptics() {
     // a light tap when a tab, range pill or toggle actually changes, from one listener instead of editing every
     // button. Tapping the tab or option that's already selected does nothing, so it doesn't buzz either.

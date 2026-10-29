@@ -19,9 +19,9 @@ import re
 import time as clock
 from dataclasses import dataclass, field
 from datetime import datetime, time, timedelta, timezone
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
-from backend.schemas.assets import ACCOUNT_TYPES, FUTURE_SKEW, MAX_QUANTITY, MIN_AMOUNT, OLDEST_DATE
+from backend.schemas.assets import ACCOUNT_TYPES, FUTURE_SKEW, MAX_PRICE, MAX_QUANTITY, MIN_AMOUNT, OLDEST_DATE
 from backend.services import asset_services
 from backend.services.asset_services import as_quantity, get_conversion_factor, sell_tolerance
 
@@ -29,10 +29,8 @@ log = logging.getLogger(__name__)
 
 MAX_CSV_BYTES = 2 * 1024 * 1024
 MAX_ROWS = 5000
-MAX_PRICE = 1e9  # same cap as CreateTransaction.price_of_one
 SUPPORTED_CURRENCIES = ("CAD", "USD", "EUR")  # what get_conversion_factor knows
 
-FORMATS = ("zenith", "wealthsimple", "questrade")
 FORMAT_LABELS = {"zenith": "Zenith template", "wealthsimple": "Wealthsimple", "questrade": "Questrade"}
 
 EXPORT_COLUMNS = ["date", "action", "asset_type", "symbol", "quantity", "price", "currency", "account_type", "coin_id"]
@@ -192,6 +190,7 @@ DMY_OR_MDY = re.compile(r"(\d{1,2})[/.](\d{1,2})[/.](\d{4})(?:[ T].*)?")
 
 
 def _real_day(year: int, month: int, day: int) -> bool:
+    """Whether year / month / day is a date that exists."""
     try:
         datetime(year, month, day)
         return True
@@ -200,6 +199,7 @@ def _real_day(year: int, month: int, day: int) -> bool:
 
 
 def _date_only(year: int, month: int, day: int) -> datetime:
+    """A day with no time, stored at DATE_ONLY_HOUR UTC; a RowError when it isn't a real date."""
     try:
         return datetime(year, month, day, DATE_ONLY_HOUR)
     except ValueError:
@@ -250,6 +250,7 @@ def parse_trade_date(value, now: datetime | None = None, day_first: bool | None 
 
 
 def _read_date(text: str, day_first: bool | None) -> tuple[datetime, bool]:
+    """(time, date only?) from a date cell's text in any of the formats brokers and spreadsheets write."""
     m = AM_PM.fullmatch(text)
     if m:
         day, hour, minute, second, half = m.groups()
@@ -439,6 +440,7 @@ class ImportRow:
     tsx_candidate: str | None = None  # "XEQT.TO" for a CAD row with no exchange (see resolve_tsx_listings)
 
     def as_json(self) -> dict:
+        """The row as the preview's JSON."""
         return {
             "line": self.line,
             "date": self.date.replace(tzinfo=timezone.utc).isoformat() if self.date else None,
@@ -602,6 +604,7 @@ REQUIRED = {
 
 
 def _column_map(headers: list[str], fmt: str) -> dict[str, int]:
+    """{column name: index} for the columns of format `fmt` found among the headers (by their aliases)."""
     keys = [_header_key(h) for h in headers]
     found = {}
     for name, aliases in COLUMNS[fmt].items():
@@ -613,6 +616,7 @@ def _column_map(headers: list[str], fmt: str) -> dict[str, int]:
 
 
 def detect_format(headers: list[str]) -> str | None:
+    """Which format these headers are (wealthsimple, questrade or zenith), or None."""
     keys = set(_header_key(h) for h in headers)
     if "activity_type" in keys and keys & {"unit_price", "net_cash_amount"}:
         return "wealthsimple"
@@ -625,6 +629,7 @@ def detect_format(headers: list[str]) -> str | None:
 
 
 def _missing(headers: list[str], fmt: str) -> list[str]:
+    """The required columns of `fmt` the headers don't have."""
     found = _column_map(headers, fmt)
     missing = [name for name in REQUIRED[fmt] if name not in found]
     if fmt == "wealthsimple" and "price" not in found and "net_amount" not in found:
@@ -634,12 +639,14 @@ def _missing(headers: list[str], fmt: str) -> list[str]:
 
 @dataclass
 class ParsedFile:
+    """A parsed file: its format, every row and how many non-trade rows were skipped."""
     format: str
     rows: list[ImportRow]
     skipped_non_trades: int
 
 
 def _is_footer(cells: list[str]) -> bool:
+    """Whether a line is the export's footer rather than a trade."""
     # Wealthsimple ends its export with a line like "As of 2026-01-18 13:19 GMT-05:00"
     first = next((c.strip() for c in cells if c and c.strip()), "")
     return first.lower().startswith("as of")
@@ -714,6 +721,7 @@ def parse_csv(text: str, fmt: str = "auto", default_account: str | None = None,
 
 
 def _row_failed(row: ImportRow, message: str, cell) -> None:
+    """Marks a row as an error with `message` (and keeps the cell that caused it)."""
     row.status = "error"
     row.notes = [message]
     row.tsx_candidate = None
@@ -722,6 +730,7 @@ def _row_failed(row: ImportRow, message: str, cell) -> None:
 
 @dataclass
 class RowOptions:
+    """Settings that apply to every row of one file."""
     default_account: str | None
     decimal_comma: bool
     now: datetime | None
@@ -742,6 +751,7 @@ NET_PRICE_NOTE = "Price worked out from the net amount, so it includes any commi
 
 
 def _price_from_net(net: Decimal, quantity: Decimal) -> Decimal:
+    """The unit price from a net amount and quantity (abs), or a RowError when it can't be worked out."""
     try:
         return abs(net) / abs(quantity)
     except ArithmeticError:  # 1e999990 / 1e-999990 overflows
@@ -863,6 +873,7 @@ def _day_window(row: ImportRow) -> tuple[datetime, datetime]:
 
 
 def _same_time(row: ImportRow, saved: datetime) -> bool:
+    """Whether a saved trade's time matches the row (the same day for a day-only row, else the same minute)."""
     if row.date_only:
         start, end = _day_window(row)
         return start <= saved < end
@@ -870,6 +881,7 @@ def _same_time(row: ImportRow, saved: datetime) -> bool:
 
 
 def _same_price(row: ImportRow, trade, rates: dict | None) -> bool:
+    """Whether a saved trade's price matches the row's, in the currency it was typed in when possible."""
     typed = (str(trade.currency_entered).upper()
              if trade.price_entered is not None and trade.currency_entered else None)
     if typed == row.currency:
@@ -926,6 +938,7 @@ def place_date_only_sells(rows: list[ImportRow], existing) -> None:
     latest_buy: dict[tuple, datetime] = {}
 
     def saw(symbol, moment):
+        """Remembers the latest buy of a symbol on a day."""
         key = (symbol, moment.date())
         if key not in latest_buy or moment > latest_buy[key]:
             latest_buy[key] = moment
@@ -1007,6 +1020,7 @@ def check_against_saved(rows: list[ImportRow], existing, rates: dict | None) -> 
 
 
 def summarize(parsed: ParsedFile) -> dict:
+    """How many rows are ready, duplicates or errors, and how many lines were skipped."""
     counts = {"ok": 0, "duplicate": 0, "error": 0}
     for row in parsed.rows:
         counts[row.status] += 1
@@ -1024,6 +1038,7 @@ def _plain(value) -> str:
 
 
 def export_row(trade) -> list[str]:
+    """One trade as a row of the Zenith template (the price as typed, formula-safe cells)."""
     typed = trade.price_entered is not None and trade.currency_entered
     price = trade.price_entered if typed else trade.price_of_one
     return [csv_safe(cell) for cell in (
@@ -1040,6 +1055,7 @@ def export_row(trade) -> list[str]:
 
 
 def write_csv(rows: list[list[str]]) -> str:
+    """The template's header and these rows as CSV text."""
     out = io.StringIO()
     writer = csv.writer(out, lineterminator="\r\n")
     writer.writerow(EXPORT_COLUMNS)

@@ -9,6 +9,7 @@ const FRESH_MS = 1500;
 // how long a toast takes to slide out (Global.css toast-out)
 const LEAVE_MS = 200;
 
+// The stack of toasts (top right), announced politely to screen readers.
 function Toaster() {
     const [toasts, setToasts] = useState([]);
     const {pathname} = useLocation();

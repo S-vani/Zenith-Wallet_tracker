@@ -14,6 +14,7 @@ export function Amount({text}) {
     );
 }
 
+// One holding: its row (value, quantity, cost, return) and, when opened, its price chart.
 function HoldingsItem({holding, index}) {
     const [isOpen, setIsOpen] = useState(false)
     const {currency} = useUser();

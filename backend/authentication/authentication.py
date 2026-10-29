@@ -1,3 +1,7 @@
+"""
+Login tokens (fastapi-users JWT): versioned so every device can be signed out at once, 1 hour on the website, 30 days in
+the iPhone app.
+"""
 import uuid
 
 import jwt
@@ -41,12 +45,14 @@ class VersionedJWTStrategy(JWTStrategy):
         self.app = app
 
     async def write_token(self, user: User) -> str:
+        """A signed JWT for `user` carrying its token_version (and "app": true for an app sign in)."""
         data = {"sub": str(user.id), "aud": self.token_audience, "ver": int(user.token_version or 0)}
         if self.app:
             data["app"] = True  # an iPhone app sign in: the only kind POST /user/token renews
         return generate_jwt(data, self.encode_key, self.lifetime_seconds, algorithm=self.algorithm)
 
     async def read_token(self, token: str | None, user_manager) -> User | None:
+        """The user a token belongs to, or None when it's invalid, expired, malformed or from before a version bump."""
         if token is None:
             return None
         try:
@@ -67,6 +73,7 @@ def is_app_request(request: Request | None) -> bool:
 
 
 def get_jwt_strategy(request: Request = None) -> VersionedJWTStrategy:
+    """The token strategy for this request: the app's 30-day lifetime (and "app" claim) or the website's hour."""
     app = is_app_request(request)
     return VersionedJWTStrategy(secret=os.getenv("SECRET"), lifetime_seconds=APP_TOKEN_LIFETIME if app else
                                 WEB_TOKEN_LIFETIME, app=app)

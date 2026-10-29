@@ -147,6 +147,7 @@ function AnalystPanel({symbol, type, coinId, label}) {
     );
 }
 
+// Says who wrote the text: the built-in rules or the optional AI rewording.
 function EngineBadge({engine}) {
     const meta = engineMeta(engine);
     return (
@@ -156,6 +157,7 @@ function EngineBadge({engine}) {
     );
 }
 
+// Asks for a fresh report; disabled (with the time) until a refresh is allowed again.
 function RefreshButton({refreshing, countdown, onRefresh}) {
     const coolingDown = Boolean(countdown) && !refreshing;
     let text = "Refresh";

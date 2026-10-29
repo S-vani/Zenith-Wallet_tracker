@@ -22,6 +22,7 @@ const TABS = tabOrder(LINKS);
 // same breakpoint as the bottom tab bar in Navbar.css
 const PHONE_LAYOUT = "(max-width: 768px)";
 
+// The side rail (desktop) / bottom tab bar (phones), with Log out.
 function NavBar() {
     const navigate = useNavigate();
     const [confirming, setConfirming] = useState(false);

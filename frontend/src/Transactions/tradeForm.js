@@ -4,6 +4,7 @@
 import {formatMoney, formatPrice} from "../utils/format.js";
 import {ACCOUNT_UNSET, accountLabel, normalizeAccountType} from "../utils/accounts.js";
 
+// Two digits ("05").
 const pad = (n) => String(n).padStart(2, "0");
 
 // A Date as the "YYYY-MM-DDTHH:MM" local time a datetime-local input shows
@@ -21,6 +22,7 @@ export function localInputToIso(value) {
     return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
+// Whether a datetime-local value is later than now (with a little slack for a fast clock).
 export function isFutureInput(value, now = new Date()) {
     if (!value) return false;
     const d = new Date(value);
@@ -32,6 +34,7 @@ export function isFutureInput(value, now = new Date()) {
 // separator ("1,234.5", "1.234,5"), letters or exponents are rejected rather than guessed. Returns NaN when invalid.
 const DECIMAL_TEXT = /^(\d+([.,]\d*)?|[.,]\d+)$/;
 
+// A typed amount as a number: "1,5" and "1.5" both work; null for anything else.
 export function parseDecimalInput(text) {
     const value = String(text ?? "").trim();
     if (!DECIMAL_TEXT.test(value)) return NaN;
@@ -181,10 +184,12 @@ export function fullMoney(value, currency) {
     return formatMoney(value, currency, {notation: "standard"});
 }
 
+// A unit price as text, in full when it's huge.
 export function fullPrice(value, currency) {
     return Math.abs(Number(value)) >= 1e12 ? fullMoney(value, currency) : formatPrice(value, currency);
 }
 
+// A signed amount as text, in full when it's huge.
 export function fullSignedMoney(value, currency) {
     if (currency === null) return fullMoney(value, currency); // "—", not "+—"
     let n = Number(value) || 0;

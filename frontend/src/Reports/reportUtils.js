@@ -2,12 +2,14 @@
 // amount here is formatted in CAD whatever the user's display currency is.
 import {formatMoney, formatSignedMoney} from "../utils/format.js";
 
-export const REPORT_CURRENCY = "CAD";
+const REPORT_CURRENCY = "CAD";
 
+// Money in CAD, the report's currency.
 export function cad(value) {
     return formatMoney(value, REPORT_CURRENCY);
 }
 
+// CAD with a sign, for gains and losses.
 export function signedCad(value) {
     return formatSignedMoney(value, REPORT_CURRENCY);
 }
@@ -71,6 +73,7 @@ export function warningCounts(sales) {
     return counts;
 }
 
+// "1 sale", "3 sales".
 export function plural(count, word, many = `${word}s`) {
     return `${count} ${count === 1 ? word : many}`;
 }

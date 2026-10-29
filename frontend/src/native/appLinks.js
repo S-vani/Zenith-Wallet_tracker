@@ -29,6 +29,7 @@ export function appLinkPath(url) {
     return Object.hasOwn(ROUTES, target) ? ROUTES[target] : null;
 }
 
+// Opens the screen a zenithwallet:// link asks for (only known ones); no-op on the website.
 export function handleAppUrl(url) {
     if (!isNative) return;
     const path = appLinkPath(url);

@@ -7,12 +7,14 @@ const KNOWN = {
     doge: "#c2a633", ada: "#0033ad", bnb: "#f3ba2f", ltc: "#345d9d", dot: "#e6007a", avax: "#e84142",
 };
 
+// A stable hue (0-359) for a symbol, so the same stock always gets the same colour.
 function hue(text) {
     let h = 0;
     for (const ch of text) h = (h * 31 + ch.charCodeAt(0)) % 360;
     return h;
 }
 
+// The badge; `size` is "md" (lists) or "sm" (inline next to a symbol).
 function AssetAvatar({symbol = "", type = "stock", size = "md"}) {
     const base = String(symbol).split(/[.\-:]/)[0].toUpperCase();
     const known = type === "crypto" ? KNOWN[base.toLowerCase()] : null;

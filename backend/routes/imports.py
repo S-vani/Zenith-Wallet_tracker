@@ -54,6 +54,7 @@ _running_imports: dict = {}  # {(user id, import id): asyncio.Event set when tha
 
 
 def _csv_response(body: str, filename: str) -> Response:
+    """A CSV download: UTF-8, saved under `filename`, never cached."""
     return Response(
         content=body,
         media_type="text/csv; charset=utf-8",
@@ -86,6 +87,7 @@ async def import_template(current_user: User = Depends(current_active_user)):
 
 
 class ImportPreviewRequest(BaseModel):
+    """A CSV to preview: its text, the format (or auto) and the account for rows that don't say."""
     csv: str
     format: Literal["auto", "zenith", "wealthsimple", "questrade"] = "auto"
     # used for rows whose file doesn't say which account they were in
@@ -113,6 +115,7 @@ class ImportRowIn(BaseModel):
 
 
 class ImportCommitRequest(BaseModel):
+    """The previewed rows to save, with the id that makes a retried import save only once."""
     rows: list[ImportRowIn]
     # made by the page once per preview; a retry of an import that already went through returns its first answer
     import_id: Optional[uuid.UUID] = None
@@ -222,6 +225,7 @@ def _count_import(user_id) -> None:
 
 
 def _remember_import(key, response: dict) -> None:
+    """Keeps an import's answer for IMPORT_ID_TTL, so a retry of the same import gets it back."""
     now = time.monotonic()
     for old in [k for k, (at, _) in _finished_imports.items() if now - at >= IMPORT_ID_TTL]:
         del _finished_imports[old]
@@ -231,6 +235,7 @@ def _remember_import(key, response: dict) -> None:
 
 
 def _finished(key) -> dict | None:
+    """The answer of an import with this id that already went through, or None."""
     done = _finished_imports.get(key)
     if done and time.monotonic() - done[0] < IMPORT_ID_TTL:
         return done[1]
@@ -274,6 +279,7 @@ async def commit_import(
 
 
 async def _commit(body: ImportCommitRequest, session: AsyncSession, current_user: User) -> dict:
+    """Saves the rows all-or-nothing after checking them again (duplicates, limits, the ledger)."""
     _check_user_rate(_commit_attempts, current_user.id, COMMIT_ATTEMPT_LIMIT, IMPORT_RATE_WINDOW, RATE_MESSAGE)
     _check_import_quota(current_user.id)
     if not body.rows:

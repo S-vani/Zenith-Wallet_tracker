@@ -11,6 +11,7 @@ import "../css/Login.css"
 
 const BrandLink = isNative ? "div" : Link;
 
+// Sign in (and why a session ended, when it did).
 function LoginPage() {
     usePageTitle("Log in");
 

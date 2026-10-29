@@ -38,8 +38,9 @@ export function onReturn({enabled, signedIn, settling, locked, unlockedWhenLeft,
 
 // What to call the lock, from NativeBiometric.isAvailable(). Face ID hardware with no face enrolled still reports
 // FACE_ID as its type, but then only the passcode works, so it's called "Passcode".
-export const TOUCH_ID = 1; // BiometryType.TOUCH_ID in @capgo/capacitor-native-biometric
+const TOUCH_ID = 1; // BiometryType.TOUCH_ID in @capgo/capacitor-native-biometric
 
+// "Face ID", "Touch ID" or "Passcode" (no face or finger enrolled).
 export function biometryLabel({isAvailable, strongBiometryIsAvailable, biometryType} = {}) {
     if (isAvailable && !strongBiometryIsAvailable) return "Passcode";
     return biometryType === TOUCH_ID ? "Touch ID" : "Face ID";

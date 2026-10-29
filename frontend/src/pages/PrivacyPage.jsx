@@ -21,6 +21,7 @@ const SECTIONS = [
     ["contact", "Contact"],
 ];
 
+// The privacy policy and the "not financial advice" disclaimer (public).
 function PrivacyPage() {
     usePageTitle("Privacy Policy & Disclaimer");
 

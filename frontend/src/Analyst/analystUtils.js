@@ -26,6 +26,7 @@ function isCalendarDate(date) {
         && date.getUTCMilliseconds() === 0;
 }
 
+// A date in the reader's locale; a calendar date (midnight UTC) stays on its own day in every time zone.
 function formatDay(date, options) {
     return date.toLocaleString(undefined, {...options, ...(isCalendarDate(date) ? {timeZone: "UTC"} : {})});
 }
@@ -130,6 +131,7 @@ const SENTIMENTS = {
     bearish: {label: "Bearish", className: "bearish"},
 };
 
+// The label, colour and wording for a sentiment, or null for an unknown one.
 export function sentimentMeta(sentiment) {
     return SENTIMENTS[sentiment] ?? null;
 }
@@ -164,6 +166,7 @@ const ENGINES = {
 export const CONFIDENCE_MEANING = "Confidence is how strongly the signals agree with each other, not how likely "
     + "the outlook is to come true.";
 
+// How to label who wrote the report (rules when unknown).
 export function engineMeta(engine) {
     return ENGINES[engine] ?? ENGINES.rules;
 }
@@ -175,6 +178,7 @@ export function scorePosition(score) {
     return ((Math.min(1, Math.max(-1, n)) + 1) / 2) * 100;
 }
 
+// The score with a sign and a real minus, two decimals ("+0.42", "−0.18"); "" when there's none.
 export function formatScore(score) {
     const n = Number(score);
     if (score === null || score === undefined || !Number.isFinite(n)) return "";

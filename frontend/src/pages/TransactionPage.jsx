@@ -13,6 +13,7 @@ import '../css/Transaction.css'
 
 const EMPTY_FILTERS = {symbol: "", action: "", account_type: "", start_date: "", end_date: ""};
 
+// Every trade, with filters, sorting and the add-trade dialog.
 function TransactionsPage() {
     usePageTitle("Transactions");
 

@@ -29,6 +29,7 @@ class DataUnavailable(Exception):
 
 @dataclass
 class AssetData:
+    """Everything the rules engine needs about one asset: daily history (oldest first) plus stock or coin details."""
     symbol: str
     type: str  # "stock" | "crypto"
     currency: str
@@ -77,6 +78,7 @@ async def _stock_history(data: AssetData) -> None:
 
 
 def _read_stock_details(symbol: str) -> tuple[dict, dict]:
+    """Yahoo's info and earnings / dividend calendar for a stock (blocking; run through run_yahoo)."""
     ticker = yf.Ticker(symbol)
     info = ticker.info or {}
     try:
@@ -87,6 +89,7 @@ def _read_stock_details(symbol: str) -> tuple[dict, dict]:
 
 
 async def _stock_details(data: AssetData) -> None:
+    """Adds fundamentals, the calendar and the fund / ETF flag to `data`; a failure only adds a limitation."""
     try:
         info, calendar = await run_yahoo(_read_stock_details, data.symbol)  # shares the Yahoo limit and threads
     except Exception:
@@ -145,6 +148,7 @@ async def resolve_coin_id(client: httpx.AsyncClient, symbol: str) -> Optional[st
 
 
 async def _market_chart(client: httpx.AsyncClient, coin_id: str, currency: str) -> tuple[list, list]:
+    """One year of daily (time, price) and volumes for a coin from CoinGecko, in `currency`."""
     res = await client.get(f"{COINGECKO}/coins/{coin_id}/market_chart",
                            params={"vs_currency": currency.lower(), "days": 365, "interval": "daily"})
     if res.status_code == 429:
@@ -158,6 +162,7 @@ async def _market_chart(client: httpx.AsyncClient, coin_id: str, currency: str) 
 
 
 async def _btc_closes(client: httpx.AsyncClient, currency: str) -> list[float]:
+    """Bitcoin's daily closes in `currency` for the correlation, cached for BTC_CACHE_SECONDS."""
     cached = _btc_cache.get(currency)
     if cached and time.time() - cached[0] < BTC_CACHE_SECONDS:
         return cached[1]
@@ -168,6 +173,7 @@ async def _btc_closes(client: httpx.AsyncClient, currency: str) -> list[float]:
 
 
 async def _crypto(data: AssetData, coin_id: Optional[str]) -> None:
+    """Fills `data` for a coin: history, market data, stablecoin flag and BTC closes (CoinGecko, Yahoo fallback)."""
     async with httpx.AsyncClient(timeout=12, headers=_coingecko_headers()) as client:
         matched_by_symbol = coin_id is None
         try:
@@ -256,6 +262,7 @@ _unknown_coins: dict[str, float] = {}  # "symbol:pepe" / "id:pepe" -> when it wa
 
 
 def _is_unknown_coin(key: str) -> bool:
+    """Whether CoinGecko recently said it doesn't know this coin (so it isn't asked again for a while)."""
     found = _unknown_coins.get(key)
     if found is None:
         return False
@@ -266,6 +273,7 @@ def _is_unknown_coin(key: str) -> bool:
 
 
 def _remember_unknown_coin(key: str) -> None:
+    """Remembers an unknown coin (newest last, at most UNKNOWN_COIN_CACHE_SIZE kept)."""
     _unknown_coins.pop(key, None)
     _unknown_coins[key] = time.time()
     while len(_unknown_coins) > UNKNOWN_COIN_CACHE_SIZE:

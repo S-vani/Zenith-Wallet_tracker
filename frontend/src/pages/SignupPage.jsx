@@ -10,6 +10,7 @@ import "../css/Signup.css";
 
 const BrandLink = isNative ? "div" : Link;
 
+// Create an account; then "check your inbox".
 function SignupPage() {
     usePageTitle("Sign up");
 

@@ -13,6 +13,7 @@ export const ACCOUNT_UNSET = "UNSET";
 
 const LABELS = new Map(ACCOUNT_TYPES.map(({value, label}) => [value, label]));
 
+// Whether a value is one of the account types.
 export function isAccountType(value) {
     return LABELS.has(value);
 }
@@ -33,6 +34,7 @@ export function accountLabel(value) {
 // browser. Storage can be missing or throw (private mode, blocked site data); then it simply starts on "Not set".
 const LAST_ACCOUNT_KEY = "lastAccountType";
 
+// localStorage, or null where it isn't available.
 function storage() {
     try {
         return globalThis.localStorage ?? null;
@@ -41,6 +43,7 @@ function storage() {
     }
 }
 
+// The account the add form used last (so the next trade starts with it), or "".
 export function loadLastAccount() {
     try {
         return normalizeAccountType(storage()?.getItem(LAST_ACCOUNT_KEY));
@@ -49,6 +52,7 @@ export function loadLastAccount() {
     }
 }
 
+// Remembers the account picked in the add form ("Not set" forgets it).
 export function saveLastAccount(value) {
     try {
         const account = normalizeAccountType(value);

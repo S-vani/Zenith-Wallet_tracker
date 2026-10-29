@@ -14,6 +14,7 @@ Tone = Literal["positive", "negative", "neutral"]
 
 
 class AssetInfo(BaseModel):
+    """The asset the report is about, with its latest price in the report's currency."""
     symbol: str  # as shown to the user, e.g. "NVDA", "BTC"
     name: Optional[str] = None  # e.g. "NVIDIA Corporation", "Bitcoin"
     type: Literal["stock", "crypto"]
@@ -22,12 +23,14 @@ class AssetInfo(BaseModel):
 
 
 class Period(BaseModel):
+    """The span of history the numbers cover."""
     start: datetime  # first data point used
     end: datetime  # last data point used ("data as of")
     days: int  # calendar days covered
 
 
 class Insight(BaseModel):
+    """One notable finding, with the kind of fact it's about and whether it reads as good, bad or neutral."""
     title: str  # short headline, e.g. "Strong 90-day momentum"
     detail: str  # one or two sentences, every number in it comes from `metrics`
     kind: Literal["momentum", "trend", "volatility", "volume", "valuation", "fundamentals", "analysts", "supply",
@@ -36,12 +39,14 @@ class Insight(BaseModel):
 
 
 class PriceRange(BaseModel):
+    """The range a scenario's price could plausibly reach in `days` (volatility-based, not a prediction)."""
     days: int  # 7 or 30 (calendar days)
     low: float
     high: float
 
 
 class Scenario(BaseModel):
+    """The bull, base or bear case: a sentence, what would have to happen, and its price ranges."""
     case: Literal["bull", "base", "bear"]
     summary: str  # one sentence
     conditions: list[str] = Field(default_factory=list)  # what would have to happen
@@ -49,6 +54,7 @@ class Scenario(BaseModel):
 
 
 class WatchItem(BaseModel):
+    """Something to keep an eye on next (earnings, a price level...), dated when it's a known event."""
     title: str
     detail: str
     kind: Literal["earnings", "dividend", "price_level", "momentum", "supply", "market"]
@@ -61,6 +67,7 @@ class Risk(BaseModel):
 
 
 class Metric(BaseModel):
+    """One fact behind the report, already formatted; every number the text uses is one of these."""
     label: str  # e.g. "30-day return"
     value: str  # already formatted, e.g. "+12.4%", "CA$1.2T", "28.5x"
     group: Literal["performance", "trend", "risk", "volume", "fundamentals", "valuation", "analysts", "supply",
@@ -68,12 +75,14 @@ class Metric(BaseModel):
 
 
 class Source(BaseModel):
+    """Where some of the data came from, and how fresh it is."""
     name: str  # e.g. "Yahoo Finance (price history)", "CoinGecko"
     url: Optional[str] = None
     as_of: Optional[datetime] = None
 
 
 class AnalystReport(BaseModel):
+    """The whole analyst report (GET /analyst), or an "insufficient data" one explaining what's missing."""
     status: Literal["ok", "insufficient_data"]
     asset: AssetInfo
     generated_at: datetime

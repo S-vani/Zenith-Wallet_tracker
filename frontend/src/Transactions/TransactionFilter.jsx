@@ -1,6 +1,7 @@
 import {useEffect, useState} from "react";
 import {ACCOUNT_TYPES, ACCOUNT_UNSET} from "../utils/accounts.js";
 
+// Symbol, action, account and date filters for the trade list.
 function TransactionFilter({filters, onFiltered}) {
     // the symbol box is debounced so we don't hit the api on every keystroke
     const [symbol, setSymbol] = useState(filters.symbol);

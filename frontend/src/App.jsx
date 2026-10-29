@@ -77,6 +77,7 @@ function ProtectedLayout() {
     );
 }
 
+// The routes, plus everything every page shares (skip link, toasts, the app's lock and banners).
 function App({lockEnabled = false}) {
     return (
         <>

@@ -1,5 +1,6 @@
 import {useState} from "react";
 
+// A password field with a Show / Hide button.
 function PasswordInput(props) {
     const [visible, setVisible] = useState(false);
 

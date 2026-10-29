@@ -10,6 +10,7 @@ const POSTER_SRC = "/demo/zenith-demo-poster.jpg";
 // keep in sync with the demoOut animation in DemoVideo.css
 const CLOSE_ANIMATION_MS = 180;
 
+// Whether the reader asked for less motion (the video then doesn't autoplay).
 const prefersReducedMotion = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // Rendered only while open, so the video (and its poster) isn't downloaded until someone asks for it.

@@ -1,3 +1,4 @@
+"""GET /portfolio/allocation: the portfolio split by asset type, account, holding and listing currency."""
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends

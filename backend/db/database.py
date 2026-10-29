@@ -1,3 +1,7 @@
+"""
+The SQLite database (WAL mode, a small connection pool), its session makers and the startup migrations that add new
+columns to existing tables (ADDED_COLUMNS).
+"""
 from collections.abc import AsyncGenerator
 import os
 from pathlib import Path
@@ -34,6 +38,7 @@ engine = create_async_engine(
 if IS_SQLITE:
     @event.listens_for(engine.sync_engine, "connect")
     def _sqlite_pragmas(dbapi_connection, _record):
+        """Per-connection SQLite settings: WAL, a busy timeout and foreign keys."""
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA journal_mode=WAL")  # readers and the writer stop blocking each other
         cursor.execute("PRAGMA busy_timeout=10000")  # wait up to 10 s for the write lock instead of erroring
@@ -70,6 +75,7 @@ ADDED_COLUMNS = {
 
 
 def _missing_columns(sync_conn):
+    """The ADDED_COLUMNS entries an existing database doesn't have yet."""
     inspector = inspect(sync_conn)
     missing = []
     for table, columns in ADDED_COLUMNS.items():
@@ -81,6 +87,7 @@ def _missing_columns(sync_conn):
 
 
 def _add_missing_columns(sync_conn) -> None:
+    """Adds each missing column (and fills it for existing rows when the entry says how)."""
     for table, column, definition, backfill in _missing_columns(sync_conn):
         sync_conn.execute(text(f'ALTER TABLE "{table}" ADD COLUMN {column} {definition}'))
         if backfill:
@@ -92,6 +99,7 @@ async def add_missing_columns(conn) -> None:
 
 
 async def create_db_and_tables():
+    """Creates missing tables, then adds missing columns; run at startup."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         await add_missing_columns(conn)

@@ -8,6 +8,7 @@ import {isNative} from "../native/platform.js";
 import {LegalLinks} from "../components/LegalLayout.jsx";
 import {passwordChecks} from "./passwordRules.js";
 
+// Sign up: name, email, password (with its rules shown live) and display currency.
 function SignupForm({onSubmit}) {
     const [form, setForm] = useState({
         email: "",

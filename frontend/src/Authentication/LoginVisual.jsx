@@ -3,6 +3,7 @@
 
 const CHART_LINE = "M0,92 C18,88 26,96 42,84 S70,70 86,74 S112,58 128,62 S152,44 170,48 S198,30 214,34 S244,18 262,22 S290,8 320,6";
 
+// The decorative portfolio preview beside the login form (hidden from screen readers).
 function LoginVisual() {
     return (
         <div className="login-visual" aria-hidden="true">

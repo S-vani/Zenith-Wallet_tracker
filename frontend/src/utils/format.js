@@ -9,7 +9,7 @@ export function normalizeCurrency(currency) {
 }
 
 // The user context's currency is null until /user has loaded: show "—" rather than a guessed CA$ label
-export const UNKNOWN_MONEY = "—";
+const UNKNOWN_MONEY = "—";
 
 // Format a number as money in the users currency, e.g. 1234.5 -> "$1,234.50" / "€1,234.50"
 export function formatMoney(value, currency = "CAD", options = {}) {
@@ -77,6 +77,7 @@ export function formatSignedMoney(value, currency = "CAD") {
     return `${n > 0 ? "+" : n < 0 ? "−" : ""}${formatMoney(Math.abs(n), currency)}`;
 }
 
+// A percentage with a sign and real minus ("+1.23%"); "0.00%" for tiny ones, "—" for no number.
 export function formatPercent(value) {
     const n = Number(value);
     if (!Number.isFinite(n)) return "—";
@@ -99,6 +100,7 @@ export function listingName(result) {
     return [exchange, name].filter(Boolean).join(" · ");
 }
 
+// "positive" / "negative" / "" for colouring a gain or loss.
 export function changeClass(value) {
     const n = Number(value);
     if (n > 0) return "positive";

@@ -20,6 +20,7 @@ export function dashboardChartSummary(data, range, currency) {
 // say which ones instead of letting the totals look complete. Null when everything is priced.
 const SHOWN = 3; // after this many tickers: "and 2 others"
 
+// "No price for X and Y right now, so they're left out of these numbers.", or null.
 export function unpricedNote(unpriced) {
     const symbols = [...new Set((unpriced ?? []).map((s) => String(s).toUpperCase()).filter(Boolean))];
     if (symbols.length === 0) return null;

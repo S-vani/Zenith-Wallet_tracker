@@ -9,13 +9,14 @@ const preferences = loadPlugin(() => import("@capacitor/preferences"));
 // name where @capacitor/preferences keeps "pendingScreen" (UserDefaults), then sends "zenith:screen" if the web view
 // is already running; on a cold start it's read here at launch. Only these names are accepted.
 const PENDING_KEY = "pendingScreen";
-export const SCREENS = {
+const SCREENS = {
     dashboard: {path: "/dashboard"},
     "add-trade": {path: "/transactions", state: {openAdd: true}},
     search: {path: "/search"},
     holdings: {path: "/holdings"},
 };
 
+// Shows the screen native code asked for, if any, and forgets the request.
 export async function takeScreenRequest() {
     if (!isNative) return;
     try {
@@ -29,6 +30,7 @@ export async function takeScreenRequest() {
     }
 }
 
+// Listens for screen requests from native code and checks for one made before launch.
 export function watchScreenRequests() {
     if (!isNative) return;
     window.addEventListener("zenith:screen", takeScreenRequest);
@@ -40,6 +42,7 @@ export function watchScreenRequests() {
 // current. ZenithShortcuts.swift reads it, only with the iPhone unlocked and never while the Face ID lock is on.
 const SNAPSHOT_KEY = "siriPortfolio";
 
+// The sentence Siri reads: value, today's change (and %) and when it was updated.
 export function portfolioSentence({value, change, basis, currency, at = new Date()}) {
     const worth = `Your portfolio is worth ${formatMoney(value, currency)}`;
     const n = Number(change) || 0;
@@ -50,6 +53,7 @@ export function portfolioSentence({value, change, basis, currency, at = new Date
     return `${worth}${today}. Updated ${time}.`;
 }
 
+// Saves that sentence for Siri from the dashboard's day stats (app only).
 export async function rememberPortfolioForSiri(stats, currency) {
     if (!isNative || !currency || !stats) return;
     try {
@@ -63,6 +67,7 @@ export async function rememberPortfolioForSiri(stats, currency) {
     }
 }
 
+// Forgets the sentence (signing out).
 export async function forgetPortfolioForSiri() {
     if (!isNative) return;
     try {

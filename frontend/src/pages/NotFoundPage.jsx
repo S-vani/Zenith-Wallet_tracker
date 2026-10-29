@@ -4,6 +4,7 @@ import {getToken} from "../services/api.js";
 
 import "../css/Home.css"
 
+// Any unknown address.
 function NotFoundPage() {
     usePageTitle("Page not found");
 

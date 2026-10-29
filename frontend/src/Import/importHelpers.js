@@ -10,6 +10,7 @@ export const FORMAT_OPTIONS = [
     {value: "questrade", label: "Questrade"},
 ];
 
+// A format's name for people ("Wealthsimple").
 export function formatLabel(value) {
     return FORMAT_OPTIONS.find((option) => option.value === value)?.label ?? String(value ?? "");
 }
@@ -30,6 +31,7 @@ export function fileProblem(file) {
     return null;
 }
 
+// "1 trade", "3 trades".
 export function plural(n, one, many = `${one}s`) {
     return `${Number(n).toLocaleString()} ${n === 1 ? one : many}`;
 }
@@ -97,6 +99,7 @@ export function importedText(result) {
     return skipped ? `${text} (${skipped.toLocaleString()} already in your trades were skipped)` : text;
 }
 
+// The import button's text for how many rows are selected.
 export function importButtonLabel(count) {
     return count > 0 ? `Import ${plural(count, "trade")}` : "Nothing to import";
 }
@@ -109,8 +112,9 @@ export function needsAttention(row) {
 }
 
 // Showing thousands of rows at once makes phones crawl: show the first `limit` of the chosen filter
-export const ROW_DISPLAY_LIMIT = 300;
+const ROW_DISPLAY_LIMIT = 300;
 
+// The rows to show for a filter, at most `limit` of them, and how many were left out.
 export function visibleRows(rows, filter = "all", limit = ROW_DISPLAY_LIMIT) {
     const matching = (rows ?? []).filter((row) => filter !== "attention" || needsAttention(row));
     return {rows: matching.slice(0, limit), hidden: Math.max(0, matching.length - limit), total: matching.length};

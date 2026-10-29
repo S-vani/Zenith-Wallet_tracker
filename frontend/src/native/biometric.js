@@ -25,10 +25,12 @@ export async function biometricInfo() {
 let promptOpen = false;
 let settleUntil = 0;
 
+// Whether the Face ID sheet is up right now.
 export function isPromptOpen() {
     return promptOpen;
 }
 
+// Whether the Face ID sheet is up or has only just closed.
 export function isSettling() {
     return promptOpen || Date.now() < settleUntil;
 }
@@ -61,6 +63,7 @@ export async function isLockEnabled() {
     }
 }
 
+// Turns the lock on or off (saved for the next launch) and tells the app.
 export async function setLockEnabled(enabled) {
     const {Preferences} = await preferences();
     if (enabled) await Preferences.set({key: LOCK_KEY, value: "on"});

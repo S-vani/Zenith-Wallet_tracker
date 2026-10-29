@@ -33,6 +33,7 @@ export function appStoreLink(url) {
     return `itms-apps://${parsed.host}${parsed.pathname}${parsed.search}`;
 }
 
+// Shows the "Update required" screen with the server's message (app only).
 export function requireUpdate(text) {
     if (!isNative) return;
     const next = text || DEFAULT_UPDATE_MESSAGE;
@@ -48,6 +49,7 @@ export function getUpdateRequired() {
     return message;
 }
 
+// Calls `listener` when an update becomes required; returns the unsubscribe function.
 export function subscribeUpdateRequired(listener) {
     listeners.add(listener);
     return () => listeners.delete(listener);

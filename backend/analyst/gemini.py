@@ -48,6 +48,7 @@ DRAFT (JSON):
 
 
 def _schema(n_reasons: int, n_insights: int) -> dict:
+    """The JSON schema Gemini must answer in: the same number of reasons, insights and scenario summaries."""
     text = {"type": "STRING"}
     return {
         "type": "OBJECT",
@@ -67,6 +68,7 @@ def _schema(n_reasons: int, n_insights: int) -> dict:
 
 
 def _numbers(text: str) -> set[str]:
+    """Every number in a text, normalised (thousands commas and trailing zeros removed), for the new-number check."""
     found = set()
     for match in _NUMBER.findall(text):
         value = match.replace(",", "")
@@ -113,6 +115,7 @@ def validate_rewrite(report: AnalystReport, rewrite: dict) -> Optional[str]:
 
 
 def apply_rewrite(report: AnalystReport, rewrite: dict) -> AnalystReport:
+    """A copy of the report with Gemini's wording in place of the rules' (only after validate_rewrite passed)."""
     updated = report.model_copy(deep=True)
     updated.summary = rewrite["summary"].strip()
     updated.reasons = [r.strip() for r in rewrite["reasons"]]

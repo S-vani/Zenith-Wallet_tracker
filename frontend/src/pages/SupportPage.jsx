@@ -17,6 +17,7 @@ const SECTIONS = [
     ["advice", "Not financial advice"],
 ];
 
+// Help and contact (the App Store's Support URL).
 function SupportPage() {
     usePageTitle("Support");
 

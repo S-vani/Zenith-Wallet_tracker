@@ -17,12 +17,12 @@ export const ALLOCATION_COLORS = [
 // "Other" is a mix of everything left, so it gets a neutral grey instead of a colour of its own
 export const OTHER_COLOR = "#6b7790";
 
-export const TOP_HOLDINGS = 8; // after this many, the rest of the holdings are one "Other" slice
+const TOP_HOLDINGS = 8; // after this many, the rest of the holdings are one "Other" slice
 
 export const OTHER_KEY = "__other__";
 
 // The card's tabs: which list of the /portfolio/allocation reply each one shows
-export const ALLOCATION_VIEWS = [
+const ALLOCATION_VIEWS = [
     {value: "asset_type", label: "Asset type", field: "by_asset_type", title: "by asset type"},
     {value: "account", label: "Account", field: "by_account", title: "by account"},
     {value: "holding", label: "Holdings", field: "by_holding", title: "by holding"},
@@ -37,6 +37,7 @@ export function availableViews(data) {
     return ALLOCATION_VIEWS.filter(({field}) => Array.isArray(data?.[field]));
 }
 
+// The label for one slice: an asset type, account, holding or currency name.
 export function sliceLabel(view, key) {
     if (view === "asset_type") return ASSET_TYPE_LABELS[key] ?? String(key);
     if (view === "account") return key === "UNSET" ? "Not set" : accountLabel(key);

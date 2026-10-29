@@ -1,3 +1,7 @@
+"""
+The main API: trades (create, edit, delete, list), holdings, dashboard, price and portfolio history, symbol search, and
+the account (info, email, password, token renewal, sign out everywhere, deletion).
+"""
 import asyncio
 import os
 import time
@@ -6,7 +10,6 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional, Literal
 from dotenv import load_dotenv
 import httpx
-from decimal import Decimal
 
 from fastapi import HTTPException, Depends, APIRouter, Query, Request
 from fastapi_users import exceptions
@@ -22,8 +25,7 @@ from backend.db.database import get_async_session
 from backend.db_models.assets import Transaction, User, UserManager, send_notice_email
 from backend.ratelimit import check_email_cooldown, check_reauth_allowed, record_reauth_failure
 from backend.schemas.assets import AccountFilter, CreateTransaction, UpdateTransaction, UpdateUserInfo
-from backend.services.asset_services import (current_quantity, create_holding_filter, \
-                                             turn_list_to_dict, calculate_profit_for_one_transaction,
+from backend.services.asset_services import (create_holding_filter, turn_list_to_dict,
                                              get_curr_holdings_prices, \
                                              get_holdings_at_time, get_cash_flow_between,
                                              get_total_realized_profit, \
@@ -612,6 +614,7 @@ def _cache_get(cache: dict, key: str, ttl: float):
 
 
 def _cache_put(cache: dict, key: str, value) -> None:
+    """Stores a search answer, keeping the newest SEARCH_CACHE_SIZE."""
     cache.pop(key, None)
     cache[key] = (time.monotonic(), value)
     while len(cache) > SEARCH_CACHE_SIZE:
@@ -646,6 +649,7 @@ def _check_search_rate(user_id) -> None:
 
 
 def clean_search_query(asset: str) -> str:
+    """The search text without surrounding spaces; 422 when it's longer than SEARCH_QUERY_MAX_LENGTH."""
     asset = asset.strip()
     if len(asset) > SEARCH_QUERY_MAX_LENGTH:
         raise HTTPException(status_code=422, detail=f"Search for {SEARCH_QUERY_MAX_LENGTH} characters or fewer, "

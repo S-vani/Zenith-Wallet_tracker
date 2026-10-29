@@ -8,6 +8,7 @@ import {accountLabel} from "../utils/accounts.js";
 import TransactionEdit from "./TransactionEdit.jsx";
 import {fullMoney, fullPrice, fullSignedMoney, ledgerErrorMessage} from "./tradeForm.js";
 
+// One trade: its summary row and, when opened, its details, Edit and Delete.
 function TransactionItem({transaction, index, onChanged, onDeleted, justAdded = false}) {
     const [expanded, setExpanded] = useState(false);
     const [mode, setMode] = useState("view"); // "view" | "edit" | "delete" (asking to confirm)

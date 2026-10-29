@@ -29,6 +29,7 @@ STATE_LIFETIME_SECONDS = 600
 
 
 def google_client() -> GoogleOAuth2 | None:
+    """The Google client, or None when GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET aren't set."""
     client_id = os.getenv("GOOGLE_CLIENT_ID")
     client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
     if not client_id or not client_secret:
@@ -51,6 +52,7 @@ def callback_url() -> str:
 
 
 def safe_next(path: str | None) -> str:
+    """`path` when it's a path on this site, otherwise /dashboard (never a link to somewhere else)."""
     # only allow paths inside our own site, never a full URL to somewhere else. Browsers read a backslash as a
     # slash, so "/\evil.com" is "//evil.com" to them; control characters have no place in a path either
     if (path and path.startswith("/") and not path.startswith("//") and "\\" not in path
@@ -73,6 +75,7 @@ async def auth_providers():
 
 @router.get("/google/start")
 async def google_start(next: str | None = None):
+    """Sends the browser to Google's consent screen, with a signed state and a CSRF cookie."""
     client = google_client()
     if client is None:
         return fail("google_not_configured")
@@ -101,6 +104,7 @@ async def google_callback(
         user_manager: UserManager = Depends(get_user_manager),
         strategy=Depends(auth_backend.get_strategy),
 ):
+    """Google's answer: signs the person in (linking or creating the account) and hands the token to the page."""
     client = google_client()
     if client is None:
         return fail("google_not_configured")

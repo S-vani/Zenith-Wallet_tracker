@@ -22,6 +22,7 @@ function place(group) {
     }
 }
 
+// Watches the page for segmented controls and keeps their pills in place.
 function SegmentedThumbs() {
     useEffect(() => {
         let queued = false;

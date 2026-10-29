@@ -54,6 +54,7 @@ function HoldingsTotals({holdings}) {
     );
 }
 
+// The holdings table with its header and the totals row.
 function HoldingsList({holdings}) {
 
     // biggest positions first, ones with no price (null) last

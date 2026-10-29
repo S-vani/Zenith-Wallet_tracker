@@ -63,6 +63,7 @@ function AnalystOverview({report}) {
     );
 }
 
+// The arrow beside the sentiment: up, down or flat.
 function SentimentIcon({sentiment}) {
     const common = {
         viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2.4,

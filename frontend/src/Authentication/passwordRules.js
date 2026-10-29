@@ -1,8 +1,9 @@
 // The sign-up form's live checklist. Mirrors UserManager.validate_password in backend/db_models/assets.py, except
 // the common-password list, which only the server has (so the checklist never claims to check it).
-export const PASSWORD_MIN = 8;
-export const PASSWORD_MAX = 128;
+const PASSWORD_MIN = 8;
+const PASSWORD_MAX = 128;
 
+// Each password rule with whether it's met, the same rules the server checks (length, not the email...).
 export function passwordChecks(password = "", email = "") {
     const value = String(password);
     // spread counts characters the way Python's len() does, so an emoji is one character, not two
@@ -29,6 +30,7 @@ export function passwordChecks(password = "", email = "") {
     ];
 }
 
+// Whether every password rule is met.
 export function passwordRulesMet(password, email) {
     return passwordChecks(password, email).every((check) => check.met);
 }

@@ -9,6 +9,7 @@ function Icon({children}) {
     );
 }
 
+// Magnifying glass (Search).
 export function SearchIcon() {
     return (
         <Icon>
@@ -18,6 +19,7 @@ export function SearchIcon() {
     );
 }
 
+// House (Dashboard).
 export function HomeIcon() {
     return (
         <Icon>
@@ -27,6 +29,7 @@ export function HomeIcon() {
     );
 }
 
+// Receipt (Transactions).
 export function TransactionsIcon() {
     return (
         <Icon>
@@ -38,6 +41,7 @@ export function TransactionsIcon() {
     );
 }
 
+// Bar chart (Holdings).
 export function HoldingsIcon() {
     return (
         <Icon>
@@ -49,6 +53,7 @@ export function HoldingsIcon() {
     );
 }
 
+// Person (Account).
 export function ProfileIcon() {
     return (
         <Icon>
@@ -58,6 +63,7 @@ export function ProfileIcon() {
     );
 }
 
+// Arrow out of a door (Log out).
 export function LogoutIcon() {
     return (
         <Icon>

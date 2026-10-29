@@ -39,6 +39,7 @@ GLOBAL_LIMIT_MESSAGE = ("The market analyst is very busy right now. Please try a
 
 
 class AnalystCache(Base):
+    """One cached report per asset and currency (table analyst_reports)."""
     __tablename__ = "analyst_reports"
 
     key = Column(String, primary_key=True)  # e.g. "stock:NVDA:CAD"
@@ -64,6 +65,7 @@ def _utc(value: datetime) -> datetime:
 
 
 async def _load(session: AsyncSession, key: str) -> Optional[tuple[AnalystReport, datetime]]:
+    """The cached report for `key` and when it was made, or None."""
     row = (await session.execute(select(AnalystCache).where(AnalystCache.key == key))).scalars().first()
     if row is None:
         return None
@@ -74,6 +76,7 @@ async def _load(session: AsyncSession, key: str) -> Optional[tuple[AnalystReport
 
 
 async def _save(session: AsyncSession, key: str, report: AnalystReport, created: datetime) -> None:
+    """Saves (or replaces) the cached report for `key`."""
     row = await session.get(AnalystCache, key)
     payload = report.model_dump_json()
     if row is None:
@@ -84,6 +87,7 @@ async def _save(session: AsyncSession, key: str, report: AnalystReport, created:
 
 
 def _with_cache_info(report: AnalystReport, created: datetime, cached: bool) -> AnalystReport:
+    """The report marked as cached or fresh, with when a manual refresh is allowed again."""
     report = report.model_copy()
     report.cached = cached
     report.refresh_available_at = created + REFRESH_COOLDOWN
@@ -142,6 +146,7 @@ def forget_user(user_id: str) -> None:
 
 
 def _refund_generation_slot(user_id: str) -> None:
+    """Gives a user back the generation slot of a report that failed, so errors don't use up the hourly limit."""
     window = _user_generations.get(user_id)
     if window:
         window.pop()
@@ -151,6 +156,7 @@ def _refund_generation_slot(user_id: str) -> None:
 
 async def get_report(session: AsyncSession, user_id: str, symbol: str, asset_type: str, currency: str,
                      coin_id: Optional[str] = None, refresh: bool = False) -> AnalystReport:
+    """The report for one asset: the cached one while fresh, else a new one within the per-user and global limits."""
     key = cache_key(asset_type, symbol, currency, coin_id)
     now = datetime.now(timezone.utc)
 

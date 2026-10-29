@@ -23,6 +23,7 @@ const SECTIONS = [
     ["contact", "Contact"],
 ];
 
+// The terms of use (public).
 function TermsPage() {
     usePageTitle("Terms of Use");
 

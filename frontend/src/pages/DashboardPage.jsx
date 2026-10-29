@@ -40,6 +40,7 @@ function chartDays(days, chart) {
     return Number.isFinite(first) && Number.isFinite(last) ? Math.max(1, Math.round((last - first) / DAY_MS)) : 365;
 }
 
+// "Good morning" / "Good afternoon" / "Good evening" for the reader's local time.
 const greeting = () => {
     const h = new Date().getHours();
     if (h < 12) return "Good morning";
@@ -47,6 +48,7 @@ const greeting = () => {
     return "Good evening";
 };
 
+// The dashboard: value and return, the history chart for a range and the allocation.
 function DashboardPage() {
     usePageTitle("Dashboard");
 

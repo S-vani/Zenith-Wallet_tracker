@@ -18,6 +18,7 @@ const GOOGLE_ERRORS = {
 };
 
 
+// Email and password sign in, with the reasons a sign in can fail spelled out.
 function LoginForm({onSubmit}) {
     const navigate = useNavigate();
     const location = useLocation();

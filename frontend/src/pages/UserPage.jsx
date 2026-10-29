@@ -12,6 +12,7 @@ import usePageTitle from "../utils/usePageTitle.js";
 import {showToast} from "../utils/toast.js";
 import {passwordChecks, passwordRulesMet} from "../Authentication/passwordRules.js";
 
+// The account: profile, currency, email, password, security and deletion.
 function UserPage() {
     usePageTitle("Account");
 

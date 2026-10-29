@@ -27,6 +27,7 @@ function percentText(change, pct) {
     return Math.abs(pct) < 0.005 && Math.abs(change) >= 0.005 ? "<0.01%" : formatPercent(pct);
 }
 
+// The value and period-return cards, plus a note naming holdings with no price.
 function DashboardStats({stats, loading, valueLoading = loading, unavailable = false, currency, range}) {
     const change = stats.curr_timeperiod;
     // the backend's base: value at the start of the period + money put in (all time: cost of every buy).

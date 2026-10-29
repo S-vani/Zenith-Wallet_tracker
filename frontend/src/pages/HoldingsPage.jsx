@@ -7,6 +7,7 @@ import useRefreshKey from "../native/useRefreshKey.js";
 
 import "../css/Holdings.css"
 
+// What's held now, with each position's value, cost and return.
 function HoldingsPage() {
     usePageTitle("Holdings");
 

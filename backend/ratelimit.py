@@ -30,7 +30,9 @@ MAX_KEYS = 100_000  # memory guard: past this, the oldest keys are dropped
 
 
 class SlidingWindowLimiter:
+    """Counts events per key in a sliding time window, in memory (one server process)."""
     def __init__(self, clock=time.monotonic):
+        """`clock` is swappable for tests."""
         self.clock = clock
         self._events: dict[str, deque] = {}
         self._calls = 0
@@ -65,6 +67,7 @@ class SlidingWindowLimiter:
         self._events.clear()
 
     def _sweep(self) -> None:
+        """Every so often drops keys with no recent events, so memory can't grow without end."""
         # every so often drop keys that have gone quiet, so the dict can't grow forever
         self._calls += 1
         if self._calls % 1000 and len(self._events) < MAX_KEYS:
@@ -96,6 +99,7 @@ def client_ip(request: Request) -> str:
 
 
 def wait_text(seconds: float) -> str:
+    """"a minute" / "5 minutes": how long to wait, for error messages."""
     if seconds < 60:
         return "a minute"
     minutes = math.ceil(seconds / 60)
@@ -108,6 +112,7 @@ def too_many(seconds: float, message: str | None = None) -> HTTPException:
 
 
 def enforce(key: str, rule: tuple[int, float], message: str | None = None) -> None:
+    """Records one event for `key` under `rule` (count, seconds) and raises 429 once it's over the limit."""
     wait = limiter.hit(key, *rule)
     if wait:
         raise too_many(wait, message)
@@ -156,6 +161,7 @@ def check_email_cooldown(email: str) -> None:
 
 
 async def _body_email(request: Request, field: str) -> str:
+    """The email in a request body (JSON, or the login form), lowercased, for per-account limits."""
     try:
         if field == "username":  # the login form is form-encoded (OAuth2 password flow)
             form = await request.form()

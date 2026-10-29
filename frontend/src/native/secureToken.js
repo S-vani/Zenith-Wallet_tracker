@@ -11,11 +11,13 @@ const INSTALLED_KEY = "installed";
 // Started once by initNative(); later callers (the Face ID lock after a slow start) wait for the same restore
 let restoring = null;
 
+// Restores the sign in from the Keychain once (later calls share the first one).
 export function restoreToken() {
     restoring ??= restore();
     return restoring;
 }
 
+// Copies the Keychain token into storage when it's missing there (a fresh install starts signed out).
 async function restore() {
     if (!isNative) return;
     try {
@@ -36,6 +38,7 @@ async function restore() {
     }
 }
 
+// Keeps a copy of the token in the Keychain, or removes it for null (app only).
 export function saveToken(token) {
     if (!isNative) return;
     biometric()

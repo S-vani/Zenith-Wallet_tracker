@@ -9,6 +9,7 @@ import {shareText} from "../native/share.js";
 
 import "../css/Holdings.css";
 
+// The search results; one opens to show its chart, share button and analyst.
 function SearchResults({ results }) {
     const [expandedId, setExpandedId] = useState(null);
     const [brokenImages, setBrokenImages] = useState(() => new Set()); // logos that failed to load are left out

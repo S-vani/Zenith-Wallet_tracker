@@ -6,6 +6,7 @@ export const CACHE_MS = 60_000;
 
 const entries = new Map();
 
+// The cache key: the session, currency, range and its days.
 export function dashboardKey(range, days, currency) {
     return `${getToken() ?? ""}|${currency}|${range}|${days}`;
 }
@@ -16,6 +17,7 @@ export function readDashboardCache(key, now = Date.now()) {
     return saved && now - saved.at < CACHE_MS ? saved.entry : undefined;
 }
 
+// Saves one range's entry and drops expired ones.
 export function writeDashboardCache(key, entry, now = Date.now()) {
     entries.set(key, {entry, at: now});
     // only a handful of ranges exist, but drop expired ones so old sessions don't pile up
@@ -24,6 +26,7 @@ export function writeDashboardCache(key, entry, now = Date.now()) {
     }
 }
 
+// Empties the cache (used by the tests).
 export function clearDashboardCache() {
     entries.clear();
 }

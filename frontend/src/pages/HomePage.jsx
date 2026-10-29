@@ -6,6 +6,7 @@ import DemoVideoModal from "../Home/DemoVideoModal.jsx";
 import "../css/Home.css"
 import {useCallback, useEffect, useRef, useState} from "react";
 
+// The public marketing page (the app skips it).
 function HomePage() {
     usePageTitle(null);
     const [userCount, setUserCount] = useState(null);

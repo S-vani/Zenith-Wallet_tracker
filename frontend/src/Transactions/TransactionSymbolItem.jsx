@@ -2,6 +2,7 @@ import {useUser} from "../context/UserContext.jsx";
 import {changeClass, formatPercent, formatPrice, formatSignedMoney, listingName} from "../utils/format.js";
 import {symbolSelection} from "./tradeForm.js";
 
+// One search result in the add-trade dialog.
 function TransactionSymbolItem({data, onSub, selected = false}) {
     const {currency} = useUser();
 

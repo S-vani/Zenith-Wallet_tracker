@@ -1,3 +1,4 @@
+"""GET /analyst: the market analyst report for a stock or coin (rules-based, cached, rate limited)."""
 from typing import Annotated, Literal, Optional
 
 from fastapi import APIRouter, Depends, Query

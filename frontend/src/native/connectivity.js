@@ -10,6 +10,7 @@ let snapshot = Object.freeze({online: true, stale: false});
 
 const listeners = new Set();
 
+// The current {online, stale} state.
 export function getConnectivity() {
     return snapshot;
 }
@@ -20,6 +21,7 @@ export function subscribeConnectivity(listener) {
     return () => listeners.delete(listener);
 }
 
+// Applies a change, sets the <html> class and tells the listeners (app only).
 function update(changes) {
     if (!isNative) return;
     const next = {...snapshot, ...changes};
@@ -29,6 +31,7 @@ function update(changes) {
     listeners.forEach((listener) => listener(snapshot));
 }
 
+// Whether the phone has a connection.
 export function setOnline(online) {
     // coming back online clears "stale": the pages reload (app:refresh) and mark it again if that still fails
     update(online ? {online, stale: false} : {online});

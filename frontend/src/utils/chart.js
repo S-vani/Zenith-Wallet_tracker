@@ -31,6 +31,7 @@ export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// A time as ms since 1970.
 const toMs = (value) => new Date(value).getTime();
 
 // Hourly data over a week otherwise repeats the same date label several times; put one tick at the start of each day
@@ -57,6 +58,7 @@ export function tickUnit(data, key = "time") {
     return "month";
 }
 
+// The day (or month) a time falls in, to put one tick per bucket.
 function bucketOf(value, unit) {
     const date = new Date(value);
     return unit === "month" ? `${date.getFullYear()}-${date.getMonth()}` : date.toDateString();

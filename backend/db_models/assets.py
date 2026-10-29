@@ -1,3 +1,7 @@
+"""
+Database tables (users, trades, Google links), the fastapi-users UserManager (password rules, sign-in throttling, sign
+out everywhere) and the account emails (verification, password reset, notices).
+"""
 import asyncio
 import logging
 import os
@@ -10,7 +14,7 @@ from email.utils import formatdate, make_msgid, parseaddr
 
 import jwt
 from dotenv import load_dotenv
-from fastapi_users import BaseUserManager, UUIDIDMixin, exceptions, models
+from fastapi_users import BaseUserManager, UUIDIDMixin, exceptions
 from fastapi_users.jwt import decode_jwt, generate_jwt
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTableUUID, SQLAlchemyBaseOAuthAccountTableUUID
 from sqlalchemy import Boolean, Column, String, DateTime, ForeignKey, Integer, Numeric, false, true
@@ -35,6 +39,7 @@ class OAuthAccount(SQLAlchemyBaseOAuthAccountTableUUID, Base):
 
 
 class User(SQLAlchemyBaseUserTableUUID, Base):
+    """An account; the fastapi-users fields plus name, join date, display currency and the sign-in bookkeeping."""
     name = Column(String, nullable=False, default="")  # Google sign ups start blank and get their Google name
     date_joined = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     currency = Column(String, nullable=False, default="CAD")
@@ -53,16 +58,19 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
 
 
 def _ratelimit():
+    """backend.ratelimit, imported on first use (it pulls in FastAPI, which this module doesn't otherwise need)."""
     # imported on first use: backend.ratelimit pulls in FastAPI, which this models module doesn't otherwise need
     from backend import ratelimit
     return ratelimit
 
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
+    """fastapi-users' manager with Zenith's password rules, login lockout, token versions and emails."""
     reset_password_token_secret = os.getenv("SECRET")
     verification_token_secret = os.getenv("SECRET")
 
     async def validate_password(self, password: str, user) -> None:
+        """Password rules: 8 to 128 characters, not the email, not one repeated character, not a common password."""
         # the signup form asks for 8+ characters, enforce it here too so the api can't be used to skip it
         if len(password) < 8:
             raise exceptions.InvalidPasswordException(reason="Password must be at least 8 characters.")
@@ -79,6 +87,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
             raise exceptions.InvalidPasswordException(reason="Password can't be your email address.")
 
     async def authenticate(self, credentials):
+        """Checks an email and password, counting failures so the login route can lock the account for a while."""
         # counts wrong passwords per email, so the login route can lock that account out for a while (ratelimit.py)
         user = await self._authenticate(credentials)
         if user is None:
@@ -109,6 +118,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         return user
 
     async def check_password(self, user: User, password: str) -> bool:
+        """Whether `password` is the user's (hashed in a worker thread so the event loop stays free)."""
         verified, _ = await asyncio.to_thread(self.password_helper.verify_and_update, password or "",
                                               user.hashed_password)
         return verified
@@ -126,6 +136,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         return created_user
 
     async def forgot_password(self, user: User, request: Request | None = None) -> None:
+        """Starts a password reset (the email goes out from on_after_forgot_password); inactive accounts get none."""
         if not user.is_active:
             raise exceptions.UserInactive()
         token_data = {
@@ -139,6 +150,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         await self.on_after_forgot_password(user, token, request)
 
     async def reset_password(self, token: str, password: str, request: Request | None = None) -> User:
+        """Sets a new password from a reset link, refusing invalid, expired, used or forged tokens."""
         try:
             data = decode_jwt(token, self.reset_password_token_secret, [self.reset_password_token_audience])
         except jwt.PyJWTError:
@@ -169,6 +181,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         return updated_user
 
     async def _update(self, user: User, update_dict: dict) -> User:
+        """Applies validated changes to a user (email uniqueness, password hashing), like fastapi-users' own."""
         validated_update_dict = {}
         for field, value in update_dict.items():
             if field == "email" and value != user.email:
@@ -193,6 +206,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     async def on_after_register(self,
                                 user: User,
                                 request: Request | None = None):
+        """After sign up: sends the verification email (Google accounts are verified already)."""
         if user.is_verified:  # Google accounts arrive already verified, there's nothing to confirm
             return
         await self.request_verify(user, request)
@@ -206,11 +220,13 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
             await self.user_db.update(user, {"ever_verified": True})
 
     async def on_after_forgot_password(self, user, token, request=None):
+        """Emails the password reset link."""
         await send_link_email(user, "reset-password", token, subject="Reset your Zenith password",
                               intro="Click the link below to choose a new Zenith password. It works for one hour. "
                                     "If you didn't ask for this, you can ignore this email.")
 
     async def on_after_reset_password(self, user, request=None):
+        """After a reset: signs out every other session and marks the account as having a password."""
         # Whoever knew the old password may still be signed in somewhere; this ends those sessions.
         # The owner knows a password now, even if the account started with Google.
         await self.sign_out_everywhere(user, has_password=True)
@@ -218,6 +234,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
 
 @dataclass(frozen=True)
 class EmailAccount:
+    """Where account emails are sent from: the SMTP_* settings, else the older GMAIL_* ones."""
     host: str
     port: int
     user: str  # empty = the server doesn't need a login
@@ -271,6 +288,7 @@ _pending_emails: set = set()
 
 
 def _send_in_background(account: EmailAccount, to_address: str, subject: str, body: str) -> None:
+    """Sends one email in the background, retried on failure; the address never reaches the logs."""
     message = MIMEText(body)
     message["Subject"] = subject
     message["From"] = account.sender
@@ -281,6 +299,7 @@ def _send_in_background(account: EmailAccount, to_address: str, subject: str, bo
     message["Message-ID"] = make_msgid(domain=envelope_from.rpartition("@")[2] or None)
 
     def send():
+        """Delivers the message over SMTP (blocking, so it's run in a worker thread)."""
         # smtplib is blocking, so it runs in a worker thread to keep the event loop free.
         # Port 465 speaks TLS from the start; anything else (587) upgrades with STARTTLS.
         if account.port == 465:
@@ -295,6 +314,7 @@ def _send_in_background(account: EmailAccount, to_address: str, subject: str, bo
             server.sendmail(envelope_from, to_address, message.as_string())
 
     async def run():
+        """Sends, retrying after each EMAIL_RETRY_DELAYS wait, and logs a failure without the address."""
         for attempt in range(len(EMAIL_RETRY_DELAYS) + 1):
             try:
                 await asyncio.to_thread(send)
@@ -347,6 +367,7 @@ async def send_notice_email(to_address: str, subject: str, body: str) -> None:
 
 
 class Transaction(Base):
+    """One buy or sell; prices are stored in CAD, with the price and currency as typed kept alongside."""
     __tablename__ = "transactions"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))

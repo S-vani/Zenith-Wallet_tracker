@@ -32,6 +32,7 @@ def _ok(value) -> bool:
 
 
 def fmt_pct(value: float, signed: bool = True, digits: int = 1) -> str:
+    """A fraction as a percentage (0.123 -> "+12.3%"), real minus sign, no sign on 0.0%; "n/a" for no value."""
     if not _ok(value):
         return "n/a"
     text = f"{abs(value) * 100:.{digits}f}%"
@@ -43,6 +44,10 @@ def fmt_pct(value: float, signed: bool = True, digits: int = 1) -> str:
 
 
 def fmt_money(value: float, currency: str) -> str:
+    """
+    Money for report text: CA$ / $ / € prefix, the full amount below 1M then M / B / T, ~4 significant digits for tiny
+    prices.
+    """
     if not _ok(value):
         return "n/a"
     sym = CURRENCY_SYMBOL.get(currency, "")
@@ -74,6 +79,7 @@ def fmt_num(value: float, digits: int = 2) -> str:
 
 
 def fmt_compact(value: float) -> str:
+    """A plain large number in short form (12.3M, 4.56B), real minus sign; "n/a" for no value."""
     if not _ok(value):
         return "n/a"
     v = abs(value)
@@ -119,6 +125,7 @@ def up_down(value: float) -> str:
 
 
 def join_list(parts: list[str]) -> str:
+    """"a", "a and b", "a, b and c"."""
     if len(parts) <= 1:
         return "".join(parts)
     return ", ".join(parts[:-1]) + " and " + parts[-1]
@@ -182,6 +189,7 @@ def points(days: int, ppy: int) -> int:
 
 
 def calculate_facts(data: AssetData) -> Facts:
+    """Works out every number the signals and text use (averages, returns, RSI, volatility, range) once."""
     closes = data.closes
     ppy = 365 if data.type == "crypto" else 252
     year = closes[-points(365, ppy):]
@@ -217,6 +225,9 @@ def calculate_facts(data: AssetData) -> Facts:
 
 
 def trend_signal(f: Facts, data: AssetData) -> Optional[Signal]:
+    """
+    Score from where the price sits against its 50- and 200-day averages, and how those two sit against each other.
+    """
     if f.sma50 is None:
         return None
     cur = data.currency
@@ -261,6 +272,7 @@ def trend_signal(f: Facts, data: AssetData) -> Optional[Signal]:
 
 
 def momentum_signal(f: Facts) -> Optional[Signal]:
+    """Score from the 30- and 90-day returns (weighted toward the longer one), adjusted for how volatile it is."""
     if f.r90 is None and f.r30 is None:
         return None
     score, weights = 0.0, 0.0
@@ -309,6 +321,7 @@ def momentum_signal(f: Facts) -> Optional[Signal]:
 
 
 def rsi_signal(f: Facts) -> Optional[Signal]:
+    """A signal only when RSI is overbought (> 70) or oversold (< 30); nothing in between."""
     if f.rsi is None or 30 <= f.rsi <= 70:
         return None
     if f.rsi > 70:
@@ -321,6 +334,7 @@ def rsi_signal(f: Facts) -> Optional[Signal]:
 
 
 def volume_signal(f: Facts) -> Optional[Signal]:
+    """Whether rising or falling volume backs the 30-day move (only when both are clearly non-zero)."""
     # needs a real price move to interpret, and a meaningful change in volume
     if f.volume_trend is None or f.r30 is None or abs(f.volume_trend) < 0.2 or abs(f.r30) < 0.01:
         return None
@@ -340,6 +354,7 @@ def volume_signal(f: Facts) -> Optional[Signal]:
 
 
 def fundamentals_signal(data: AssetData) -> Optional[Signal]:
+    """Stocks only: revenue and earnings growth and profit margin (skipped for funds and ETFs)."""
     fu = data.fundamentals
     rg, eg, pm = fu.get("revenueGrowth"), fu.get("earningsGrowth"), fu.get("profitMargins")
     if data.is_fund or (not _ok(rg) and not _ok(eg) and not _ok(pm)):
@@ -377,6 +392,7 @@ def fundamentals_signal(data: AssetData) -> Optional[Signal]:
 
 
 def valuation_signal(data: AssetData) -> Optional[Signal]:
+    """Stocks only: trailing and forward P/E against simple bands (expensive / reasonable / cheap)."""
     fu = data.fundamentals
     pe, fpe = fu.get("trailingPE"), fu.get("forwardPE")
     if not _ok(pe) or pe <= 0:
@@ -425,6 +441,7 @@ def consensus_words(mean: Optional[float]) -> Optional[str]:
 
 
 def analysts_signal(data: AssetData) -> Optional[Signal]:
+    """Stocks only: analyst consensus (as words) and the mean target against the price, in the user's currency."""
     fu = data.fundamentals
     n, target, current = fu.get("numberOfAnalystOpinions"), fu.get("targetMeanPrice"), fu.get("currentPrice")
     rec = fu.get("recommendationMean")
@@ -445,6 +462,7 @@ def analysts_signal(data: AssetData) -> Optional[Signal]:
 
 
 def crypto_signals(f: Facts, data: AssetData) -> list[Signal]:
+    """Coins only: liquidity (volume vs market cap), distance from the all-time high and correlation with Bitcoin."""
     coin, cur = data.coin, data.currency
     signals = []
 
@@ -498,6 +516,7 @@ def _future_date(value) -> Optional[datetime]:
 
 
 def build_metrics(f: Facts, data: AssetData) -> list[Metric]:
+    """The table of facts behind the report; every number the text uses appears here."""
     cur = data.currency
     m: list[Metric] = [Metric(label="Last price", value=fmt_money(f.price, cur), group="performance")]
     coin = data.coin
@@ -587,6 +606,7 @@ def build_metrics(f: Facts, data: AssetData) -> list[Metric]:
 
 
 def _key_levels(f: Facts) -> list[tuple[str, float]]:
+    """The averages and range edges worth watching, nearest first."""
     levels = []
     if f.sma200 is not None:
         levels.append(("200-day average", f.sma200))
@@ -597,6 +617,7 @@ def _key_levels(f: Facts) -> list[tuple[str, float]]:
 
 
 def build_watch(f: Facts, data: AssetData, sentiment: str) -> list[WatchItem]:
+    """Up to three things to watch next: earnings soon, a nearby price level, momentum, supply or the market."""
     cur, items = data.currency, []
     earnings = _future_date(data.calendar.get("Earnings Date"))
     if earnings and earnings - datetime.now(timezone.utc) < timedelta(days=90):
@@ -665,6 +686,7 @@ def build_watch(f: Facts, data: AssetData, sentiment: str) -> list[WatchItem]:
 
 
 def _swing_risk(f: Facts) -> Optional[Risk]:
+    """The "big monthly swings" risk from 30-day volatility, when it's high."""
     if f.vol is None:
         return None
     monthly = f.vol * math.sqrt(points(30, f.ppy) / f.ppy)
@@ -732,6 +754,7 @@ def build_risk(f: Facts, data: AssetData, sentiment: str, signals: list[Signal])
 
 
 def build_scenarios(f: Facts, data: AssetData, sentiment: str) -> tuple[list[Scenario], Optional[str]]:
+    """Bull / base / bear cases with conditions written from where the price is, and volatility ranges when possible."""
     cur = data.currency
     level = f.sma200 or f.sma50
     level_name = "200-day average" if f.sma200 else "50-day average"
@@ -814,6 +837,7 @@ def build_scenarios(f: Facts, data: AssetData, sentiment: str) -> tuple[list[Sce
 
 
 def _confidence(signals: list[Signal], score: float, f: Facts) -> str:
+    """low / medium / high from how much of the signals' weight agrees with the direction (capped for short history)."""
     total_weight = sum(s.weight for s in signals)
     direction = 1 if score > 0 else -1
     agreeing = sum(s.weight for s in signals if s.score * direction > 0.05)
@@ -835,6 +859,7 @@ def _confidence(signals: list[Signal], score: float, f: Facts) -> str:
 
 
 def build_report(data: AssetData) -> AnalystReport:
+    """The whole report for one asset, or an "insufficient data" one with fewer than MIN_POINTS days of history."""
     now = datetime.now(timezone.utc)
     asset = AssetInfo(symbol=data.symbol.upper(), name=data.name, type=data.type, currency=data.currency,
                       price=data.closes[-1] if data.closes else None)

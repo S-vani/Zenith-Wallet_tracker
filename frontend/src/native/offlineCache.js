@@ -16,12 +16,15 @@ const CACHED = ["/dashboard", "/portfolio/history", "/portfolio/allocation", "/h
 const LIMITS = {"/prices/history": 8, "/transactions": 5};
 const USER_PATHS = ["/user", "/user/information"]; // replies that are the user's profile
 
+// A request path without its query.
 const base = (path) => path.split("?")[0];
+// Whether a path's reply is kept for offline use.
 const cacheable = (path) => CACHED.includes(base(path));
 
 // Bumped by forgetAll(): a request that started before a sign out must not save the previous user's data after it
 let generation = 0;
 
+// localStorage in the app, null on the website (and when storage isn't available).
 function storage() {
     try {
         return isNative ? globalThis.localStorage ?? null : null;
@@ -30,6 +33,7 @@ function storage() {
     }
 }
 
+// A saved JSON value, or `fallback`.
 function readJson(key, fallback) {
     try {
         const saved = storage()?.getItem(key);
@@ -39,16 +43,20 @@ function readJson(key, fallback) {
     }
 }
 
+// Whose data (user id and currency) the cache holds right now.
 function currentScope() {
     return readJson(SCOPE_KEY, null);
 }
 
+// The storage key of a path's saved reply for one user and currency.
 const keyFor = (scope, path) => `${PREFIX}${scope}:${path}`;
 
+// Saves the list of cached keys in use order.
 function saveIndex(index) {
     storage()?.setItem(INDEX_KEY, JSON.stringify(index));
 }
 
+// The request path stored in a cache key.
 const pathOf = (key) => key.slice(key.indexOf(":/") + 1); // "offline:<id>:<currency>:/path?query" -> "/path?query"
 
 // moves key to the most recently used end and evicts beyond the limits
@@ -88,6 +96,7 @@ export function cacheTicket() {
     return {generation, scope: currentScope()};
 }
 
+// Keeps a reply for offline use (app only); skipped if the user or currency changed since it was asked for.
 export function remember(path, data, {get = true, ticket = cacheTicket()} = {}) {
     const store = storage();
     if (!store || ticket.generation !== generation) return;
@@ -125,6 +134,7 @@ export function recall(path) {
     }
 }
 
+// Forgets every saved reply (signing out, deleting the account).
 export function forgetAll() {
     if (!isNative) return;
     generation += 1;

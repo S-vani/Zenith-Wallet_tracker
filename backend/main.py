@@ -1,3 +1,7 @@
+"""
+The FastAPI app: routers, CORS, error handlers that never echo input, security headers, the iOS app version gate,
+/health and the background sweep of never-verified accounts.
+"""
 import uvicorn
 import os
 import sys
@@ -13,7 +17,7 @@ import asyncio
 import contextlib
 
 from fastapi import Depends, FastAPI
-from backend.schemas.assets import UserCreate, UserRead, UserUpdate
+from backend.schemas.assets import UserCreate, UserRead
 from backend.db.database import create_db_and_tables, engine
 from backend.services.asset_services import has_cached_rates
 from sqlalchemy import text
@@ -48,6 +52,7 @@ def check_secret() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Startup: checks SECRET, creates / migrates the database and starts the unverified-account sweep."""
     check_secret()
     await create_db_and_tables()
     # deletes accounts that never verified their email within 7 days (right away, then every few hours)
@@ -84,6 +89,7 @@ class CatchUnhandledErrors(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request, call_next):
+        """Turns any unhandled error into a plain JSON 500 (logged), never a traceback."""
         try:
             return await call_next(request)
         except Exception:
@@ -120,10 +126,12 @@ class SecurityHeaders:
         self.app = app
 
     async def __call__(self, scope, receive, send):
+        """Adds the security headers to every HTTP response."""
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
 
         async def send_with_headers(message):
+            """Appends the security headers the response doesn't set itself."""
             if message["type"] == "http.response.start":
                 present = {name.lower() for name, _ in message.get("headers", [])}
                 message["headers"] = list(message.get("headers", [])) + [
@@ -170,6 +178,7 @@ class RequireAppVersion:
         self.app = app
 
     async def __call__(self, scope, receive, send):
+        """Answers 426 "update required" to iPhone app versions below MIN_IOS_APP_VERSION."""
         if scope["type"] == "http" and scope["method"] != "OPTIONS":
             minimum = (os.getenv("MIN_IOS_APP_VERSION") or "").strip()  # read each time: can change without a deploy
             if minimum:

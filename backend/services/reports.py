@@ -27,7 +27,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from functools import lru_cache
 
-from backend.services.asset_services import as_quantity, sell_tolerance, toronto_date
+from backend.services.asset_services import as_quantity, naive_utc, sell_tolerance, toronto_date
 
 TAXABLE_ACCOUNTS = (None, "NON_REGISTERED")
 SUPERFICIAL_DAYS = 30
@@ -60,14 +60,9 @@ REPORT_NOTES = [
 ]
 
 
-def _naive_utc(value: datetime) -> datetime:
-    # trades are stored as naive UTC; a value with an offset (e.g. from a test) is converted first
-    return value.astimezone(timezone.utc).replace(tzinfo=None) if value.tzinfo else value
-
-
 def ledger_key(t):
     """Python twin of LEDGER_ORDER (time, then BUY before SELL, then id), so same-tick trades replay the same way."""
-    return _naive_utc(t.created_at), str(t.action), str(t.id)
+    return naive_utc(t.created_at), str(t.action), str(t.id)
 
 
 def is_taxable(t) -> bool:
@@ -172,6 +167,7 @@ def interlisted_pairs(trades) -> dict[str, tuple[str, str]]:
 
 
 def _interlisted_warning(us: str, toronto: str) -> str:
+    """The warning for a US and Toronto listing of what may be one company (CRA pools them)."""
     return (f"{us} and {toronto}: if these are the same company's shares listed in the US and in Toronto, CRA "
             f"treats them as identical property, so they share one ACB pool and count for each other's superficial "
             f"loss check. Zenith keeps them apart, so work out the combined ACB yourself (in CAD) before you file. "
@@ -197,6 +193,7 @@ class _Pool:
     linked_last: date | None = None
 
     def link_due_losses(self, sale_key) -> None:
+        """Moves the losses whose buy-back is now before `sale_key` into the pool's linked totals."""
         while self.pending_losses and self.pending_losses[0][0] < sale_key:
             _, day, amount = heapq.heappop(self.pending_losses)
             self.linked_count += 1
@@ -209,6 +206,7 @@ class _Holdings:
     """Every account's trades of one security by Toronto trade date: "bought in the window?", "held at its end?"."""
 
     def __init__(self):
+        """No trades yet."""
         self.days: list[date] = []  # trade date of each trade, in ledger order (so never decreasing)
         self.running: list[Decimal] = []  # quantity held (all accounts) after each trade
         self.buys: list[tuple[date, tuple, Decimal, bool]] = []  # (day, ledger key, quantity, taxable)
@@ -219,6 +217,7 @@ class _Holdings:
         self.taxable_index: list[int] = []  # positions in `buys` of the taxable buys, in order
 
     def add(self, t):
+        """Adds one trade (any account) to the running quantities and the list of buys."""
         qty = as_quantity(t.quantity)
         held = self.running[-1] if self.running else Decimal(0)
         held = held + qty if str(t.action) == "BUY" else max(Decimal(0), held - qty)
@@ -249,6 +248,7 @@ class _Holdings:
 
 @dataclass
 class _Superficial:
+    """What the superficial loss check found for one losing sale."""
     flagged: bool = False
     denied: Decimal = Decimal(0)  # estimated part of the loss CRA may deny, positive CAD
     notes: list = field(default_factory=list)
@@ -479,6 +479,7 @@ _PLAIN_NUMBER = re.compile(r"^-?\d+(\.\d+)?$")
 
 
 def safe_cell(value) -> str:
+    """A CSV cell that can't start a spreadsheet formula (plain numbers stay as they are)."""
     text = "" if value is None else str(value)
     if text.startswith(_FORMULA_START) and not _PLAIN_NUMBER.match(text):
         return "'" + text
@@ -495,6 +496,7 @@ CSV_HEADER = ["Trade date", "Settlement date", "Symbol", "Type", "Quantity", "Pr
 
 
 def report_csv(report: dict) -> str:
+    """The report as CSV text: one row per sale, then a totals line."""
     out = io.StringIO()
     writer = csv.writer(out, lineterminator="\r\n")
     writer.writerow(CSV_HEADER)

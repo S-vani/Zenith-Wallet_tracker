@@ -32,6 +32,7 @@ const APP_CLIENT_HEADERS = isNative ? {"X-Zenith-Client": "ios-app"} : {};
 // localStorage key of the login token; UserContext also watches it for sign-ins/outs in other tabs
 export const TOKEN_KEY = "token";
 
+// The saved sign in token, or null.
 export function getToken() {
     return localStorage.getItem(TOKEN_KEY);
 }
@@ -57,6 +58,7 @@ function sessionExpired(sentToken) {
     return new Error("Your session has expired. Please log in again.");
 }
 
+// JSON headers with the sign in token.
 function getAuthHeaders() {
     return {
         "Content-Type": "application/json",
@@ -91,6 +93,7 @@ function validationMessage({loc = [], msg = "", ctx = {}}) {
     return `${field}: ${msg.replace(/^Value error, /, "")}`;
 }
 
+// A readable message from an error reply (or `fallback`), never the raw detail of a server error.
 async function errorMessage(res, fallback) {
     try {
         const body = await res.json();
@@ -220,6 +223,7 @@ async function request(path, {auth = true, fallbackError = "Something went wrong
     }
 }
 
+// Whether a request is a GET (only those can fall back to saved data).
 function isGet(options) {
     return !options.method || options.method.toUpperCase() === "GET";
 }
@@ -232,11 +236,13 @@ function startOfDay(date) {
     return Number.isNaN(day.getTime()) ? null : day.toISOString();
 }
 
+// The end of a local day as ISO, or null for a date no Date can hold.
 function endOfDay(date) {
     const day = new Date(`${date}T23:59:59.999`);
     return Number.isNaN(day.getTime()) ? null : day.toISOString();
 }
 
+// Trades matching the filters (symbol, action, account, dates), in the user's currency.
 export async function getTransactions(filters = {}) {
     const params = new URLSearchParams()
 
@@ -261,6 +267,7 @@ export async function getTransactions(filters = {}) {
     return request(`/transactions?${params.toString()}`, {fallbackError: "Failed to load transactions."});
 }
 
+// Saves a new trade; the reply is the saved trade.
 export async function createTransaction(data) {
     return request("/transactions", {
         method: "POST",
@@ -278,6 +285,7 @@ export async function updateTransaction(id, changes) {
     });
 }
 
+// Deletes a trade (409 when a later sell needs it).
 export async function deleteTransaction(id) {
     return request(`/transactions/${encodeURIComponent(id)}`, {
         method: "DELETE",
@@ -313,8 +321,8 @@ async function requestCsv(path, filename, fallbackError) {
     const sentToken = getToken();
     try {
         res = await fetch(`${BASE_URL}${path}`, {headers: {...getAuthHeaders(), ...appVersionHeaders()}});
-    } catch {
-        throw new Error("Can't reach the server. Check your connection and try again.");
+    } catch (err) {
+        throw new Error("Can't reach the server. Check your connection and try again.", {cause: err});
     }
     if (res.status === 426) {
         throw await updateRequiredError(res);
@@ -330,6 +338,7 @@ async function requestCsv(path, filename, fallbackError) {
     return {filename, text: await res.text()};
 }
 
+// Every trade as the Zenith CSV template, named with today's date.
 export async function exportTradesCsv(today = new Date()) {
     const pad = (n) => String(n).padStart(2, "0");
     const day = `${today.getUTCFullYear()}-${pad(today.getUTCMonth() + 1)}-${pad(today.getUTCDate())}`;
@@ -337,11 +346,13 @@ export async function exportTradesCsv(today = new Date()) {
         "Couldn't export your trades. Please try again.");
 }
 
+// The empty import template.
 export async function getImportTemplate() {
     return requestCsv("/transactions/import/template", "zenith-import-template.csv",
         "Couldn't download the template. Please try again.");
 }
 
+// Value, return and basis for a range.
 export async function getDashboardStats(time_span) {
     const times = new URLSearchParams()
 
@@ -352,6 +363,7 @@ export async function getDashboardStats(time_span) {
     return request(`/dashboard?${times.toString()}`, {fallbackError: "Failed to load your portfolio stats."});
 }
 
+// What's held now.
 export async function getHoldings() {
     return request("/holdings", {fallbackError: "Failed to load your holdings."});
 }
@@ -380,6 +392,7 @@ export async function getAnalystReport({symbol, type, coinId, refresh = false}, 
     return request(`/analyst?${params.toString()}`, {signal, fallbackError: "Couldn't load the market analysis."});
 }
 
+// The portfolio's value and invested amount over `days` (or "all").
 export async function getPortfolioHistory(range) {
     return request(`/portfolio/history?range=${encodeURIComponent(range)}`, {
         fallbackError: "Failed to load portfolio chart."
@@ -406,24 +419,11 @@ export async function getCapitalGainsReport(year) {
 
 // The same report as CSV text: {filename, text}. Not through request(), which reads every answer as JSON
 export async function getCapitalGainsCsv(year) {
-    const fallback = "Couldn't download the CSV. Please try again.";
-    let res;
-    const sentToken = getToken();
-    try {
-        res = await fetch(`${BASE_URL}/reports/capital-gains.csv?year=${encodeURIComponent(year)}`, {
-            headers: {Authorization: `Bearer ${sentToken}`, ...appVersionHeaders()},
-        });
-    } catch (err) {
-        throw new Error("Can't reach the server. Check your connection and try again.", {cause: err});
-    }
-    if (res.status === 426) throw await updateRequiredError(res);
-    if (res.status === 401 || res.status === 403) {
-        throw sessionExpired(sentToken);
-    }
-    if (!res.ok) throw new Error(await errorMessage(res, fallback));
-    return {filename: `zenith-capital-gains-${year}.csv`, text: await res.text()};
+    return requestCsv(`/reports/capital-gains.csv?year=${encodeURIComponent(year)}`,
+        `zenith-capital-gains-${year}.csv`, "Couldn't download the CSV. Please try again.");
 }
 
+// Signs in; the app asks for its 30-day token.
 export async function loginAuthentication(form) {
     const formData = new URLSearchParams();
 
@@ -466,6 +466,7 @@ export function googleSignInUrl(next = "/dashboard") {
     return `${BASE_URL}/auth/google/start?next=${encodeURIComponent(next)}`;
 }
 
+// Saves the sign in token (and the app's Keychain copy).
 export function saveToken(token) {
     localStorage.setItem(TOKEN_KEY, token);
     keepInKeychain(token);
@@ -478,6 +479,7 @@ const RENEW_AFTER_DAYS = 7;
 const APP_TOKEN_DAYS = 30;
 let lastRenewAttempt = 0;
 
+// How many days old a 30-day app token is, from its expiry (null when it can't be read).
 export function tokenAgeDays(token, now = Date.now()) {
     try {
         const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
@@ -487,6 +489,7 @@ export function tokenAgeDays(token, now = Date.now()) {
     }
 }
 
+// Renews the app's sign in once it's a week old (at most one try an hour).
 export async function renewSessionIfOld() {
     const token = getToken();
     if (!isNative || !token || Date.now() - lastRenewAttempt < 60 * 60 * 1000) return;
@@ -501,6 +504,7 @@ export async function renewSessionIfOld() {
     }
 }
 
+// Creates an account (a verification email follows).
 export async function signupAuthentication(form) {
     return request("/auth/register", {
         auth: false,
@@ -515,6 +519,7 @@ export async function signupAuthentication(form) {
     });
 }
 
+// Sends the verification email again.
 export async function requestVerification(email) {
     return request("/auth/request-verify-token", {
         auth: false,
@@ -534,6 +539,7 @@ export async function forgotPassword(email) {
     });
 }
 
+// Sets a new password from a reset link.
 export async function resetPassword(token, password) {
     return request("/auth/reset-password", {
         auth: false,
@@ -543,6 +549,7 @@ export async function resetPassword(token, password) {
     });
 }
 
+// Confirms an email address with the token from its link.
 export async function verify(token) {
     return request("/auth/verify", {
         auth: false,
@@ -552,26 +559,31 @@ export async function verify(token) {
     });
 }
 
+// Stock search results with prices.
 export async function searchStock(symbol) {
     return request(`/assets/search/stock?asset=${encodeURIComponent(symbol)}`, {
         fallbackError: "Stock search failed. Please try again."
     });
 }
 
+// Crypto search results with prices.
 export async function searchCrypto(symbol) {
     return request(`/assets/search/crypto?asset=${encodeURIComponent(symbol)}`, {
         fallbackError: "Crypto search failed. Please try again."
     });
 }
 
+// The signed in user.
 export async function getUser() {
     return request("/user", {fallbackError: "Failed to load your account."});
 }
 
+// How many people use Zenith (shown on the home page).
 export async function getUserCount() {
     return request("/users", {auth: false});
 }
 
+// Changes the name and / or display currency.
 export async function putUserInfo(new_info) {
     return request("/user/information", {
         method: "PUT",

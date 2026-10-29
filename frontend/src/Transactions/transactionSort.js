@@ -8,8 +8,11 @@ export const TRANSACTION_SORTS = [
 
 export const DEFAULT_TRANSACTION_SORT = "newest";
 
+// A trade's time in ms (0 when unreadable).
 const time = (t) => Date.parse(t.created_at) || 0;
+// A trade's total (price x quantity), for sorting by amount.
 const amount = (t) => Math.abs(Number(t.price_of_one) * Number(t.quantity)) || 0;
+// Newest first, the default order.
 const newestFirst = (a, b) => time(b) - time(a);
 
 const COMPARE = {
