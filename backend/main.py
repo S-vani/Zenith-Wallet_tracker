@@ -248,6 +248,9 @@ app.include_router(reports_router)
 # CSV import/export; before user_router, whose GET /transactions/{trans_id} would otherwise catch /transactions/export
 from backend.routes.imports import router as imports_router  # noqa: E402
 app.include_router(imports_router)
+# screenshot import (POST /transactions/scan); before user_router too, like the CSV import
+from backend.routes.scan import router as scan_router  # noqa: E402
+app.include_router(scan_router)
 app.include_router(user_router)
 
 if __name__ == "__main__":

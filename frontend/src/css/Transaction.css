@@ -1026,3 +1026,151 @@
         font-size: 0.75rem;
     }
 }
+
+/* ---------- Scan a screenshot (Transactions/TradeScan.jsx) ---------- */
+
+/* the button and its one-line hint sit under the search; on narrow sheets the hint wraps below the button */
+.trade-scan {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.trade-scan-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.9rem;
+}
+
+.trade-scan-button {
+    flex-shrink: 0;
+}
+
+.trade-scan-hint {
+    flex: 1 1 12rem;
+    min-width: 0;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.trade-scan-icon {
+    width: 1.1rem;
+    height: 1.1rem;
+    flex-shrink: 0;
+}
+
+/* the shared spinner, sized to sit where the icon was */
+.trade-scan-spinner {
+    width: 1.1rem;
+    height: 1.1rem;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 2px solid rgba(147, 197, 253, 0.25);
+    border-top-color: var(--accent-soft);
+    animation: spin 0.8s linear infinite;
+}
+
+/* a disabled button is dimmed by .btn:disabled; while reading it should still look like it's working */
+.trade-scan[aria-busy="true"] .trade-scan-button:disabled {
+    opacity: 0.85;
+    cursor: progress;
+}
+
+.trade-scan-choices {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.9rem 1rem;
+    border-radius: var(--radius);
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    box-shadow: var(--card-shadow);
+    animation: rise-in 0.25s var(--ease-out) both;
+}
+
+.trade-scan-choices > p:first-child {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.trade-scan-choices ul {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.trade-scan-choice {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0.55rem 0.85rem;
+    border-radius: 0.625rem;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--positive);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-align: left;
+    transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.trade-scan-choice.sell {
+    border-left-color: #f87171;
+}
+
+.trade-scan-choice:hover:not(:disabled) {
+    border-color: var(--border-strong);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.trade-scan-choice:disabled {
+    opacity: 0.6;
+    cursor: progress;
+}
+
+.trade-scan-choice-date {
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--text-muted);
+}
+
+.trade-scan-warning {
+    font-size: 0.8rem;
+    color: #fbbf24;
+}
+
+/* what the add form was filled in from: informational, so blue, not the amber of a problem */
+.scan-notes {
+    padding: 0.7rem 0.9rem;
+    border-radius: 0.625rem;
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid var(--accent-border);
+    color: var(--accent-soft);
+    font-size: 0.85rem;
+    animation: rise-in 0.25s var(--ease-out) both;
+}
+
+.scan-notes ul {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin: 0;
+    padding-left: 1.1rem;
+}
+
+/* the first line says where the values came from; the rest are the details to check */
+.scan-notes li:first-child {
+    list-style: none;
+    margin-left: -1.1rem;
+    font-weight: 600;
+    color: var(--text);
+}

@@ -5,7 +5,7 @@ import LegalLayout from "../components/LegalLayout.jsx";
 import {BRAND_NAME} from "../utils/brand.js";
 
 // Shown publicly and required by the app stores. Keep it in step with what the app actually collects and sends.
-const EFFECTIVE_DATE = "October 27, 2026";
+const EFFECTIVE_DATE = "November 1, 2026";
 
 const SECTIONS = [
     ["disclaimer", "Not financial advice"],
@@ -110,6 +110,15 @@ function PrivacyPage() {
                     and never saved.
                     Exports are created on request and sent straight to you.
                 </p>
+                <h3>Screenshots you scan</h3>
+                <p>
+                    If you choose "Scan a screenshot" when adding a trade, and agree when we ask, the image is
+                    made smaller on your device (which also removes location and other photo details), sent to
+                    our server and passed to Google's Gemini AI, which reads the trade on it. Nothing is saved
+                    until you check the filled-in form and add the trade yourself. We don't keep the image or log
+                    it, and Gemini is told to ignore names, account numbers and other personal details, but it
+                    does see everything in the image, so crop out anything you'd rather not share.
+                </p>
                 <h3>Technical information</h3>
                 <p>
                     Like most websites, our web server keeps standard request logs (such as IP address,
@@ -176,9 +185,11 @@ function PrivacyPage() {
                         IP address and which coin logos were shown. No account details are sent.
                     </li>
                     <li>
-                        <strong>Google Gemini</strong> (only if AI rewording is enabled): the text and numbers
-                        of a Market Analyst report about a stock or coin. No personal information or portfolio
-                        data is sent.
+                        <strong>Google Gemini</strong>: the text and numbers of a Market Analyst report about a
+                        stock or coin when AI rewording is enabled (no personal information or portfolio data),
+                        and, only when you choose to scan one, a screenshot of a trade. Google processes these
+                        under its paid Gemini API terms, which don't allow it to use them to improve its
+                        products, and keeps them only for a limited time to detect abuse.
                     </li>
                     <li>
                         <strong>Google sign-in</strong>: used only if you choose it. Google's own privacy

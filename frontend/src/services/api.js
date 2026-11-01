@@ -78,6 +78,7 @@ const FIELD_LABELS = {
     asset_type: "Asset type",
     created_at: "Date",
     account_type: "Account",
+    image: "Screenshot",
 };
 
 // Turn a FastAPI/pydantic validation error into something a person can read
@@ -352,6 +353,91 @@ export async function getImportTemplate() {
         "Couldn't download the template. Please try again.");
 }
 
+// Readable messages for a screenshot scan's errors when the reply has no detail to show (nginx answering a too
+// large upload or a stopped backend with its own HTML page). The server's own details are shown as they are.
+const SCAN_ERRORS = {
+    413: "That image is too large. Crop it or take a smaller screenshot.",
+    415: "That file type isn't supported. Use a PNG, JPEG, WebP or HEIC screenshot.",
+    502: "Couldn't read the screenshot right now. Please try again, or enter the trade yourself.",
+    503: "Screenshot import isn't available right now.",
+    504: "Couldn't read the screenshot right now. Please try again, or enter the trade yourself.",
+};
+
+// Reads a trade confirmation screenshot (a Blob/File) with the server's AI: {trades, warnings}. Nothing is saved,
+// the add form is only prefilled from it. Multipart, so not through request(), which sends JSON: no Content-Type
+// here, the browser writes it with the form's boundary. Same token, app version header, sign out on a 401/403 for
+// the token it was sent with, and the app's time limit for writes (none on the website). A cancelled scan (closing
+// the dialog) rejects with the AbortError for the caller to ignore.
+export async function scanTradeScreenshot(image, {signal} = {}) {
+    const path = "/transactions/scan";
+    const body = new FormData();
+    body.append("image", image, image?.name || "screenshot.jpg");
+
+    const timeoutMs = requestTimeout(path, "POST"); // 0 on the website
+    const controller = timeoutMs ? new AbortController() : null;
+    let timedOut = false;
+    const timer = controller ? setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+    }, timeoutMs) : null;
+    const cancel = () => controller.abort();
+    if (controller && signal?.aborted) controller.abort();
+    else if (controller) signal?.addEventListener("abort", cancel, {once: true});
+
+    // a scan saves nothing, so unlike other writes a time out is safe to simply try again
+    const unreachable = (err) => {
+        if (err?.name === "AbortError" && !timedOut) throw err;
+        throw new Error(timedOut
+            ? "Reading the screenshot is taking too long. Please try again, or enter the trade yourself."
+            : "Can't reach the server. Check your connection and try again.", {cause: err});
+    };
+
+    const sentToken = getToken();
+    try {
+        let res;
+        try {
+            res = await fetch(`${BASE_URL}${path}`, {
+                method: "POST",
+                body,
+                signal: controller ? controller.signal : signal,
+                headers: {Authorization: `Bearer ${sentToken}`, ...appVersionHeaders()},
+            });
+        } catch (err) {
+            return unreachable(err);
+        }
+        if (res.status === 426) {
+            throw await updateRequiredError(res);
+        }
+        if (res.status === 401 || res.status === 403) {
+            throw sessionExpired(sentToken);
+        }
+        if (!res.ok) {
+            const error = new Error(await errorMessage(res, SCAN_ERRORS[res.status]
+                ?? "Couldn't read the screenshot. Please try again, or enter the trade yourself."));
+            error.status = res.status;
+            const retryAfter = Number(res.headers?.get?.("Retry-After"));
+            if (retryAfter > 0) error.retryAfter = retryAfter; // seconds, for a 429
+            throw error;
+        }
+
+        let data;
+        try {
+            data = await res.json();
+        } catch (err) {
+            if (err?.name === "AbortError") return unreachable(err);
+            throw new Error("Couldn't read the screenshot. Please try again, or enter the trade yourself.", {cause: err});
+        }
+        markFresh(); // app only: the server answered
+        return {
+            trades: Array.isArray(data?.trades) ? data.trades.filter((t) => t && typeof t === "object") : [],
+            warnings: Array.isArray(data?.warnings) ? data.warnings.filter((w) => typeof w === "string") : [],
+        };
+    } finally {
+        if (timer) clearTimeout(timer);
+        if (controller) signal?.removeEventListener("abort", cancel);
+    }
+}
+
 // Value, return and basis for a range.
 export async function getDashboardStats(time_span) {
     const times = new URLSearchParams()
@@ -559,16 +645,18 @@ export async function verify(token) {
     });
 }
 
-// Stock search results with prices.
-export async function searchStock(symbol) {
+// Stock search results with prices. `signal` cancels it (a screenshot scan looking up its asset, when the dialog closes)
+export async function searchStock(symbol, {signal} = {}) {
     return request(`/assets/search/stock?asset=${encodeURIComponent(symbol)}`, {
+        signal,
         fallbackError: "Stock search failed. Please try again."
     });
 }
 
 // Crypto search results with prices.
-export async function searchCrypto(symbol) {
+export async function searchCrypto(symbol, {signal} = {}) {
     return request(`/assets/search/crypto?asset=${encodeURIComponent(symbol)}`, {
+        signal,
         fallbackError: "Crypto search failed. Please try again."
     });
 }

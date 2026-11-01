@@ -23,6 +23,7 @@ function TransactionsPage() {
     const [error, setError] = useState(null);
     const [step, setStep] = useState("closed");
     const [symbolData, setSymbolData] = useState(null);
+    const [scan, setScan] = useState(null); // {id, prefill, notes} when the trade was read from a screenshot
     const [reloadKey, setReloadKey] = useState(0);
     const refreshKey = useRefreshKey(); // app only: pull to refresh / coming back to the app
     const [filtersOpen, setFiltersOpen] = useState(false); // only matters on phones, where filters start collapsed
@@ -95,6 +96,7 @@ function TransactionsPage() {
     const closeModal = () => {
         setStep("closed");
         setSymbolData(null);
+        setScan(null);
         setSearchText("");
         setConfirmDiscard(false);
     };
@@ -248,16 +250,20 @@ function TransactionsPage() {
 
                         <TransactionSymbolSearch
                             onQueryChange={setSearchText}
-                            onSub={(data) => {
+                            onSub={(data, scanned = null) => {
                                 setSymbolData(data);
+                                setScan(scanned);
                                 setStep("create");
                             }}
                         />
 
+                        {/* a new scan restarts the form with its values, even for the same asset */}
                         {step === "create" && symbolData && (
                             <TransactionCreate
-                                key={symbolData.api_id}
+                                key={scan ? `${symbolData.api_id}:scan${scan.id}` : symbolData.api_id}
                                 data={symbolData}
+                                prefill={scan?.prefill}
+                                scanNotes={scan?.notes}
                                 onClose={closeModal}
                                 onCreated={(id) => {
                                     setJustAdded(id ?? null);

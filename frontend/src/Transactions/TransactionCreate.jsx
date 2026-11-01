@@ -15,12 +15,16 @@ import {
 import "../css/Holdings.css";
 
 // The add-trade form for the picked asset: buy or sell, amount, price, date, account.
-function TransactionCreate({onClose, onCreated, data}) {
+// `prefill` (from a scanned screenshot, see scanPrefill) replaces the starting values it has, and `scanNotes` are
+// shown above the fields; the user still checks and saves the trade themselves.
+function TransactionCreate({onClose, onCreated, data, prefill = null, scanNotes = null}) {
     const {currency} = useUser();
     // the date starts at "now"; it's only sent if the user changes it (see createPayload)
     const [initialDate] = useState(() => toLocalInputValue(new Date()));
-    const [prefilledPrice] = useState(() => priceInputValue(data.price));
-    const [form, setForm] = useState({
+    // a scanned trade brings its own price (or leaves it for the user to type): today's market price would be a
+    // guess there, so it's only the starting point when the trade is typed in
+    const [prefilledPrice] = useState(() => (prefill ? "" : priceInputValue(data.price)));
+    const [form, setForm] = useState(() => ({
         symbol: data.symbol,
         api_id: data.api_id,
         coin_id: data.coin_id ?? null, // crypto search results carry the exact CoinGecko coin
@@ -32,7 +36,8 @@ function TransactionCreate({onClose, onCreated, data}) {
         created_at: initialDate,
         // the last account saved from this browser: a batch of trades usually comes from one account
         account_type: loadLastAccount() ?? "",
-    });
+        ...(prefill ?? {}),
+    }));
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [held, setHeld] = useState(undefined); // the /holdings row (null = none held), undefined while loading
@@ -67,6 +72,13 @@ function TransactionCreate({onClose, onCreated, data}) {
     const total = quantity * price; // NaN (not shown) while either is invalid
     // a heads-up before saving; the server still decides (a backdated sell is checked against that date instead)
     const sellsTooMuch = form.action === "SELL" && owned !== null && !backdated && quantity > owned * (1 + 1e-9);
+
+    // a prefilled form opens with focus on what was filled in, so screen readers read it and Tab goes on to the fields
+    const notesRef = useRef(null);
+    const hasNotes = scanNotes?.length > 0;
+    useEffect(() => {
+        if (hasNotes) notesRef.current?.focus();
+    }, [hasNotes]);
 
     // on a phone the sheet's error can land below the fold, under the Save button
     const errorRef = useRef(null);
@@ -104,6 +116,14 @@ function TransactionCreate({onClose, onCreated, data}) {
             <h3>Transaction details</h3>
 
             <form className="create-transaction-form" autoComplete="off" onSubmit={handleSubmit}>
+                {hasNotes && (
+                    <div className="scan-notes" role="status" ref={notesRef} tabIndex={-1}>
+                        <ul>
+                            {scanNotes.map((note) => <li key={note}>{note}</li>)}
+                        </ul>
+                    </div>
+                )}
+
                 <TradeFields form={form} onField={setField} assetType={data.type} currency={currency}/>
 
                 {form.action === "SELL" && owned !== null && (

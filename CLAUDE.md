@@ -45,6 +45,16 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
     saves nothing) and `POST /transactions/import` (re-validates, all-or-nothing insert, ledger replay, 409 on
     oversell); 10 of each per user per hour. Its router must be included before `user_router` in `main.py`, or
     `/transactions/{trans_id}` swallows `/transactions/export`.
+  - `routes/scan.py` + `services/scan.py` — `POST /transactions/scan` (multipart "image", PNG/JPEG/WebP/HEIC by its
+    bytes, ≤ 2.5 MB, kept in memory only): Google Gemini reads the trades on a broker screenshot (JSON schema,
+    temperature 0, told to ignore personal details); each field goes through the CSV import's checks (`clean_trade`
+    rules, `listed_symbol`, `map_account_type`, `parse_trade_date`), unreadable ones come back null with a note, the
+    price is also given in the user's currency at the trade date's rate. Saves nothing. 15 scans/user/hour + 200 in
+    all (a Gemini failure gives the slot back); 503 without `GEMINI_API_KEY`, 502 when Gemini fails. Never log the
+    image or the model's text. Frontend: `Transactions/TradeScan.jsx` + `scanHelpers.js` (consent dialog first,
+    `scanConsent` in localStorage, image shrunk to ≤ 2000 px JPEG on the device, asset found with the search, form
+    prefilled via `TransactionCreate`'s `prefill` / `scanNotes`). Disclosed in `/privacy` and the privacy manifest
+    (Photos or Videos, not linked).
   - `routes/reports.py` + `services/reports.py` — Canadian capital-gains / ACB report (`/reports/capital-gains`,
     `/years`, `.csv`): only `NON_REGISTERED`/null trades, ACB pooled per security across years in CAD (stored
     `price_of_one`), oversold sales flagged, never adjusted; informational 50% inclusion line; no price/FX calls.
@@ -218,8 +228,9 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
 `API_KEY_COINEGECKO` (CoinGecko demo), `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS`/`EMAIL_FROM` (transactional
 email provider; 465 = SSL, else STARTTLS), else `GMAIL_USER`/`GMAIL_PASS`; with neither the link is logged,
 `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (Google sign-in; button hidden without them), `GEMINI_API_KEY`
-(+ optional `GEMINI_MODEL`, default `gemini-2.5-flash`; free tier isn't allowed for EU/UK/Swiss users — leave unset
-unless billing is on), `MIN_IOS_APP_VERSION` (forced update; unset = off), `BACKUP_DIR`/`BACKUP_REMOTE` (backups).
+(+ optional `GEMINI_MODEL`, default `gemini-2.5-flash`; used for analyst rewording and screenshot scans; the key's
+project must have billing on: the free tier lets Google use what's sent, which /privacy rules out, and isn't allowed
+for EU/UK/Swiss users), `MIN_IOS_APP_VERSION` (forced update; unset = off), `BACKUP_DIR`/`BACKUP_REMOTE` (backups).
 Frontend: `frontend/.env` → `VITE_BACKEND_URL`; `frontend/.env.ios` for the app build.
 
 ## Deploying (server: `~/walletapp` as user `deploy`)
