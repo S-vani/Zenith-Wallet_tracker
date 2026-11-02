@@ -1,14 +1,21 @@
 """
-Screenshot import: Google Gemini reads a screenshot of a trade confirmation (any broker or exchange) and the trades
-it found are checked with the same rules as a CSV import (backend/services/imports.py), so the add-trade form can be
-prefilled. Nothing here saves anything: the user reviews every field and saves the trade themselves.
+Screenshot import: the trades on a screenshot of a trade confirmation (any broker or exchange) are checked with the
+same rules as a CSV import (backend/services/imports.py), so the add-trade form can be prefilled. Nothing here saves
+anything: the user reviews every field and saves the trade themselves.
 
-Privacy (the app stores require it): the image only lives in memory for the request. It is never written to disk or
-the database, and neither it nor Gemini's answer is ever logged; logs only get HTTP status codes and exception
-class names, like backend/analyst/gemini.py. The prompt tells Gemini to leave out names, account numbers and other
-personal details, and only the trade fields below are read from its answer.
+Two ways in, one set of checks (build_scan_result):
+- Free, the default: the text is read on the device (Apple Vision in the iPhone app, Tesseract.js on the website) and
+  the frontend's rule parser sends only the trade fields it found (POST /transactions/scan/fields, ScannedFields).
+  The image never reaches the server.
+- Optional: Google Gemini reads the image itself (POST /transactions/scan). Off unless GEMINI_API_KEY is set AND
+  SCAN_WITH_GEMINI is switched on (scan_enabled), since it sends the screenshot to Google.
 
-The route (limits, upload handling) is backend/routes/scan.py.
+Privacy (the app stores require it): an image only lives in memory for the request. It is never written to disk or
+the database, and neither it, Gemini's answer nor the fields a device sent are ever logged; logs only get HTTP status
+codes and exception class names, like backend/analyst/gemini.py. The prompt tells Gemini to leave out names, account
+numbers and other personal details, and only the trade fields below are read from either answer.
+
+The routes (limits, upload handling) are in backend/routes/scan.py.
 """
 import base64
 import json
@@ -18,10 +25,12 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from typing import Annotated, Optional
 from zoneinfo import ZoneInfo
 
 import httpx
 from fastapi import HTTPException
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.analyst.gemini import API_URL, DEFAULT_MODEL
 from backend.schemas.assets import MAX_PRICE, MAX_QUANTITY, MIN_AMOUNT
@@ -41,6 +50,7 @@ MAX_ANSWER_ITEMS = 50
 TIMEOUT_SECONDS = 40
 
 TOO_LARGE = "That image is too large. Please use a screenshot under 2.5 MB."
+FIELDS_TOO_LARGE = "That's too much to read at once. Please scan one screenshot at a time."
 WRONG_TYPE = "Please choose a PNG, JPEG, WebP or HEIC screenshot."
 EMPTY = "Please choose a screenshot to scan."
 UNAVAILABLE = "Screenshot import isn't available right now."
@@ -56,6 +66,7 @@ PRICE_UNREADABLE = "The price per unit couldn't be read, so please fill it in."
 PRICE_INVALID = "The price shown isn't one Zenith can save, so please check it and fill it in."
 PRICE_FROM_TOTAL = "Price worked out from the total, so it includes any fees."
 CURRENCY_MISSING = "The currency wasn't shown, so please choose it."
+CURRENCY_FROM_LISTING = "No currency was shown, so CAD was used for this Canadian listing."
 CURRENCY_UNSUPPORTED = ("Prices in that currency aren't supported yet (CAD, USD or EUR only), so please enter the "
                         "price in one of those.")
 DATE_MISSING = "The trade date couldn't be read, so please fill it in."
@@ -170,7 +181,7 @@ RESPONSE_SCHEMA = {
 
 
 class ScanUnavailable(Exception):
-    """Gemini isn't configured (no GEMINI_API_KEY)."""
+    """Gemini isn't configured or switched on (see scan_enabled)."""
 
 
 class ScanFailed(Exception):
@@ -181,9 +192,16 @@ class NoTradesFound(Exception):
     """Gemini's answer had no usable buy or sell (the route answers 422)."""
 
 
+SWITCHED_ON = {"1", "true", "yes"}
+
+
 def scan_enabled() -> bool:
-    """Whether screenshot import can run at all (it needs a Gemini key)."""
-    return bool(os.getenv("GEMINI_API_KEY"))
+    """
+    Whether Gemini may read screenshots: it needs a key AND SCAN_WITH_GEMINI switched on. Off by default because it
+    sends the image to Google (and its free tier only allows so many a day); the key alone keeps meaning only the
+    analyst's rewording. The one place that decides, for the image endpoint and GET /transactions/scan/options.
+    """
+    return bool(os.getenv("GEMINI_API_KEY")) and os.getenv("SCAN_WITH_GEMINI", "").strip().lower() in SWITCHED_ON
 
 
 def _answer_text(payload) -> str:
@@ -198,12 +216,12 @@ def _answer_text(payload) -> str:
 async def read_screenshot(image: bytes, mime_type: str) -> dict:
     """
     Ask Gemini for the trades in a screenshot. Returns its answer as a dict ({"trades": [...], "more_trades": ...}),
-    raises ScanUnavailable without a key and ScanFailed when the call fails or the answer isn't that JSON.
-    The image and the answer are never logged.
+    raises ScanUnavailable when it isn't switched on (scan_enabled) and ScanFailed when the call fails or the answer
+    isn't that JSON. The image and the answer are never logged.
     """
-    key = os.getenv("GEMINI_API_KEY")
-    if not key:
+    if not scan_enabled():
         raise ScanUnavailable()
+    key = os.getenv("GEMINI_API_KEY")
     body = {
         "contents": [{"role": "user", "parts": [
             {"inline_data": {"mime_type": mime_type, "data": base64.b64encode(image).decode("ascii")}},
@@ -235,7 +253,45 @@ async def read_screenshot(image: bytes, mime_type: str) -> dict:
 
 
 # ---------------------------------------------------------------------------------------------------------------------
-# Checking what Gemini read
+# Fields read on the device
+# ---------------------------------------------------------------------------------------------------------------------
+# Strict on size and type only: every value then goes through the same checks as Gemini's answer, so an odd action,
+# currency or account comes back null with a note instead of failing the whole scan. Lengths and the list size cap
+# what a client can make the server parse; floats must be finite JSON numbers (strict: "NaN" or "12" as text is a 422).
+MAX_FIELD_LENGTH = 100
+FieldText = Optional[Annotated[str, Field(max_length=MAX_FIELD_LENGTH)]]
+FieldNumber = Optional[Annotated[float, Field(strict=True, allow_inf_nan=False)]]
+
+
+class ScannedFieldsTrade(BaseModel):
+    """One trade as the device's rule parser read it: the same keys as one item of Gemini's RESPONSE_SCHEMA."""
+    model_config = ConfigDict(extra="ignore")  # newer app versions may send more; only these keys are read
+
+    action: FieldText = None
+    asset_type: FieldText = None
+    symbol: FieldText = None
+    exchange: FieldText = None
+    name: FieldText = None
+    quantity: FieldNumber = None
+    price: FieldNumber = None
+    total: FieldNumber = None
+    currency: FieldText = None
+    date: FieldText = None
+    timezone: FieldText = None
+    account_type: FieldText = None
+    confidence: FieldText = None
+
+
+class ScannedFields(BaseModel):
+    """The body of POST /transactions/scan/fields: Gemini's answer shape, filled in on the device instead."""
+    model_config = ConfigDict(extra="ignore")
+
+    trades: list[ScannedFieldsTrade] = Field(default_factory=list, max_length=MAX_TRADES)
+    more_trades: bool = Field(default=False, strict=True)
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Checking what was read (by Gemini or on the device)
 # ---------------------------------------------------------------------------------------------------------------------
 # Stricter than the import's SYMBOL_PATTERN (which also has to read back any symbol a manual trade allowed): a
 # screenshot's ticker is letters, digits, dots and dashes, so a name or a sentence read by mistake is left out.
@@ -367,6 +423,12 @@ def _currency(value) -> tuple[str | None, str | None]:
     return None, CURRENCY_MISSING  # "$" alone, or not a currency at all
 
 
+def _quoted_in_cad(trade: "ScannedTrade") -> bool:
+    """Whether the trade's stock is a Canadian listing quoted in CAD (XEQT.TO yes, DLR-U.TO no)."""
+    return (trade.asset_type == "stock" and trade.symbol.endswith(CANADIAN_SUFFIXES)
+            and not re.search(r"[.-]U\.", trade.symbol))
+
+
 def _zone(value):
     """A tzinfo for the time zone written next to a time ("ET", "PST", "UTC", "GMT-4", "+05:30"), or None."""
     text = clean_cell(value).upper() if isinstance(value, str) else ""
@@ -471,7 +533,7 @@ def _confidence(value, trade: ScannedTrade) -> str:
 
 def clean_scanned_trade(raw, now: datetime | None = None) -> ScannedTrade | None:
     """
-    One trade from Gemini's answer, checked field by field with the CSV import's rules. A field that fails becomes
+    One trade from Gemini's answer (or the device's fields), checked field by field with the CSV import's rules. A field that fails becomes
     None with a note for the user instead of failing the trade; a trade without a usable action or symbol is None.
     """
     if not isinstance(raw, dict):
@@ -496,6 +558,9 @@ def clean_scanned_trade(raw, now: datetime | None = None) -> ScannedTrade | None
     trade.price, notes = _price(raw.get("price"), raw.get("total"), trade.quantity)
     trade.notes += notes
     trade.currency, note = _currency(raw.get("currency"))
+    if note == CURRENCY_MISSING and _quoted_in_cad(trade):
+        # a bare "$" next to a Canadian listing: those trade in CAD (".U" units are the USD-quoted exception)
+        trade.currency, note = "CAD", CURRENCY_FROM_LISTING
     if note:
         trade.notes.append(note)
         if note == CURRENCY_UNSUPPORTED and trade.price is not None:
@@ -574,8 +639,9 @@ def _left_out(count: int) -> str:
 
 async def build_scan_result(answer: dict, user_currency: str, now: datetime | None = None) -> dict:
     """
-    The endpoint's JSON from Gemini's answer: {"trades": [...], "warnings": [...]}, at most MAX_TRADES trades in the
-    screenshot's order. Raises NoTradesFound when no usable trade is left.
+    The endpoints' JSON from Gemini's answer or the device's fields (ScannedFields.model_dump(), the same shape):
+    {"trades": [...], "warnings": [...]}, at most MAX_TRADES trades in the screenshot's order. Raises NoTradesFound
+    when no usable trade is left.
     """
     # the cap is on usable trades, so items that get left out don't push real ones past it; the schema asks for at
     # most MAX_TRADES, MAX_ANSWER_ITEMS only bounds the work if the model ignores that

@@ -162,6 +162,13 @@ describe("scanNotes", () => {
         expect(scanNotes(trade({date_only: true}), "CAD")).toContain("The screenshot only shows the day, so check the time.");
     });
 
+    it("says when the screenshot was read on this device", () => {
+        expect(scanNotes(trade({onDevice: true}), "CAD")).toEqual([FIRST, "Read on this device."]);
+        expect(scanNotes(trade({onDevice: true, confidence: "low"}), "CAD")).toEqual([
+            FIRST, "Read on this device.", "Confidence: low — double-check the amounts.",
+        ]);
+    });
+
     it("warns about a low confidence read only", () => {
         expect(scanNotes(trade({confidence: "low"}), "CAD")).toContain("Confidence: low — double-check the amounts.");
         expect(scanNotes(trade({confidence: "medium"}), "CAD")).toEqual([FIRST]);
@@ -228,7 +235,7 @@ describe("files and consent", () => {
     });
 });
 
-describe("scanTradeScreenshot", () => {
+describe("scanTradeScreenshot / scanTradeFields / getScanOptions", () => {
     // same setup as api.test.js: api.js reads the backend url at import time, so import it fresh per test
     const BASE = "http://api.test";
     let api;
@@ -366,5 +373,71 @@ describe("scanTradeScreenshot", () => {
     it("says when the server can't be reached", async () => {
         fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
         await expect(api.scanTradeScreenshot(image())).rejects.toThrow("Can't reach the server.");
+    });
+
+    // the free reading: only the fields read on the device are sent
+    const fields = {
+        action: "BUY", asset_type: "stock", symbol: "XEQT", exchange: "TSX", name: null, quantity: 10, price: 31.24,
+        total: 312.4, currency: "CAD", date: "2026-10-30 14:05", timezone: "EDT", account_type: "TFSA",
+        confidence: "high",
+    };
+
+    it("POSTs the fields read on the device as JSON, never an image", async () => {
+        fetchMock.mockResolvedValue(respond(200, {trades: [trade()], warnings: ["Fees not included."]}));
+        await expect(api.scanTradeFields([fields], {moreTrades: true})).resolves.toEqual({
+            trades: [trade()], warnings: ["Fees not included."],
+        });
+        const [url, options] = fetchMock.mock.calls[0];
+        expect(url).toBe(`${BASE}/transactions/scan/fields`);
+        expect(options.method).toBe("POST");
+        expect(options.headers["Content-Type"]).toBe("application/json");
+        expect(options.headers.Authorization).toBe("Bearer abc");
+        expect(JSON.parse(options.body)).toEqual({trades: [fields], more_trades: true});
+    });
+
+    it("sends more_trades false by default and drops anything malformed in the answer", async () => {
+        fetchMock.mockResolvedValue(respond(200, {trades: [trade(), null, 7], warnings: [3, "One"]}));
+        await expect(api.scanTradeFields([fields])).resolves.toEqual({trades: [trade()], warnings: ["One"]});
+        expect(JSON.parse(fetchMock.mock.calls[0][1].body).more_trades).toBe(false);
+        fetchMock.mockResolvedValue(respond(200, null));
+        await expect(api.scanTradeFields(null)).resolves.toEqual({trades: [], warnings: []});
+        expect(JSON.parse(fetchMock.mock.calls[1][1].body).trades).toEqual([]);
+    });
+
+    it("keeps the status of a refusal, so a 422 (no usable trade) can offer the next step", async () => {
+        const detail = "Couldn't find a buy or sell in this screenshot.";
+        fetchMock.mockResolvedValue(respond(422, {detail}));
+        await expect(api.scanTradeFields([fields])).rejects.toMatchObject({status: 422, message: detail});
+        fetchMock.mockResolvedValue(respond(429, {detail: "Please wait a minute."}));
+        await expect(api.scanTradeFields([fields])).rejects.toMatchObject({status: 429});
+    });
+
+    it("lets the caller ignore a cancelled check", async () => {
+        const controller = new AbortController();
+        fetchMock.mockImplementation(async (url, options) => {
+            expect(options.signal).toBe(controller.signal);
+            throw new DOMException("aborted", "AbortError");
+        });
+        await expect(api.scanTradeFields([fields], {signal: controller.signal})).rejects.toMatchObject({name: "AbortError"});
+    });
+
+    it("reads whether the AI reading is on", async () => {
+        fetchMock.mockResolvedValue(respond(200, {ai: true}));
+        await expect(api.getScanOptions()).resolves.toEqual({ai: true});
+        expect(fetchMock.mock.calls[0][0]).toBe(`${BASE}/transactions/scan/options`);
+        expect(fetchMock.mock.calls[0][1].method).toBeUndefined(); // a GET
+        fetchMock.mockResolvedValue(respond(200, {ai: "yes"}));
+        await expect(api.getScanOptions()).resolves.toEqual({ai: false}); // only a real true counts
+    });
+
+    it.each([
+        ["an error", () => respond(500, {detail: "boom"})],
+        ["an older server without the route", () => respond(404, {detail: "Not Found"})],
+        ["no connection", () => {
+            throw new TypeError("Failed to fetch");
+        }],
+    ])("treats %s as AI reading off", async (_, reply) => {
+        fetchMock.mockImplementation(async () => reply());
+        await expect(api.getScanOptions()).resolves.toEqual({ai: false});
     });
 });

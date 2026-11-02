@@ -45,16 +45,18 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
     saves nothing) and `POST /transactions/import` (re-validates, all-or-nothing insert, ledger replay, 409 on
     oversell); 10 of each per user per hour. Its router must be included before `user_router` in `main.py`, or
     `/transactions/{trans_id}` swallows `/transactions/export`.
-  - `routes/scan.py` + `services/scan.py` — `POST /transactions/scan` (multipart "image", PNG/JPEG/WebP/HEIC by its
-    bytes, ≤ 2.5 MB, kept in memory only): Google Gemini reads the trades on a broker screenshot (JSON schema,
-    temperature 0, told to ignore personal details); each field goes through the CSV import's checks (`clean_trade`
-    rules, `listed_symbol`, `map_account_type`, `parse_trade_date`), unreadable ones come back null with a note, the
-    price is also given in the user's currency at the trade date's rate. Saves nothing. 15 scans/user/hour + 200 in
-    all (a Gemini failure gives the slot back); 503 without `GEMINI_API_KEY`, 502 when Gemini fails. Never log the
-    image or the model's text. Frontend: `Transactions/TradeScan.jsx` + `scanHelpers.js` (consent dialog first,
-    `scanConsent` in localStorage, image shrunk to ≤ 2000 px JPEG on the device, asset found with the search, form
-    prefilled via `TransactionCreate`'s `prefill` / `scanNotes`). Disclosed in `/privacy` and the privacy manifest
-    (Photos or Videos, not linked).
+  - `routes/scan.py` + `services/scan.py` — screenshot scanning, free by default. The text is read ON THE DEVICE
+    (Apple Vision via the app's own `TextReader` plugin: `ios/App/App/TextReaderPlugin.swift`, registered in
+    `ZenithBridgeViewController`; Tesseract.js on the website, self-hosted in `public/ocr`), the rule parser
+    `Transactions/tradeTextParser.js` turns it into trade fields, and only those go to `POST /transactions/scan/fields`
+    (JSON ≤ 64 KB, ≤ 10 trades, 60/user/hour; the image never leaves the device). The server checks each field with
+    the CSV import's rules (`listed_symbol`, `map_account_type`, `parse_trade_date`...), nulls what's unusable with a
+    note, and adds the price in the user's currency at the trade date's rate (`build_scan_result`). Saves nothing.
+    Optional AI fallback: `POST /transactions/scan` (multipart image ≤ 2.5 MB, memory only, Gemini) works only with
+    `GEMINI_API_KEY` **and** `SCAN_WITH_GEMINI=1` (`scan_enabled()`; 15/user/hour + 200 in all, 503 otherwise);
+    `GET /transactions/scan/options` → `{ai}` tells the page whether to offer it (consent dialog first). Never log the
+    image, the fields or the model's text. Frontend: `Transactions/TradeScan.jsx`, `scanHelpers.js`, `textReader.js`;
+    `TransactionCreate` takes `prefill` / `scanNotes`.
   - `routes/reports.py` + `services/reports.py` — Canadian capital-gains / ACB report (`/reports/capital-gains`,
     `/years`, `.csv`): only `NON_REGISTERED`/null trades, ACB pooled per security across years in CAD (stored
     `price_of_one`), oversold sales flagged, never adjusted; informational 50% inclusion line; no price/FX calls.
@@ -227,7 +229,9 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
 `FRONTEND_URL`, `BACKEND_URL` (public API URL, used for the Google callback), `API_KEY` (TwelveData),
 `API_KEY_COINEGECKO` (CoinGecko demo), `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS`/`EMAIL_FROM` (transactional
 email provider; 465 = SSL, else STARTTLS), else `GMAIL_USER`/`GMAIL_PASS`; with neither the link is logged,
-`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (Google sign-in; button hidden without them), `GEMINI_API_KEY`
+`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (Google sign-in; button hidden without them), `SCAN_WITH_GEMINI` (1 =
+offer AI screenshot reading as a fallback; off by default, and then add Photos or Videos to the privacy manifest and
+App Privacy), `GEMINI_API_KEY`
 (+ optional `GEMINI_MODEL`, default `gemini-2.5-flash`; used for analyst rewording and screenshot scans; the key's
 project must have billing on: the free tier lets Google use what's sent, which /privacy rules out, and isn't allowed
 for EU/UK/Swiss users), `MIN_IOS_APP_VERSION` (forced update; unset = off), `BACKUP_DIR`/`BACKUP_REMOTE` (backups).

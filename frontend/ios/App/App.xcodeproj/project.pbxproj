@@ -17,6 +17,8 @@
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
 		7C1E5A2B2F20000200D4E8F1 /* ZenithShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C1E5A2B2F20000100D4E8F1 /* ZenithShortcuts.swift */; };
+		7C1E5A2B2F20000600D4E8F1 /* ZenithBridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C1E5A2B2F20000500D4E8F1 /* ZenithBridgeViewController.swift */; };
+		7C1E5A2B2F20000400D4E8F1 /* TextReaderPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C1E5A2B2F20000300D4E8F1 /* TextReaderPlugin.swift */; };
 		5A3E1C7F2F10000200A1B2C3 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 5A3E1C7F2F10000100A1B2C3 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
@@ -32,6 +34,8 @@
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		7C1E5A2B2F20000100D4E8F1 /* ZenithShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenithShortcuts.swift; sourceTree = "<group>"; };
+		7C1E5A2B2F20000500D4E8F1 /* ZenithBridgeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZenithBridgeViewController.swift; sourceTree = "<group>"; };
+		7C1E5A2B2F20000300D4E8F1 /* TextReaderPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextReaderPlugin.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		5A3E1C7F2F10000100A1B2C3 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -70,6 +74,8 @@
 			children = (
 				9582B6822FE993A50072D4E8 /* SceneDelegate.swift */,
 				7C1E5A2B2F20000100D4E8F1 /* ZenithShortcuts.swift */,
+				7C1E5A2B2F20000500D4E8F1 /* ZenithBridgeViewController.swift */,
+				7C1E5A2B2F20000300D4E8F1 /* TextReaderPlugin.swift */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
@@ -168,6 +174,8 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 				7C1E5A2B2F20000200D4E8F1 /* ZenithShortcuts.swift in Sources */,
+				7C1E5A2B2F20000600D4E8F1 /* ZenithBridgeViewController.swift in Sources */,
+				7C1E5A2B2F20000400D4E8F1 /* TextReaderPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

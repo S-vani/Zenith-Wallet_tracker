@@ -5,8 +5,9 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  // ios/ holds a copy of the built site (made by `npx cap sync`), not source code
-  globalIgnores(['dist', 'dist-next', 'dist-prev', 'dist-ios', 'ios']),
+  // ios/ holds a copy of the built site (made by `npx cap sync`), not source code; public/ocr/ is the text
+  // reader's vendor files, copied from node_modules (scripts/ocr-assets.mjs)
+  globalIgnores(['dist', 'dist-next', 'dist-prev', 'dist-ios', 'ios', 'public/ocr']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [

@@ -139,7 +139,10 @@ async function updateRequiredError(res) {
 // and signs the user out when their session is no longer valid.
 // In the iOS app a request also gives up after a while (requestTimeout; never on the website), and a portfolio
 // screen that can't be loaded (offline, timeout, server unreachable) shows its saved copy under the banner instead.
-async function request(path, {auth = true, fallbackError = "Something went wrong. Please try again.", signal, ...options} = {}) {
+// `savesNothing`: a POST that only checks something (a scan's fields), so a time out can simply be tried again.
+async function request(path, {
+    auth = true, fallbackError = "Something went wrong. Please try again.", signal, savesNothing = false, ...options
+} = {}) {
     // On the website (no time limit) the caller's own signal goes to fetch untouched. In the app a second controller
     // aborts on the time limit *or* when the caller's AbortController (e.g. switching analyst symbols) fires.
     const timeoutMs = requestTimeout(path, options.method); // 0 on the website
@@ -164,7 +167,7 @@ async function request(path, {auth = true, fallbackError = "Something went wrong
             markStale(); // the banner says this is saved data
             return saved;
         }
-        if (timedOut && !isGet(options)) {
+        if (timedOut && !isGet(options) && !savesNothing) {
             // the server may still have saved it: "try again" could save a trade twice
             throw new Error("The server didn't answer in time, so this may or may not have been saved. Check " +
                 "before trying again.", {cause: err});
@@ -363,9 +366,10 @@ const SCAN_ERRORS = {
     504: "Couldn't read the screenshot right now. Please try again, or enter the trade yourself.",
 };
 
-// Reads a trade confirmation screenshot (a Blob/File) with the server's AI: {trades, warnings}. Nothing is saved,
-// the add form is only prefilled from it. Multipart, so not through request(), which sends JSON: no Content-Type
-// here, the browser writes it with the form's boundary. Same token, app version header, sign out on a 401/403 for
+// The optional AI reading ("Try AI reading", only when getScanOptions says it's on, after the user agreed): the
+// screenshot (a Blob/File) itself goes to the server, which has Google Gemini read it: {trades, warnings}. Nothing
+// is saved, the add form is only prefilled from it. Multipart, so not through request(), which sends JSON: no
+// Content-Type here, the browser writes it with the form's boundary. Same token, app version header, sign out on a 401/403 for
 // the token it was sent with, and the app's time limit for writes (none on the website). A cancelled scan (closing
 // the dialog) rejects with the AbortError for the caller to ignore.
 export async function scanTradeScreenshot(image, {signal} = {}) {
@@ -428,13 +432,43 @@ export async function scanTradeScreenshot(image, {signal} = {}) {
             throw new Error("Couldn't read the screenshot. Please try again, or enter the trade yourself.", {cause: err});
         }
         markFresh(); // app only: the server answered
-        return {
-            trades: Array.isArray(data?.trades) ? data.trades.filter((t) => t && typeof t === "object") : [],
-            warnings: Array.isArray(data?.warnings) ? data.warnings.filter((w) => typeof w === "string") : [],
-        };
+        return scanResult(data);
     } finally {
         if (timer) clearTimeout(timer);
         if (controller) signal?.removeEventListener("abort", cancel);
+    }
+}
+
+// The trades in a scan's response, dropping anything malformed: {trades, warnings}
+function scanResult(data) {
+    return {
+        trades: Array.isArray(data?.trades) ? data.trades.filter((t) => t && typeof t === "object") : [],
+        warnings: Array.isArray(data?.warnings) ? data.warnings.filter((w) => typeof w === "string") : [],
+    };
+}
+
+// The free way: the trade fields read on this device (textReader.js + tradeTextParser.js) checked by the server
+// like the AI's answer, converted to the user's currency, with the same {trades, warnings} back. Only these fields
+// are sent, never the image. A 422 means none of them made a usable trade. Saves nothing.
+export async function scanTradeFields(trades, {signal, moreTrades = false} = {}) {
+    const data = await request("/transactions/scan/fields", {
+        method: "POST",
+        body: JSON.stringify({trades: Array.isArray(trades) ? trades : [], more_trades: Boolean(moreTrades)}),
+        signal,
+        savesNothing: true,
+        fallbackError: "Couldn't check the trade from your screenshot. Please try again, or enter it yourself.",
+    });
+    return scanResult(data);
+}
+
+// Which ways of scanning the server offers: {ai} is whether the optional AI reading (Google Gemini) is switched on,
+// so "Try AI reading" is only offered then. Any error counts as off: the free reading never depends on this.
+export async function getScanOptions({signal} = {}) {
+    try {
+        const data = await request("/transactions/scan/options", {signal});
+        return {ai: data?.ai === true};
+    } catch {
+        return {ai: false};
     }
 }
 

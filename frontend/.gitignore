@@ -23,3 +23,6 @@ dist-ios
 *.njsproj
 *.sln
 *.sw?
+
+# The on-device text reader's files, copied from node_modules by scripts/ocr-assets.mjs when Vite starts
+public/ocr/

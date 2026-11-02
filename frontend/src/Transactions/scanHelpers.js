@@ -1,7 +1,9 @@
-// "Scan a screenshot" in the add-trade dialog: a trade confirmation (Wealthsimple, Crypto.com...) is read by the
-// server (POST /transactions/scan, Google Gemini) and the add form opens prefilled. Nothing is saved from here: the
-// user checks every field and saves the trade themselves. Pure helpers (tested in test/scan.test.js), except
-// shrinkImage, which needs a browser's canvas.
+// "Scan a screenshot" in the add-trade dialog: the text of a trade confirmation (Wealthsimple, Crypto.com...) is read
+// on the device (textReader.js), turned into fields (tradeTextParser.js) and checked by the server (POST
+// /transactions/scan/fields), or, as an optional fallback, the image is read by the server's AI (POST
+// /transactions/scan, Google Gemini). The add form then opens prefilled. Nothing is saved from here: the user checks
+// every field and saves the trade themselves. Pure helpers (tested in test/scan.test.js), except shrinkImage, which
+// needs a browser's canvas.
 
 import {formatPrice, formatQuantity, priceInputValue} from "../utils/format.js";
 import {normalizeAccountType} from "../utils/accounts.js";
@@ -11,7 +13,8 @@ import {quantityInputValue, toLocalInputValue} from "./tradeForm.js";
 // run a phone out of memory
 export const MAX_PICK_BYTES = 20 * 1024 * 1024;
 
-// the server refuses images over 2.5 MB (413); a little under it, in case the server counts in decimal megabytes
+// the server's AI reading refuses images over 2.5 MB (413); a little under it, in case the server counts in decimal
+// megabytes. Reading on the device has no limit, but the same small JPEG is quicker to read too.
 const MAX_UPLOAD_BYTES = 2_500_000;
 
 // plenty for the small text of a confirmation, and a 2000px JPEG stays far under the upload limit
@@ -88,8 +91,8 @@ async function redraw(file) {
     }
 }
 
-// Sending a screenshot to a third-party AI needs a clear yes first (App Store guideline 5.1.2(i)). Asked once per
-// device; storage can be missing or throw (private mode, blocked site data), and then it's simply asked each time.
+// Sending a screenshot to a third-party AI ("Try AI reading") needs a clear yes first (App Store guideline 5.1.2(i)).
+// Reading on the device sends no image, so it isn't asked then. Asked once per device; storage can be missing or throw (private mode, blocked site data), and then it's simply asked each time.
 const CONSENT_KEY = "scanConsent";
 
 // Whether the user already agreed on this device.
@@ -183,6 +186,7 @@ export function scanPrefill(trade, now = new Date()) {
 // The lines shown above the prefilled form: what came from the screenshot, what was converted, what's missing.
 export function scanNotes(trade, currency) {
     const notes = ["Filled in from your screenshot. Check every field before saving it."];
+    if (trade?.onDevice) notes.push("Read on this device."); // the free reading: the image never left it
     const hasPrice = trade?.price != null && Number(trade.price) > 0;
     const shown = hasPrice ? (trade.currency ? formatPrice(trade.price, trade.currency) : String(trade.price)) : null;
 

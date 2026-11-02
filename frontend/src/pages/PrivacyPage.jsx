@@ -112,12 +112,19 @@ function PrivacyPage() {
                 </p>
                 <h3>Screenshots you scan</h3>
                 <p>
-                    If you choose "Scan a screenshot" when adding a trade, and agree when we ask, the image is
-                    made smaller on your device (which also removes location and other photo details), sent to
-                    our server and passed to Google's Gemini AI, which reads the trade on it. Nothing is saved
-                    until you check the filled-in form and add the trade yourself. We don't keep the image or log
-                    it, and Gemini is told to ignore names, account numbers and other personal details, but it
-                    does see everything in the image, so crop out anything you'd rather not share.
+                    If you choose "Scan a screenshot" when adding a trade, the text on the image is read on your
+                    own device (by iOS in the iPhone app, or by a text reader running in your browser on the
+                    website). The image itself never leaves your device: only the trade details found on it
+                    (such as the symbol, quantity, price and date) are sent to our server to be checked and
+                    filled into the form, and nothing is saved until you check it and add the trade yourself.
+                </p>
+                <p>
+                    If AI reading is switched on for Zenith and a screenshot can't be read on your device, you
+                    may be offered to have Google's Gemini AI read it instead. Only if you agree is the image
+                    (made smaller on your device first, which also removes location and other photo details)
+                    sent to our server and passed to Gemini. We don't keep or log it, and Gemini is told to
+                    ignore names, account numbers and other personal details, but it does see everything in the
+                    image, so crop out anything you'd rather not share.
                 </p>
                 <h3>Technical information</h3>
                 <p>
@@ -187,7 +194,8 @@ function PrivacyPage() {
                     <li>
                         <strong>Google Gemini</strong>: the text and numbers of a Market Analyst report about a
                         stock or coin when AI rewording is enabled (no personal information or portfolio data),
-                        and, only when you choose to scan one, a screenshot of a trade. Google processes these
+                        and, only when AI reading is switched on and you agree to it, a screenshot of a trade.
+                        Google processes these
                         under its paid Gemini API terms, which don't allow it to use them to improve its
                         products, and keeps them only for a limited time to detect abuse.
                     </li>

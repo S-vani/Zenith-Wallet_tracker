@@ -28,7 +28,7 @@ The demo account's email must use a real domain: sign-up and password reset reje
 | Privacy Policy URL | https://zenithwalletracker.ca/privacy |
 | Copyright | 2026 *your legal name* |
 | Age rating | Answer the questionnaire honestly (no objectionable content, no unrestricted web access: outside links open specific pages in a Safari sheet), then choose **13+** so it matches the Terms and privacy policy (not meant for children under 13) |
-| App Privacy | Must match `frontend/ios/App/App/PrivacyInfo.xcprivacy`: Name, Email, User ID, Other Financial Info (linked to the user, App Functionality, not tracking); Search History (not linked, App Functionality); Photos or Videos (not linked, App Functionality: a screenshot the user chooses to scan is sent to Google Gemini to read the trade and isn't kept). No tracking. |
+| App Privacy | Must match `frontend/ios/App/App/PrivacyInfo.xcprivacy`: Name, Email, User ID, Other Financial Info (linked to the user, App Functionality, not tracking); Search History (not linked, App Functionality); Photos or Videos (not linked, App Functionality) **only if** `SCAN_WITH_GEMINI` is on (then also add `NSPrivacyCollectedDataTypePhotosorVideos`, not linked, App Functionality, to `PrivacyInfo.xcprivacy`): by default screenshots are read on the device and never leave it, so leave Photos or Videos out. No tracking. |
 | Screenshots | iPhone 6.9" (1320×2868) and 6.3" (1206×2622, iPhone 17 Pro simulator), signed in to the demo account, showing the app in use (not the login screen) |
 
 Description must say plainly: manual record-keeping only; it does not connect to banks, brokers or exchanges, hold
@@ -54,9 +54,9 @@ or move money, execute trades, or give financial advice.
 > - Offline mode: turn on Airplane Mode and reopen Dashboard or Holdings; saved data shows under a "You're
 >   offline" banner.
 > - CSV export and the tax report's CSV go through the iOS share sheet as real .csv files (Save to Files, Mail).
-> - Add trade → "Scan a screenshot": pick a screenshot of a trade confirmation from Photos (or take a photo). After
->   asking permission to send it to Google's Gemini AI, the form is filled in for the user to check and add; nothing
->   is saved automatically and the image isn't kept.
+> - Add trade → "Scan a screenshot": pick a screenshot of a trade confirmation from Photos (or take a photo). The
+>   text is read on the device with Apple's Vision framework (the image never leaves the phone) and the form is
+>   filled in for the user to check and add; nothing is saved automatically.
 > - Keychain storage of the sign-in, haptics, the share sheet for search results (Search → select a result →
 >   "Share <TICKER>"), pull to refresh, iOS Text Size support, in-app Safari for outside links.
 >

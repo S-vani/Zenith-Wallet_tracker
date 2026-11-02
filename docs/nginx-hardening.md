@@ -150,5 +150,10 @@ every page (including the price charts, coin logos and Google sign-in) with the 
 to the enforcing header:
 
 ```nginx
-add_header Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://coin-images.coingecko.com https://assets.coingecko.com; connect-src 'self' https://api.zenithwalletracker.ca; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://api.zenithwalletracker.ca" always;
+add_header Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://coin-images.coingecko.com https://assets.coingecko.com; connect-src 'self' https://api.zenithwalletracker.ca; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://api.zenithwalletracker.ca" always;
 ```
+
+`'wasm-unsafe-eval'` and `worker-src 'self'` are for the screenshot scanner: it reads the text in the browser with
+Tesseract (a WebAssembly build run in a worker, self-hosted under `/ocr/`, see `frontend/scripts/ocr-assets.mjs`).
+Those files are large (about 4 MB of `.js` plus a 3 MB model that is already gzipped), so make sure nginx compresses
+`.js` (`gzip on; gzip_types application/javascript text/javascript;`) and lets browsers cache `/ocr/`.

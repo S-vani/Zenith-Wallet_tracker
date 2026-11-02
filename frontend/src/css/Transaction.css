@@ -1077,6 +1077,51 @@
     cursor: progress;
 }
 
+/* the text reader's first download / the reading itself; Cancel beside it */
+.trade-scan-progress {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.trade-scan-progress progress {
+    flex: 1;
+    min-width: 0;
+    height: 0.4rem;
+    border: none;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    accent-color: #3b82f6;
+    overflow: hidden;
+}
+
+.trade-scan-progress progress::-webkit-progress-bar {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 999px;
+}
+
+.trade-scan-progress progress::-webkit-progress-value {
+    background: var(--accent-solid);
+    border-radius: 999px;
+}
+
+.trade-scan-progress progress::-moz-progress-bar {
+    background: #3b82f6;
+    border-radius: 999px;
+}
+
+/* "Couldn't read a trade" with the optional "Try AI reading" under it */
+.trade-scan-failed {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.trade-scan-failed .alert-error {
+    align-self: stretch;
+}
+
 .trade-scan-choices {
     display: flex;
     flex-direction: column;

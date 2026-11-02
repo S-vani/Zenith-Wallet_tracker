@@ -1,7 +1,12 @@
 """
-POST /transactions/scan: read the trades on a screenshot of a trade confirmation (Google Gemini) so the add-trade
-form can be prefilled. Saves nothing; the user checks every field and saves the trade themselves. The reading and
-the checks live in backend/services/scan.py.
+Screenshot import, so the add-trade form can be prefilled. Saves nothing; the user checks every field and saves the
+trade themselves. The reading and the checks live in backend/services/scan.py.
+- POST /transactions/scan/fields: the free default. The device read the text and sends only the trade fields it
+  found; they get the same checks as Gemini's answer.
+- POST /transactions/scan: Google Gemini reads the image (only when switched on, see scan.scan_enabled).
+- GET /transactions/scan/options: whether the Gemini fallback is on, so the frontend only offers it then.
+These paths start with /transactions/, so this router is included before user_router in main.py: its
+/transactions/{trans_id} routes must never get the chance to read "scan" as a trade id.
 
 The upload is parsed here instead of with FastAPI's File(): Starlette spools uploads over 1 MB to a temporary file
 on disk, and a screenshot of someone's trades must only ever be in memory (see the privacy note in services/scan.py).
@@ -10,6 +15,8 @@ import time
 from collections import deque
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.datastructures import UploadFile
 from starlette.formparsers import MultiPartException, MultiPartParser
@@ -33,8 +40,17 @@ GLOBAL_LIMIT_MESSAGE = ("Screenshot import is very busy right now. Please try ag
 _scan_times: dict = {}  # {user id: deque of the times of their recent scans}
 _global_scan_times: deque = deque()  # times of every scan in the last hour, all users together
 
+# Fields read on the device cost no Gemini call, only the price source's TSX lookup and exchange rates, so the limit
+# is far higher; it's its own count so free scans never use up the Gemini ones (or the other way round)
+FIELD_SCANS_PER_HOUR = 60  # per user
+FIELD_LIMIT_MESSAGE = "You've scanned a lot of screenshots in the last hour. Please wait a while and try again."
+_field_scan_times: dict = {}  # {user id: deque of the times of their recent field scans}
+
 # The image plus the multipart boundaries and part headers; anything bigger is refused before it's all read
 MAX_BODY_BYTES = scan.MAX_IMAGE_BYTES + 64 * 1024
+# 10 trades of 13 fields at most 100 characters each is about 15 KB of JSON (more if every character is escaped);
+# 64 KB leaves room for that and refuses megabytes before they're parsed
+MAX_FIELDS_BODY_BYTES = 64 * 1024
 
 
 class _InMemoryMultiPartParser(MultiPartParser):
@@ -42,17 +58,17 @@ class _InMemoryMultiPartParser(MultiPartParser):
     spool_max_size = MAX_BODY_BYTES + 1
 
 
-async def _read_body(request: Request) -> bytes:
-    """The raw request body, or a 413 as soon as it's bigger than MAX_BODY_BYTES (checked while reading too, since
-    Content-Length can be missing or wrong)."""
+async def _read_body(request: Request, limit: int = MAX_BODY_BYTES, message: str = scan.TOO_LARGE) -> bytes:
+    """The raw request body, or a 413 with `message` as soon as it's bigger than `limit` bytes (checked while reading
+    too, since Content-Length can be missing or wrong)."""
     length = request.headers.get("content-length")
-    if length and length.isdigit() and int(length) > MAX_BODY_BYTES:
-        raise HTTPException(status_code=413, detail=scan.TOO_LARGE)
+    if length and length.isdigit() and int(length) > limit:
+        raise HTTPException(status_code=413, detail=message)
     body = bytearray()
     async for chunk in request.stream():
         body += chunk
-        if len(body) > MAX_BODY_BYTES:
-            raise HTTPException(status_code=413, detail=scan.TOO_LARGE)
+        if len(body) > limit:
+            raise HTTPException(status_code=413, detail=message)
     return bytes(body)
 
 
@@ -121,7 +137,7 @@ async def scan_screenshot(
     return them checked like an imported CSV row, for the user to review: {"trades": [...], "warnings": [...]}.
     A field that can't be read or fails a check is null with a note. Never saves anything, and the image is only
     kept in memory for this request.
-    503 without a Gemini key, 413 / 415 / 422 for the upload, 429 past SCANS_PER_HOUR per user or
+    503 unless Gemini is switched on (GEMINI_API_KEY and SCAN_WITH_GEMINI), 413 / 415 / 422 for the upload, 429 past SCANS_PER_HOUR per user or
     GLOBAL_SCANS_PER_HOUR in total, 502 when Gemini fails (not counted) and 422 when no trade was found.
     """
     if not scan.scan_enabled():
@@ -141,3 +157,51 @@ async def scan_screenshot(
         return await scan.build_scan_result(answer, current_user.currency)
     except scan.NoTradesFound:
         raise HTTPException(status_code=422, detail=scan.NO_TRADES)
+
+
+async def _read_fields(request: Request) -> scan.ScannedFields:
+    """
+    The JSON body as ScannedFields: 413 past MAX_FIELDS_BODY_BYTES, otherwise a 422 in FastAPI's usual shape for
+    anything that isn't valid (main.py's handler, which never echoes the values back). Read by hand rather than as a
+    body parameter so an oversized body is refused before it's parsed.
+    """
+    body = await _read_body(request, MAX_FIELDS_BODY_BYTES, scan.FIELDS_TOO_LARGE)
+    try:
+        return scan.ScannedFields.model_validate_json(body or b"{}")
+    except ValidationError as err:
+        errors = err.errors(include_url=False, include_input=False, include_context=True)
+        raise RequestValidationError([{**e, "loc": ("body", *e["loc"])} for e in errors])
+
+
+@router.post("/transactions/scan/fields")
+async def scan_fields(
+        request: Request,
+        session: AsyncSession = Depends(get_async_session),
+        current_user: User = Depends(current_active_user),
+):
+    """
+    Check the trade fields the device read off a screenshot (Apple Vision in the iPhone app, Tesseract.js on the
+    website, then the frontend's rule parser) exactly like Gemini's answer, and return the same JSON as POST
+    /transactions/scan: {"trades": [...], "warnings": [...]}. Free: no Gemini call, no key needed.
+    The image never reaches this endpoint, only these fields; they're never saved or logged.
+
+    Body: {"trades": [{action, asset_type, symbol, exchange, name, quantity, price, total, currency, date, timezone,
+    account_type, confidence}, ...] (at most 10; any key may be null or missing), "more_trades": false}.
+    413 past 64 KB, 422 for a body that breaks ScannedFields' limits (more than 10 trades, text over 100 characters,
+    a number that isn't a finite JSON number), 429 past FIELD_SCANS_PER_HOUR per user, and 422 NO_TRADES when no
+    usable trade is left (an empty list included).
+    """
+    await end_read(session)  # the user is loaded; the TSX lookup and exchange rates may wait on a price source
+    fields = await _read_fields(request)
+    _check_user_rate(_field_scan_times, current_user.id, FIELD_SCANS_PER_HOUR, SCAN_WINDOW, FIELD_LIMIT_MESSAGE)
+    try:
+        return await scan.build_scan_result(fields.model_dump(), current_user.currency)
+    except scan.NoTradesFound:
+        raise HTTPException(status_code=422, detail=scan.NO_TRADES)
+
+
+@router.get("/transactions/scan/options")
+async def scan_options(current_user: User = Depends(current_active_user)):
+    """Which ways of scanning are on: {"ai": whether the Gemini image reading is switched on}. Reading on the device
+    is always available, so the frontend only needs to know whether to offer the "Try AI reading" fallback."""
+    return {"ai": scan.scan_enabled()}
