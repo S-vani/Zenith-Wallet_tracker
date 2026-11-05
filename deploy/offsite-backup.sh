@@ -87,16 +87,27 @@ cmd_setup() {
     if has_token "$DRIVE"; then
         ok "$DRIVE is already connected"
     else
+        # The whole sign-in runs on the PC (it has the browser); only the resulting token is pasted here, so rclone on
+        # the server never offers its own 127.0.0.1 sign-in link, which a PC can't reach. The argument is
+        # {"scope":"drive.file"}: rclone only sees the files it creates.
         cat << EOF
-    This server has no browser, so Google's sign-in happens on your PC:
+    Google's sign-in happens on your PC:
       a) On Windows, install rclone once:   winget install Rclone.Rclone   (then open a new terminal)
-      b) Answer n when rclone asks to use a web browser. It then prints a command starting with
-         rclone authorize "drive"  - run that on Windows, sign in with your Google account and allow access.
-      c) Windows prints a token between ---> and <---. Paste it here, then answer n to "Shared Drive".
+      b) Run this there; a browser opens, sign in with your Google account and click Allow:
+             rclone authorize "drive" "eyJzY29wZSI6ImRyaXZlLmZpbGUifQ"
+      c) Windows prints a token between ---> and <--- (one line starting with {"access_token").
 EOF
-        # create only stores the settings (rclone 1.60 asks nothing there); reconnect runs the sign-in
-        has_remote "$DRIVE" || rclone config create "$DRIVE" drive scope=drive.file > /dev/null
-        rclone config reconnect "$DRIVE:"
+        local token=""
+        read -r -p "    Paste that token here: " token
+        python3 -c 'import json, sys; t = json.loads(sys.argv[1]); sys.exit(0 if t.get("refresh_token") else 1)' \
+            "$token" 2> /dev/null || die "that isn't the token (copy the whole {...} line between ---> and <---)"
+        # config_refresh_token=false: store the token as it is, without rclone starting its own sign-in
+        if has_remote "$DRIVE"; then
+            rclone config update "$DRIVE" token="$token" config_refresh_token=false > /dev/null
+        else
+            rclone config create "$DRIVE" drive scope=drive.file token="$token" config_refresh_token=false > /dev/null
+        fi
+        unset token
         has_token "$DRIVE" || die "Google Drive wasn't connected; run setup again"
         ok "Google Drive connected"
     fi
