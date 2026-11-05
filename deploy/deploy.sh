@@ -464,8 +464,14 @@ install_backups() {
     done
     run sudo systemctl daemon-reload
     run sudo systemctl enable --now zenith-backup.timer
-    # one run now, under systemd, so a problem shows up today rather than at 03:30
-    run sudo systemctl start zenith-backup.service
+    # one run now, under systemd, so a problem shows up today rather than at 03:30; a new server has no database
+    # until the API's first start, so there's nothing to test it on yet
+    local db
+    if db="$(db_path)" && [[ ! -f "$db" ]]; then
+        warn "no database at $db yet, so the test backup is skipped (the timer still runs nightly)"
+    else
+        run sudo systemctl start zenith-backup.service
+    fi
     ((DRY_RUN)) || ok "timer installed; next run: $(systemctl show -p NextElapseUSecRealtime --value zenith-backup.timer 2> /dev/null || echo '?')." \
         "Backups go to $(backup_dir)"
 }
