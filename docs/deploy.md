@@ -83,6 +83,25 @@ sudo systemctl start walletapp-backend
 
 Everything written after that backup is lost.
 
+## Rebuilding the server
+
+When the server is lost (a Vultr node failure replaced it with a blank Ubuntu 24.04 on the same IP, November 2026),
+`deploy/setup-server.sh` rebuilds this layout. First check Vultr → the instance → Backups / Snapshots: restoring one
+of those brings the database back, which nothing else can (unless `BACKUP_REMOTE` was set up). Then, as root:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/S-vani/Zenith-Wallet_tracker/main/deploy/setup-server.sh
+bash setup-server.sh                      # packages, swap, ufw, user deploy (asks for its password), clone, .env, nginx
+nano /home/deploy/walletapp/.env          # fill in the API keys and email settings it left empty
+certbot certonly --nginx -d zenithwalletracker.ca -d www.zenithwalletracker.ca -d api.zenithwalletracker.ca
+bash setup-server.sh --nginx-only         # HTTPS
+su - deploy -c "bash ~/walletapp/deploy/deploy.sh --force --install-backups"
+```
+
+To restore a database copy, put it in place before that last line (see "Restoring the database by hand"). Without
+one the API starts with an empty database. Afterwards: recreate the App Review demo account
+(`scripts/create_demo_account.py`), check `sudo certbot renew --dry-run`, and point the uptime monitor at `/health`.
+
 ## One-time server setup (already done on the live server)
 
 - **API service.** The installed unit may differ from `deploy/walletapp-backend.service`; the script never

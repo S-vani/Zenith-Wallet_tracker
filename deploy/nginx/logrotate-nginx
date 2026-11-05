@@ -1,0 +1,15 @@
+# /etc/logrotate.d/nginx: rotate daily and keep 14 days (the privacy policy and Apple's privacy manifest promise
+# request logs are kept for at most 14 days; Ubuntu's stock file keeps 52 weeks). Installed by setup-server.sh.
+/var/log/nginx/*.log {
+    daily
+    rotate 14
+    missingok
+    compress
+    delaycompress
+    notifempty
+    create 0640 www-data adm
+    sharedscripts
+    postrotate
+        invoke-rc.d nginx rotate >/dev/null 2>&1
+    endscript
+}

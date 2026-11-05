@@ -1,2 +1,4 @@
 # Shell scripts run on the Linux server: keep LF endings even in Windows checkouts
 *.sh text eol=lf
+# nginx and logrotate files copied to the server by deploy/setup-server.sh
+deploy/nginx/* text eol=lf

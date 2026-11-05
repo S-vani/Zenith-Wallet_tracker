@@ -1,0 +1,38 @@
+# The website (/etc/nginx/sites-enabled/zenithwalletracker.ca). Served straight from the build folder: deploy.sh
+# builds into dist-next and swaps it in with a rename, so nothing is copied and the site is never half-updated.
+# Installed by deploy/setup-server.sh once the certificate is in /etc/letsencrypt.
+server {
+    server_name zenithwalletracker.ca www.zenithwalletracker.ca;
+
+    root /home/deploy/walletapp/frontend/dist;
+    index index.html;
+    access_log /var/log/nginx/zenith.access.log zenith;
+
+    # one address for Google: www sends visitors and search engines to the main domain
+    if ($host = www.zenithwalletracker.ca) {
+        return 301 https://zenithwalletracker.ca$request_uri;
+    }
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Content-Security-Policy "frame-ancestors 'none'" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    location / {
+        try_files $uri /index.html;
+    }
+
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    ssl_certificate /etc/letsencrypt/live/zenithwalletracker.ca/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/zenithwalletracker.ca/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+}
+server {
+    listen 80;
+    listen [::]:80;
+    server_name zenithwalletracker.ca www.zenithwalletracker.ca;
+    return 301 https://zenithwalletracker.ca$request_uri;
+}

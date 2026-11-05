@@ -1,0 +1,43 @@
+# The API (/etc/nginx/sites-enabled/api.zenithwalletracker.ca): proxies to uvicorn on 127.0.0.1:8000. Keep it on
+# 127.0.0.1, the backend only trusts X-Real-IP from there (otherwise every visitor shares one rate-limit bucket).
+# Installed by deploy/setup-server.sh once the certificate is in /etc/letsencrypt.
+server {
+    server_name api.zenithwalletracker.ca;
+    access_log /var/log/nginx/zenith.access.log zenith;
+
+    # nosniff, X-Frame-Options, frame-ancestors and Referrer-Policy come from the backend itself
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    client_max_body_size 3m;  # CSV imports send up to 2 MB
+
+    # sign-in, sign-up and email endpoints: 10 a minute per IP, short bursts allowed
+    location /auth/ {
+        limit_req zone=zenith_auth burst=10 nodelay;
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        limit_req zone=zenith_api burst=40 nodelay;
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    ssl_certificate /etc/letsencrypt/live/zenithwalletracker.ca/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/zenithwalletracker.ca/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+}
+server {
+    listen 80;
+    listen [::]:80;
+    server_name api.zenithwalletracker.ca;
+    return 301 https://api.zenithwalletracker.ca$request_uri;
+}
