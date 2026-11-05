@@ -36,6 +36,13 @@ usage() { sed -n '2,/^set -Eeuo/{/^set -Eeuo/d;s/^# \{0,1\}//;p}' "$0"; }
 
 has_remote() { rclone listremotes | grep -qx "$1:"; }
 
+# Whether the remote has finished Google's sign-in (a remote can exist with an empty token)
+has_token() {
+    rclone config dump | python3 -c '
+import json, sys
+sys.exit(0 if json.load(sys.stdin).get(sys.argv[1], {}).get("token") else 1)' "$1"
+}
+
 # The newest backup on the remote (names sort by time: walletdatabase-<UTC time>-<kind>.db.gz)
 newest() {
     rclone lsf "$CRYPT:" --files-only --include 'walletdatabase-*.db.gz' | sort | tail -n 1
@@ -77,18 +84,20 @@ set_env() {
 
 cmd_setup() {
     step "1. Google Drive"
-    if has_remote "$DRIVE"; then
+    if has_token "$DRIVE"; then
         ok "$DRIVE is already connected"
     else
         cat << EOF
     This server has no browser, so Google's sign-in happens on your PC:
       a) On Windows, install rclone once:   winget install Rclone.Rclone   (then open a new terminal)
-      b) rclone prints a command below starting with  rclone authorize "drive"  - run that on Windows,
-         sign in with your Google account in the browser that opens, and allow access.
-      c) Windows then prints a token between ---> and <---. Paste it here at the config_token prompt.
+      b) Answer n when rclone asks to use a web browser. It then prints a command starting with
+         rclone authorize "drive"  - run that on Windows, sign in with your Google account and allow access.
+      c) Windows prints a token between ---> and <---. Paste it here, then answer n to "Shared Drive".
 EOF
-        rclone config create "$DRIVE" drive scope=drive.file config_is_local=false
-        has_remote "$DRIVE" || die "Google Drive wasn't connected; run setup again"
+        # create only stores the settings (rclone 1.60 asks nothing there); reconnect runs the sign-in
+        has_remote "$DRIVE" || rclone config create "$DRIVE" drive scope=drive.file > /dev/null
+        rclone config reconnect "$DRIVE:"
+        has_token "$DRIVE" || die "Google Drive wasn't connected; run setup again"
         ok "Google Drive connected"
     fi
     rclone mkdir "$DRIVE:$FOLDER"
