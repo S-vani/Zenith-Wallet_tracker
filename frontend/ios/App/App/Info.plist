@@ -91,6 +91,8 @@
 	</array>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Zenith uses Face ID to unlock the app, so only you can see your portfolio.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Zenith uses the camera only when you choose to take a photo of a trade confirmation to scan it. The photo is read on your iPhone and isn't uploaded.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>UILaunchStoryboardName</key>
