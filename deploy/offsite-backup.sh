@@ -95,12 +95,26 @@ cmd_setup() {
       a) On Windows, install rclone once:   winget install Rclone.Rclone   (then open a new terminal)
       b) Run this there; a browser opens, sign in with your Google account and click Allow:
              rclone authorize "drive" "eyJzY29wZSI6ImRyaXZlLmZpbGUifQ"
-      c) Windows prints a token between ---> and <--- (one line starting with {"access_token").
+      c) Windows prints one long line between ---> and <---. Paste it here (it isn't shown, and don't paste it
+         anywhere else: it opens the backup folder in your Drive).
 EOF
-        local token=""
-        read -r -p "    Paste that token here: " token
-        python3 -c 'import json, sys; t = json.loads(sys.argv[1]); sys.exit(0 if t.get("refresh_token") else 1)' \
-            "$token" 2> /dev/null || die "that isn't the token (copy the whole {...} line between ---> and <---)"
+        local pasted="" token=""
+        read -r -s -p "    Paste it here: " pasted && echo
+        # Newer rclone prints the token wrapped in base64 ({"client_id", "client_secret", "token": "<json>"}), older
+        # ones the token's JSON itself: accept both, store the plain token
+        token="$(python3 -c '
+import base64, json, sys
+text = sys.argv[1].strip()
+if not text.startswith("{"):
+    text = base64.urlsafe_b64decode(text + "=" * (-len(text) % 4)).decode()
+data = json.loads(text)
+if "token" in data:
+    data = json.loads(data["token"])
+if not data.get("refresh_token"):
+    sys.exit(1)
+print(json.dumps(data, separators=(",", ":")))' "$pasted" 2> /dev/null)" ||
+            die "that isn't the token (copy the whole line between ---> and <---)"
+        unset pasted
         # config_refresh_token=false: store the token as it is, without rclone starting its own sign-in
         if has_remote "$DRIVE"; then
             rclone config update "$DRIVE" token="$token" config_refresh_token=false > /dev/null
