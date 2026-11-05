@@ -234,7 +234,8 @@ offer AI screenshot reading as a fallback; off by default, and then add Photos o
 App Privacy), `GEMINI_API_KEY`
 (+ optional `GEMINI_MODEL`, default `gemini-2.5-flash`; used for analyst rewording and screenshot scans; the key's
 project must have billing on: the free tier lets Google use what's sent, which /privacy rules out, and isn't allowed
-for EU/UK/Swiss users), `MIN_IOS_APP_VERSION` (forced update; unset = off), `BACKUP_DIR`/`BACKUP_REMOTE` (backups).
+for EU/UK/Swiss users), `MIN_IOS_APP_VERSION` (forced update; unset = off), `BACKUP_DIR`/`BACKUP_REMOTE`/`BACKUP_PING_URL` (backups every 6 h; off-site = encrypted rclone remote on Google
+Drive via `deploy/offsite-backup.sh`, keep its two passwords off the server; the ping URL alerts when they stop).
 Frontend: `frontend/.env` → `VITE_BACKEND_URL`; `frontend/.env.ios` for the app build.
 
 ## Deploying (server: `~/walletapp` as user `deploy`)

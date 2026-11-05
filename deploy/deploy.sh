@@ -18,7 +18,7 @@
 #   --dry-run                  print what would happen; changes nothing (it does git fetch, to see what's new)
 #   --status                   show the deployed commit, the service and health, then exit
 #   --setup-nginx              one-time: API upload limit 64k -> 3m (CSV import), nginx -t, reload (then deploys)
-#   --install-backups          one-time: install the nightly backup timer (then deploys)
+#   --install-backups          one-time: install the backup timer, every 6 hours (then deploys)
 #   --restore-db-on-rollback   let a rollback also restore the pre-deploy database copy (see rollback())
 #
 # Settings (environment): SERVICE, DEPLOY_BRANCH, LOCAL_API_URL, PUBLIC_API_URL, PUBLIC_SITE_URL, HEALTH_TIMEOUT,
@@ -449,7 +449,7 @@ setup_nginx() {
 }
 
 install_backups() {
-    step "Installing the nightly database backup (zenith-backup.timer)"
+    step "Installing the database backup every 6 hours (zenith-backup.timer)"
     local unit tmp user
     user="$(id -un)"
     for unit in zenith-backup.service zenith-backup.timer; do
@@ -468,7 +468,7 @@ install_backups() {
     # until the API's first start, so there's nothing to test it on yet
     local db
     if db="$(db_path)" && [[ ! -f "$db" ]]; then
-        warn "no database at $db yet, so the test backup is skipped (the timer still runs nightly)"
+        warn "no database at $db yet, so the test backup is skipped (the timer still runs every 6 hours)"
     else
         run sudo systemctl start zenith-backup.service
     fi

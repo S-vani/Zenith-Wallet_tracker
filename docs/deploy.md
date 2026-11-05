@@ -14,7 +14,7 @@ cd ~/walletapp && git pull --ff-only && bash deploy/deploy.sh --setup-nginx --in
 
 (If git says "You are not currently on a branch", the old script left the checkout detached: `git checkout main`
 first.) This deploys the pulled commit, raises the API's upload limit to 3 MB for CSV imports (`--setup-nginx`) and
-installs the nightly database backup (`--install-backups`). Both flags are safe to repeat; they change nothing the
+installs the database backup every 6 hours (`--install-backups`). Both flags are safe to repeat; they change nothing the
 second time. sudo asks for your password once.
 
 ## Every release
@@ -49,7 +49,7 @@ What it does, stopping at the first problem:
 | `--dry-run` | prints every step without changing anything (only `git fetch` runs) |
 | `--force` | redeploy even if nothing changed; also allows local changes in the checkout |
 | `--setup-nginx` | one-time: backs up the two site files to `~/nginx-backup-<time>/`, sets `client_max_body_size 3m` in the API site, `nginx -t`, reload (puts the old file back if `nginx -t` fails) |
-| `--install-backups` | one-time: installs `zenith-backup.timer` (nightly at 03:30 UTC) and runs one backup |
+| `--install-backups` | one-time: installs `zenith-backup.timer` (every 6 hours, at :30 past 00/06/12/18 UTC) and runs one backup |
 | `--restore-db-on-rollback` | let a rollback restore the pre-deploy database too (see below) |
 
 ## Rollback
@@ -70,7 +70,9 @@ pass and deploy normally (the script always deploys `origin/main`).
 
 ## Restoring the database by hand
 
-Backups: `~/walletapp-backups/` (`*-pre-deploy.db.gz` before each deploy, `*-nightly.db.gz` each night, 30 days).
+Backups: `~/walletapp-backups/` (`*-pre-deploy.db.gz` before each deploy, `*-auto.db.gz` every 6 hours, 30 days),
+and the encrypted copies on Google Drive (`bash deploy/offsite-backup.sh fetch` downloads, checks and prints these
+same steps).
 Test a backup on a copy first: `gunzip -k <file>.db.gz` and open it with Python's sqlite3 or `sqlite3`.
 
 ```bash
@@ -87,7 +89,7 @@ Everything written after that backup is lost.
 
 When the server is lost (a Vultr node failure replaced it with a blank Ubuntu 24.04 on the same IP, November 2026),
 `deploy/setup-server.sh` rebuilds this layout. First check Vultr → the instance → Backups / Snapshots: restoring one
-of those brings the database back, which nothing else can (unless `BACKUP_REMOTE` was set up). Then, as root:
+of those brings the database back too. Otherwise the database comes from the off-site copies (below). Then, as root:
 
 ```bash
 curl -fsSLO https://raw.githubusercontent.com/S-vani/Zenith-Wallet_tracker/main/deploy/setup-server.sh
@@ -97,10 +99,11 @@ certbot certonly --nginx -d zenithwalletracker.ca -d www.zenithwalletracker.ca -
 bash setup-server.sh --nginx-only         # HTTPS
 su - deploy                               # sudo in deploy.sh needs a real terminal, so not `su -c`
 bash ~/walletapp/deploy/deploy.sh --force --install-backups
+bash ~/walletapp/deploy/offsite-backup.sh setup     # answer "y" and paste the two saved passwords
+bash ~/walletapp/deploy/offsite-backup.sh fetch     # newest copy, checked, plus the commands to put it in place
 ```
 
-To restore a database copy, put it in place before that last line (see "Restoring the database by hand"). Without
-one the API starts with an empty database. Afterwards: recreate the App Review demo account
+Without an off-site copy the API starts with an empty database. Afterwards: recreate the App Review demo account
 (`scripts/create_demo_account.py`), check `sudo certbot renew --dry-run`, and point the uptime monitor at `/health`.
 
 ## One-time server setup (already done on the live server)
@@ -111,8 +114,15 @@ one the API starts with an empty database. Afterwards: recreate the App Review d
   sudo systemctl restart walletapp-backend`. It runs one uvicorn worker on `127.0.0.1:8000` (the in-memory rate limits
   need exactly one process) and has no `EnvironmentFile=`: the app reads `.env` itself, and systemd parses quotes
   differently. Keep port 8000 closed to the outside (`sudo ufw deny 8000`).
-- **Off-site backups (optional).** `sudo apt install rclone`, set up an encrypted remote (`rclone config`: a B2 or S3
-  remote wrapped in a "crypt" remote) and add `BACKUP_REMOTE=name:bucket` to `.env`.
+- **Off-site backups (do this: local copies die with the server).** `bash deploy/offsite-backup.sh setup` as deploy
+  (`sudo apt install -y rclone` first if `setup-server.sh` didn't install it). It connects a Google Drive (scope
+  `drive.file`, the sign-in runs on your PC with `rclone authorize`), creates an rclone `crypt` remote that encrypts
+  contents and names, sets `BACKUP_REMOTE=zenith-crypt:` in `.env`, uploads a backup and test-restores it. **Store its
+  two passwords off the server** (password manager): with the server gone they're the only way to open the copies.
+  `offsite-backup.sh check` repeats the restore test (worth doing monthly), `list` shows the copies.
+- **Backup alerts.** Make a free check on healthchecks.io (period 6 hours, grace 1 hour, email alerts) and put its ping
+  URL in `.env` as `BACKUP_PING_URL`: every good backup pings it and a failed one pings `/fail`, so you hear about it
+  when backups stop, including when the whole server is gone.
 - **Logs: 14 days.** Copy `deploy/journald-zenith.conf` to `/etc/systemd/journald.conf.d/zenith.conf` and restart
   `systemd-journald`; nginx log format and logrotate: `docs/nginx-hardening.md` section 4.
 - **Uptime monitor.** Point a free monitor (UptimeRobot, Better Stack) at `https://api.zenithwalletracker.ca/health`
@@ -127,7 +137,8 @@ one the API starts with an empty database. Afterwards: recreate the App Review d
     privacy policy's list of providers when you switch.
   - `GEMINI_API_KEY`: leave it **unset** unless the key has billing on (Google's terms only allow the paid tier for
     apps offered in the EU, UK or Switzerland); without it the analyst uses its own wording.
-  - `BACKUP_DIR` (default `~/walletapp-backups`), `BACKUP_REMOTE` (optional).
+  - `BACKUP_DIR` (default `~/walletapp-backups`), `BACKUP_REMOTE` (set by `offsite-backup.sh setup`),
+    `BACKUP_PING_URL` (optional backup alerts).
 
 ## iOS app releases
 

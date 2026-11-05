@@ -124,9 +124,9 @@ fi
 # ---------------------------------------------------------------------------------------------------- packages
 step "Packages"
 apt-get update -q
-apt-get install -y -q nginx certbot python3-certbot-nginx git curl ca-certificates gnupg sqlite3 gzip rsync \
+apt-get install -y -q nginx certbot python3-certbot-nginx git curl ca-certificates gnupg sqlite3 gzip rsync rclone \
     unattended-upgrades util-linux > /dev/null
-ok "nginx, certbot, git, sqlite3 and friends"
+ok "nginx, certbot, git, sqlite3, rclone and friends"
 # security updates install themselves (Ubuntu's default, made explicit)
 printf 'APT::Periodic::Update-Package-Lists "1";\nAPT::Periodic::Unattended-Upgrade "1";\n' \
     > /etc/apt/apt.conf.d/20auto-upgrades
@@ -268,4 +268,5 @@ cat << EOF
       2. certbot certonly --nginx -d $SITE_HOST -d www.$SITE_HOST -d $API_HOST
       3. bash $0 --nginx-only            switches nginx to HTTPS
       4. su - $APP_USER   (then, as $APP_USER: bash ~/walletapp/deploy/deploy.sh --force --install-backups)
+      5. as $APP_USER: bash ~/walletapp/deploy/offsite-backup.sh setup   (encrypted copies on Google Drive)
 EOF

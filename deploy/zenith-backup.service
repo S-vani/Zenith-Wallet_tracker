@@ -1,4 +1,5 @@
-# Runs deploy/zenith-backup.sh; started every night by zenith-backup.timer. Install (fills in the real paths and user):
+# Runs deploy/zenith-backup.sh; started every 6 hours by zenith-backup.timer. Install (fills in the real paths
+# and user):
 #   bash deploy/deploy.sh --install-backups
 # Check: systemctl list-timers zenith-backup.timer ; journalctl -u zenith-backup
 # Copies go to /home/deploy/walletapp-backups (set BACKUP_DIR in .env to change it).
@@ -10,7 +11,7 @@ Description=Back up the Zenith database
 Type=oneshot
 User=deploy
 WorkingDirectory=/home/deploy/walletapp
-ExecStart=/bin/bash /home/deploy/walletapp/deploy/zenith-backup.sh nightly
+ExecStart=/bin/bash /home/deploy/walletapp/deploy/zenith-backup.sh auto
 # a backup shouldn't slow the API down
 Nice=10
 IOSchedulingClass=idle

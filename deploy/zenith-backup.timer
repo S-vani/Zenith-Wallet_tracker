@@ -1,10 +1,10 @@
-# Nightly run of zenith-backup.service. Installed by: bash deploy/deploy.sh --install-backups
+# Runs zenith-backup.service. Installed by: bash deploy/deploy.sh --install-backups
 [Unit]
-Description=Nightly Zenith database backup
+Description=Zenith database backup every 6 hours
 
 [Timer]
-OnCalendar=*-*-* 03:30:00 UTC
-# catch up after the server was off at 03:30
+OnCalendar=*-*-* 00/6:30:00 UTC
+# catch up after the server was off at a run time
 Persistent=true
 RandomizedDelaySec=10min
 

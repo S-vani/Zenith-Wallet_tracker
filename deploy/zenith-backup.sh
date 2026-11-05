@@ -2,21 +2,26 @@
 # Back up the SQLite database: a consistent copy taken while the API keeps running (SQLite's online backup, WAL
 # included), integrity-checked, gzipped, optionally copied off the server.
 #
-#   bash deploy/zenith-backup.sh               # nightly, from zenith-backup.timer (deploy.sh --install-backups)
+#   bash deploy/zenith-backup.sh               # every 6 hours, from zenith-backup.timer (deploy.sh --install-backups)
 #   bash deploy/zenith-backup.sh pre-deploy    # deploy.sh runs this before every deploy
 #
 # Uses the sqlite3 command if it's installed, otherwise Python's sqlite3 module (the project's .venv, or python3).
-# Keeps the newest 30 copies of each kind and nothing older than 30 days (the privacy policy promises no longer).
+# Keeps the newest 120 copies of each kind and nothing older than 30 days (the privacy policy promises no longer).
+#
+# Copies on this server die with it (a Vultr node failure took the server and every backup in November 2026), so
+# set BACKUP_REMOTE: deploy/offsite-backup.sh sets up an encrypted Google Drive copy and tests restoring it.
 #
 # Settings (environment, or .env in the project):
-#   BACKUP_DIR     where copies go (default ~/walletapp-backups)
-#   BACKUP_REMOTE  optional rclone destination, e.g. "b2crypt:zenith-backups" (use an rclone "crypt" remote so the
-#                  off-site copies are encrypted); unset = local copies only
+#   BACKUP_DIR       where copies go (default ~/walletapp-backups)
+#   BACKUP_REMOTE    rclone destination for an off-site copy, e.g. "zenith-crypt:" (an rclone "crypt" remote, so the
+#                    copies are encrypted before they leave); unset = local copies only
+#   BACKUP_PING_URL  optional healthchecks.io-style URL: pinged after every good backup, URL/fail after a failed one,
+#                    so you get an email when backups stop
 set -Eeuo pipefail
 
 APP_DIR="${APP_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-LABEL="${1:-nightly}"
-KEEP="${BACKUP_KEEP:-30}"
+LABEL="${1:-auto}"
+KEEP="${BACKUP_KEEP:-120}"
 
 venv_python() {
     local p
@@ -52,24 +57,36 @@ print(dotenv_values(sys.argv[1]).get(sys.argv[2]) or "", end="")' "$file" "$key"
 BACKUP_DIR="${BACKUP_DIR:-$(env_value BACKUP_DIR)}"
 BACKUP_DIR="${BACKUP_DIR:-${HOME:-$(dirname "$APP_DIR")}/walletapp-backups}"
 BACKUP_REMOTE="${BACKUP_REMOTE:-$(env_value BACKUP_REMOTE)}"
+BACKUP_PING_URL="${BACKUP_PING_URL:-$(env_value BACKUP_PING_URL)}"
+
+# Tells the monitor how it went (never fails the backup itself: the monitor being down isn't a backup problem)
+notify_monitor() {
+    [[ -n "$BACKUP_PING_URL" ]] || return 0
+    curl -fsS -m 10 --retry 3 -o /dev/null "$BACKUP_PING_URL$1" || echo "Couldn't reach BACKUP_PING_URL" >&2
+}
+# any failure from here on: no half-written copy left behind, and the monitor hears about it
+trap 'rm -f "${OUT:-}"; notify_monitor /fail' ERR
 
 # DATABASE_URL looks like sqlite+aiosqlite:///./walletdatabase.db (relative to the project, as backend/db/database.py
 # anchors it) or sqlite+aiosqlite:////an/absolute/path.db
 DB_URL="${DATABASE_URL:-$(env_value DATABASE_URL)}"
 DB_URL="${DB_URL:-sqlite+aiosqlite:///./walletdatabase.db}"
-[[ "$DB_URL" == sqlite*:///* ]] || { echo "DATABASE_URL isn't SQLite; nothing to back up here" >&2; exit 1; }
+if [[ "$DB_URL" != sqlite*:///* ]]; then
+    echo "DATABASE_URL isn't SQLite; nothing to back up here" >&2
+    notify_monitor /fail
+    exit 1
+fi
 DB_PATH="${DB_URL#*:///}"
 DB_PATH="${DB_PATH%%\?*}"
 DB_PATH="${DB_PATH#./}"
 [[ "$DB_PATH" == /* || "$DB_PATH" == [A-Za-z]:* ]] || DB_PATH="$APP_DIR/$DB_PATH"
-[[ -f "$DB_PATH" ]] || { echo "Database not found: $DB_PATH" >&2; exit 1; }
+[[ -f "$DB_PATH" ]] || { echo "Database not found: $DB_PATH" >&2; notify_monitor /fail; exit 1; }
 
 umask 077  # the copies hold every user's email and trades
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
 STAMP="$(date -u +%Y-%m-%dT%H%M%SZ)"
 OUT="$BACKUP_DIR/walletdatabase-$STAMP-$LABEL.db"
-trap 'rm -f "$OUT"' ERR
 
 if command -v sqlite3 > /dev/null; then
     sqlite3 "$DB_PATH" ".timeout 30000" ".backup '$OUT'"
@@ -77,13 +94,17 @@ if command -v sqlite3 > /dev/null; then
 else
     # the first Python that can import sqlite3 (`python3` can be a stub that only prints an install hint)
     PY=""
-    for candidate in "$(venv_python)" "$(command -v python3)" "$(command -v python)"; do
+    for candidate in "$(venv_python || true)" "$(command -v python3 || true)" "$(command -v python || true)"; do
         if [[ -n "$candidate" ]] && "$candidate" -c 'import sqlite3' > /dev/null 2>&1; then
             PY="$candidate"
             break
         fi
     done
-    [[ -n "$PY" ]] || { echo "Neither sqlite3 nor Python with sqlite3 is installed; can't back up" >&2; exit 1; }
+    if [[ -z "$PY" ]]; then
+        echo "Neither sqlite3 nor Python with sqlite3 is installed; can't back up" >&2
+        notify_monitor /fail
+        exit 1
+    fi
     CHECK="$("$PY" - "$DB_PATH" "$OUT" << 'PY'
 import sqlite3, sys
 src = sqlite3.connect(sys.argv[1], timeout=30)
@@ -99,6 +120,7 @@ fi
 if [[ "$CHECK" != "ok" ]]; then
     echo "Integrity check failed for $OUT: $CHECK" >&2
     rm -f "$OUT"
+    notify_monitor /fail
     exit 1
 fi
 gzip -9 "$OUT"
@@ -112,7 +134,13 @@ ls -1t "$BACKUP_DIR"/walletdatabase-*-"$LABEL".db.gz | tail -n +"$((KEEP + 1))" 
 done
 
 if [[ -n "${BACKUP_REMOTE:-}" ]]; then
-    rclone copy "$OUT.gz" "$BACKUP_REMOTE" --quiet
+    if ! command -v rclone > /dev/null; then
+        echo "BACKUP_REMOTE is set but rclone isn't installed (sudo apt install rclone)" >&2
+        notify_monitor /fail
+        exit 1
+    fi
+    rclone copy "$OUT.gz" "$BACKUP_REMOTE" --quiet --retries 5
     rclone delete "$BACKUP_REMOTE" --min-age 30d --quiet
     echo "Copied to $BACKUP_REMOTE"
 fi
+notify_monitor ""

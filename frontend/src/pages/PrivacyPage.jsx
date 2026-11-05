@@ -5,7 +5,7 @@ import LegalLayout from "../components/LegalLayout.jsx";
 import {BRAND_NAME} from "../utils/brand.js";
 
 // Shown publicly and required by the app stores. Keep it in step with what the app actually collects and sends.
-const EFFECTIVE_DATE = "November 1, 2026";
+const EFFECTIVE_DATE = "November 5, 2026";
 
 const SECTIONS = [
     ["disclaimer", "Not financial advice"],
@@ -212,6 +212,10 @@ function PrivacyPage() {
                         <strong>Vultr</strong>: our servers and database run on Vultr, a cloud hosting
                         provider.
                     </li>
+                    <li>
+                        <strong>Google Drive</strong>: backup copies of the database are stored on Google Drive.
+                        They are encrypted on our server before they are uploaded, so Google can't read them.
+                    </li>
                 </ul>
                 <p>
                     We only share what each service needs to do its job for us, and we use providers that
@@ -249,8 +253,8 @@ function PrivacyPage() {
                 </p>
                 <p>
                     Web server logs, including any search terms in them, are kept for up to 14 days and then
-                    deleted automatically. Server backups, if any, are kept for no more than 30 days, so deleted
-                    data also disappears from them within that time.
+                    deleted automatically. Database backups (on our server and the encrypted copies on Google Drive)
+                    are kept for no more than 30 days, so deleted data also disappears from them within that time.
                 </p>
             </section>
 
