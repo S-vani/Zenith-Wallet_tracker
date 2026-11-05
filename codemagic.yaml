@@ -16,7 +16,8 @@
 #        - iOS certificates: "Generate certificate" (Apple Distribution) using that key, and keep it in Codemagic.
 #        - iOS provisioning profiles: "Fetch profiles" and pick the App Store profile for ca.zenithwalletracker.app
 #          (create it in the Developer Portal first if none is listed).
-#     6. App settings -> Environment variables: APP_STORE_APPLE_ID = the number from step 2.
+#     6. App settings -> Environment variables: APP_STORE_APPLE_ID = the number from step 2, in a group named
+#        app_store (Codemagic only loads the groups listed under `groups:` below).
 #   Then start "iOS -> TestFlight" by hand, or push a tag like ios-v1.0.0.
 
 workflows:
@@ -27,6 +28,9 @@ workflows:
     integrations:
       app_store_connect: Zenith ASC key
     environment:
+      # APP_STORE_APPLE_ID (setup step 6) lives in this group
+      groups:
+        - app_store
       ios_signing:
         distribution_type: app_store
         bundle_identifier: ca.zenithwalletracker.app
@@ -66,7 +70,7 @@ workflows:
         script: |
           # without the app's Apple ID every build would be number 1 and App Store Connect rejects duplicates
           if [ -z "$APP_STORE_APPLE_ID" ]; then
-            echo "Set APP_STORE_APPLE_ID in Codemagic (setup step 6 at the top of this file)" && exit 1
+            echo "Set APP_STORE_APPLE_ID in Codemagic, group app_store (setup step 6 at the top of this file)" && exit 1
           fi
           # Starting from 0 is only right when App Store Connect answered and simply has no TestFlight build yet
           # (the very first upload): the tool then succeeds and prints no number ("Did not find latest build" goes
