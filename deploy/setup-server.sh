@@ -267,5 +267,5 @@ cat << EOF
       1. nano $APP_DIR/.env              fill in the API keys and email settings
       2. certbot certonly --nginx -d $SITE_HOST -d www.$SITE_HOST -d $API_HOST
       3. bash $0 --nginx-only            switches nginx to HTTPS
-      4. su - $APP_USER -c "bash ~/walletapp/deploy/deploy.sh --force --install-backups"
+      4. su - $APP_USER   (then, as $APP_USER: bash ~/walletapp/deploy/deploy.sh --force --install-backups)
 EOF

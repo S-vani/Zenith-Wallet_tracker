@@ -95,7 +95,8 @@ bash setup-server.sh                      # packages, swap, ufw, user deploy (as
 nano /home/deploy/walletapp/.env          # fill in the API keys and email settings it left empty
 certbot certonly --nginx -d zenithwalletracker.ca -d www.zenithwalletracker.ca -d api.zenithwalletracker.ca
 bash setup-server.sh --nginx-only         # HTTPS
-su - deploy -c "bash ~/walletapp/deploy/deploy.sh --force --install-backups"
+su - deploy                               # sudo in deploy.sh needs a real terminal, so not `su -c`
+bash ~/walletapp/deploy/deploy.sh --force --install-backups
 ```
 
 To restore a database copy, put it in place before that last line (see "Restoring the database by hand"). Without
