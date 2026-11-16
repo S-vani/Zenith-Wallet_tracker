@@ -276,10 +276,16 @@
     background: #dc2626;
 }
 
-/* the date picker icon and popup follow the dark theme */
-.trade-date-input {
+/* the date picker icon and popup follow the dark theme. iOS gives date inputs a wide intrinsic width that ignored
+   the column and ran past the sheet's right edge: without its native look it fills its field like the others */
+.trade-date-input,
+.filter-date-input {
     color-scheme: dark;
-    min-width: 0; /* iOS gives date inputs a wide minimum that overflows the bottom sheet */
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
 }
 
 .trade-date-input::-webkit-date-and-time-value {
@@ -426,13 +432,37 @@
     color: var(--text);
 }
 
-.filter-date-input {
-    color-scheme: dark;
-}
-
 .filter-date-input::-webkit-calendar-picker-indicator {
     cursor: pointer;
     opacity: 0.8;
+}
+
+/* a date filter's label with its Clear button on the same line */
+.filter-label-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.filter-date-wrap {
+    min-width: 0;
+}
+
+.filter-date-clear {
+    position: relative;
+    padding: 0;
+    background: none;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--accent-soft);
+}
+
+/* a 44pt tap area around the small word */
+.filter-date-clear::after {
+    content: "";
+    position: absolute;
+    inset: -0.75rem -0.5rem;
 }
 
 .filter-clear {
@@ -872,6 +902,13 @@
     /* date and account one under the other: side by side the date field was too narrow and cut off the year */
     .trade-date-account {
         flex-direction: column;
+    }
+
+    /* in a column their flex-basis (12rem / 9rem, meant as widths) became heights: the big empty gaps under
+       "Date & time" and "Account" in the sheet */
+    .trade-date-field,
+    .trade-account-field {
+        flex: none;
     }
 
     .create-transaction-buttons .btn,

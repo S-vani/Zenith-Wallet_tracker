@@ -154,7 +154,13 @@ describe("requests", () => {
         fetchMock.mockResolvedValue(respond(201, {}));
         await api.signupAuthentication({email: " a@b.co ", password: " pw ", name: "  Ann ", currency: "USD"});
         expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(
-            {email: "a@b.co", password: " pw ", name: "Ann", currency: "USD"});
+            {email: "a@b.co", password: " pw ", name: "Ann", currency: "USD", accepted_terms: false});
+    });
+
+    it("sends the Terms checkbox with a sign up", async () => {
+        fetchMock.mockResolvedValue(respond(201, {}));
+        await api.signupAuthentication({email: "a@b.co", password: "pw", name: "Ann", currency: "CAD", acceptedTerms: true});
+        expect(JSON.parse(fetchMock.mock.calls[0][1].body).accepted_terms).toBe(true);
     });
 
     it("encodes search queries", async () => {

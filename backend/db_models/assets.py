@@ -49,6 +49,9 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     # False when the owner doesn't know a password: accounts made with Google, or whose password was replaced
     # when Google was linked. They're told to use "Forgot password" to set one.
     has_password = Column(Boolean, nullable=False, default=True, server_default=true())
+    # when the Terms of Use and Privacy Policy were agreed to at sign up (the form's checkbox); null for accounts made
+    # before the checkbox, with Google, or by an app build that doesn't send it yet
+    terms_accepted_at = Column(DateTime, nullable=True)
     # True once an email has been confirmed (by link or Google). Accounts that never got there are deleted after
     # 7 days; a later email change makes is_verified False again but leaves this alone.
     ever_verified = Column(Boolean, nullable=False, default=False, server_default=false())

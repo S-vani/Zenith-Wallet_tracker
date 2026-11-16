@@ -1,0 +1,630 @@
+/* The iPhone app's own look, so it feels like an iOS app rather than the website in a frame. Everything here starts
+   with html.native (set at startup by native/bootstrap.js), so none of it reaches the website. The behaviour it styles
+   lives in src/native/: NativeTitleBar (navigation bar), PageTransition, useSheetDrag, appearance.js (themes). */
+
+/* ---------- system font, sizes and colours ---------- */
+html.native {
+    /* the space above a screen's content: the status bar, plus the navigation bar where a screen has one */
+    --content-top: var(--top-inset);
+    --nav-bar-height: 2.75rem; /* 44pt, UIKit's bar height */
+    --ios-blue: #0a84ff;
+    --ios-separator: rgba(84, 84, 88, 0.6);
+    --ios-grouped-bg: #121a2b; /* a flat inset-grouped surface instead of the website's gradient cards */
+
+    --card-bg: var(--ios-grouped-bg);
+    --card-border: rgba(255, 255, 255, 0.06);
+    --card-shadow: none;
+    --radius: 0.9rem;
+}
+
+html.native.has-titlebar {
+    --content-top: calc(var(--top-inset) + var(--nav-bar-height));
+}
+
+/* San Francisco, the iPhone's own font, instead of the website's Lato */
+html.native body {
+    font-family: -apple-system, "SF Pro Text", system-ui, sans-serif;
+    letter-spacing: -0.01em;
+}
+
+html.native h1,
+html.native h2,
+html.native .stat-value,
+html.native .page-headers {
+    font-family: -apple-system, "SF Pro Display", system-ui, sans-serif;
+}
+
+html.native #root {
+    padding-top: var(--content-top);
+}
+
+/* the navigation bar has its own frosted background behind the status bar */
+html.native.has-titlebar body::after {
+    display: none;
+}
+
+/* ---------- navigation bar (NativeTitleBar.jsx) ---------- */
+.native-titlebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1500; /* over pages, under sheets (1600), the offline strip and the lock screen */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    height: calc(var(--top-inset) + var(--nav-bar-height));
+    padding: var(--top-inset) 4.5rem 0;
+    border-bottom: 0.5px solid transparent;
+    background: transparent;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.native-titlebar.frosted {
+    background: rgba(8, 12, 22, 0.72);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.native-titlebar-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 1.0625rem; /* 17pt, the iOS title size */
+    font-weight: 600;
+    color: var(--text);
+    opacity: 0;
+    transform: translateY(0.3rem);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.native-titlebar.titled .native-titlebar-title {
+    opacity: 1;
+    transform: none;
+}
+
+.native-back {
+    position: absolute;
+    left: 0.25rem;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    height: var(--nav-bar-height);
+    padding: 0 0.6rem;
+    background: none;
+    font-size: 1.0625rem;
+    color: var(--ios-blue);
+}
+
+.native-back svg {
+    width: 0.75rem;
+    height: 1.25rem;
+}
+
+.native-back:active {
+    opacity: 0.4;
+}
+
+/* the policy pages' own "Back to the app" bar is replaced by the navigation bar's back chevron */
+html.native .legal-page .legal-topbar {
+    display: none;
+}
+
+/* the bar's button on the right (e.g. "+" on Transactions) */
+.native-bar-action {
+    position: absolute;
+    right: 0.4rem;
+    bottom: 0;
+    display: grid;
+    place-items: center;
+    width: var(--nav-bar-height);
+    height: var(--nav-bar-height);
+    background: none;
+    color: var(--ios-blue);
+}
+
+.native-bar-action svg {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+.native-bar-action:active {
+    opacity: 0.4;
+}
+
+/* Transactions adds trades from the bar's "+", so the website's full-width button goes */
+html.native .transaction-button-add {
+    display: none;
+}
+
+/* a search result in the add sheet is one tappable row with a chevron, like a table cell: the Select button is
+   stretched invisibly over the whole card, so it's still the one thing to tap (and VoiceOver reads it) */
+html.native .transaction-symbol-item-wrapper:not(.selected) {
+    position: relative;
+}
+
+html.native .transaction-symbol-item-wrapper:not(.selected) .select-btn {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+}
+
+html.native .transaction-symbol-item-wrapper:not(.selected)::after {
+    content: "›";
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.6rem;
+    color: var(--text-subtle);
+    pointer-events: none;
+}
+
+html.native .transaction-symbol-item-wrapper:not(.selected):active {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+html.native .btn-primary:disabled {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-subtle);
+}
+
+/* the filter panel's header: a quiet row instead of a heavy card title */
+html.native .filter-add-section {
+    border-radius: var(--radius);
+}
+
+/* the pull to refresh spinner and the toasts sit below the navigation bar */
+html.native .ptr {
+    top: calc(var(--content-top) + var(--ptr-offset, 0px) / 2 - 1.2rem);
+}
+
+html.native .toaster {
+    top: calc(0.5rem + var(--content-top));
+}
+
+/* ---------- large titles ---------- */
+html.native .page-headers {
+    font-size: 2.125rem; /* 34pt, the iOS large title */
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+}
+
+/* a website's "here's what this page does" line under every title isn't something iOS screens have */
+html.native .page-subtitle {
+    display: none;
+}
+
+/* ---------- screen transitions (PageTransition.jsx) ---------- */
+html.native .main-content.page-enter,
+html.native .legal-layout.page-enter {
+    animation: native-page-in 0.26s var(--ease-out) backwards;
+}
+
+@keyframes native-page-in {
+    from {
+        opacity: 0;
+        transform: translateY(0.5rem);
+    }
+}
+
+/* ---------- tab bar: translucent, tinted icons, no pill ---------- */
+@media (max-width: 768px) {
+    html.native .navbar-links {
+        padding-top: 0.3rem;
+        border-top: 0.5px solid rgba(255, 255, 255, 0.12);
+        background: rgba(8, 12, 22, 0.75);
+        -webkit-backdrop-filter: saturate(180%) blur(20px);
+        backdrop-filter: saturate(180%) blur(20px);
+    }
+
+    html.native .nav-link,
+    html.native .nav-link:hover {
+        background: none;
+        color: #8e8e93; /* iOS's unselected tab grey */
+    }
+
+    html.native .nav-link.active {
+        background: none;
+        color: var(--ios-blue);
+    }
+
+    html.native .nav-link.active::before {
+        display: none;
+    }
+
+    html.native .nav-link:active .nav-icon {
+        transform: scale(0.88);
+    }
+
+    html.native .nav-icon {
+        transition: transform 0.15s ease;
+    }
+
+    html.native .nav-tooltip {
+        font-size: 0.625rem; /* 10pt tab labels */
+        font-weight: 500;
+    }
+}
+
+/* ---------- touch feedback ---------- */
+html.native .btn,
+html.native .auth-btn,
+html.native .search-example,
+html.native .user-row-button {
+    transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+html.native .btn:active:not(:disabled),
+html.native .auth-btn:active:not(:disabled),
+html.native .search-example:active {
+    transform: scale(0.97);
+    opacity: 0.85;
+}
+
+/* rows highlight while pressed, like table view cells */
+html.native .holding-item:active,
+html.native .transaction-item:active,
+html.native .search-result:active,
+html.native .user-row-button:active {
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+/* the main action: iOS's flat filled button instead of the website's glowing gradient */
+html.native .btn-primary,
+html.native .signup-btn {
+    background: var(--ios-blue);
+    box-shadow: none;
+}
+
+/* ---------- lists: one inset grouped list with hairline separators ---------- */
+html.native .transaction-list {
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    background: var(--ios-grouped-bg);
+}
+
+html.native .transaction-item-wrapper {
+    border: none;
+    border-radius: 0;
+    background: none;
+}
+
+html.native .transaction-item-wrapper + .transaction-item-wrapper {
+    box-shadow: inset 0 0.5px 0 var(--ios-separator);
+}
+
+html.native .transaction-item-wrapper.just-added {
+    background: rgba(10, 132, 255, 0.1);
+}
+
+html.native .holding-item-wrapper {
+    border-bottom: 0.5px solid var(--ios-separator);
+}
+
+/* ---------- dashboard: a Stocks-app style header instead of two cards ---------- */
+html.native .dashboard-stats {
+    gap: 0.25rem 1rem;
+}
+
+html.native .dashboard-page .stat-card {
+    padding: 0.25rem 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+}
+
+html.native .dashboard-page .stat-card::before,
+html.native .dashboard-page .stat-card::after {
+    display: none;
+}
+
+html.native .dashboard-page .stat-card-hero .stat-value {
+    font-size: 2.6rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+}
+
+html.native .dashboard-page .stat-label {
+    font-size: 0.8rem;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--text-muted);
+}
+
+html.native .dashboard-controls {
+    justify-content: center;
+}
+
+/* "How to read this chart": the explanation, one tap away */
+.chart-note-details summary {
+    width: fit-content;
+    min-height: 2.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--ios-blue);
+    font-size: 0.85rem;
+    list-style: none;
+    cursor: pointer;
+}
+
+.chart-note-details summary::-webkit-details-marker {
+    display: none;
+}
+
+.chart-note-details summary::before {
+    content: "i";
+    display: grid;
+    place-items: center;
+    width: 1.1rem;
+    height: 1.1rem;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+    font-size: 0.7rem;
+    font-weight: 700;
+    font-style: italic;
+}
+
+/* ---------- search: the keyboard's Search key replaces the big button ---------- */
+html.native .search-header {
+    text-align: left; /* a large title sits on the left in iOS */
+}
+
+html.native .search-form .btn-primary {
+    display: none;
+}
+
+/* ---------- the add-trade sheet: a full-height iOS page sheet ---------- */
+html.native .transaction-create-overlay {
+    z-index: 1600; /* over the navigation bar, like a real sheet */
+    align-items: stretch;
+    padding: calc(var(--top-inset) + 0.6rem) 0 0;
+    background: rgba(0, 0, 0, 0.55);
+}
+
+html.native .transaction-create-box {
+    height: 100%;
+    max-height: none;
+    border-radius: 0.75rem 0.75rem 0 0;
+    border-bottom: none;
+    /* backwards only: a transform left behind would stop the sheet following the finger (useSheetDrag) */
+    animation: sheet-in 0.38s cubic-bezier(0.32, 0.72, 0, 1) backwards;
+    overscroll-behavior: contain;
+}
+
+/* the grabber at the top of a sheet */
+html.native .modal-header::before {
+    content: "";
+    display: block;
+    width: 2.25rem;
+    height: 0.3rem;
+    margin: -0.55rem auto 0.25rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.28);
+}
+
+/* ---------- toasts: a compact pill at the top, like iOS banners ---------- */
+html.native .toaster {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: calc(100vw - 2rem);
+}
+
+html.native .toast {
+    border-radius: 999px;
+    padding: 0.55rem 1rem;
+    background: rgba(28, 34, 48, 0.92);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+}
+
+html.native .toast::after,
+html.native .toast-close {
+    display: none;
+}
+
+/* ---------- Account: iOS Settings style ---------- */
+html.native .user-page-wrapper {
+    padding-top: 0.5rem;
+}
+
+html.native .user-card {
+    gap: 0.9rem;
+    padding: 1.1rem 1.1rem 1.2rem;
+}
+
+/* section titles as grey small caps above the group, like Settings */
+html.native .user-card-title {
+    color: var(--text-subtle);
+    font-size: 0.75rem;
+}
+
+/* the most used settings first: security and appearance right after the profile */
+html.native .user-page {
+    gap: 1.25rem;
+}
+
+html.native .user-page > form.user-card {
+    order: 1;
+}
+
+html.native .user-page > .user-card:has(.user-toggle) {
+    order: 2;
+}
+
+html.native .user-page > .user-card {
+    order: 4;
+}
+
+html.native .user-page > .user-appearance-card {
+    order: 3;
+}
+
+html.native .user-page > .user-danger-card {
+    order: 5;
+}
+
+html.native .user-page > .user-header {
+    order: 0;
+}
+
+/* Privacy · Terms · Support as Settings rows with a chevron, and Log out as iOS's red full-width row */
+html.native .user-legal-links {
+    flex-direction: column;
+    gap: 0;
+}
+
+html.native .user-privacy-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    align-self: stretch;
+    min-height: 2.75rem;
+    font-size: 1rem;
+    color: var(--text);
+    border-bottom: 0.5px solid var(--ios-separator);
+}
+
+html.native .user-privacy-link::after {
+    content: "›";
+    font-size: 1.4rem;
+    color: var(--text-subtle);
+}
+
+html.native .user-logout-actions {
+    flex-direction: column;
+}
+
+html.native .user-logout-button {
+    align-self: stretch;
+    min-height: 2.9rem;
+    color: #ff453a;
+    font-weight: 600;
+}
+
+/* sign in / sign up: the form on the screen itself, not in a website card */
+html.native .login-form-card,
+html.native .signup-form-card {
+    border: none;
+    background: none;
+    box-shadow: none;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+}
+
+html.native .login-form-card .preview-label,
+html.native .signup-form-card .preview-label {
+    display: none;
+}
+
+/* "Change password ›" row (PasswordCard in UserPage.jsx) */
+.user-row-button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 2.75rem;
+    margin: -0.4rem 0;
+    padding: 0 0.25rem;
+    border-radius: 0.6rem;
+    background: none;
+    font-size: 1rem;
+    color: var(--text);
+    text-align: left;
+}
+
+.user-row-chevron {
+    font-size: 1.4rem;
+    color: var(--text-subtle);
+}
+
+/* the Appearance picker: two big options with a colour swatch */
+.user-theme-picker {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    width: 100%;
+}
+
+.user-theme-picker button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+}
+
+.theme-swatch {
+    width: 1rem;
+    height: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    border-radius: 50%;
+}
+
+.theme-swatch-midnight {
+    background: #0b1424;
+}
+
+.theme-swatch-black {
+    background: #000;
+}
+
+/* ---------- Black theme (Account > Appearance) ---------- */
+html.native[data-theme="black"] {
+    --bg: #000;
+    --surface: #0c0c0e;
+    --surface-2: #151517;
+    --surface-raised: #1c1c1e;
+    --ios-grouped-bg: #1c1c1e; /* iOS's dark grouped cell colour */
+    --card-bg: #1c1c1e;
+}
+
+html.native[data-theme="black"] body,
+html.native[data-theme="black"] body::after {
+    background: #000;
+}
+
+/* no navy glow behind the pages, and the chart boxes take the grey cell colour */
+html.native[data-theme="black"] body::before {
+    display: none;
+}
+
+html.native[data-theme="black"] .chart-wrapper-dashboard,
+html.native[data-theme="black"] .chart-wrapper {
+    background: #1c1c1e;
+    border-color: rgba(255, 255, 255, 0.06);
+}
+
+html.native[data-theme="black"] .native-titlebar.frosted,
+html.native[data-theme="black"] .navbar-links {
+    background: rgba(18, 18, 20, 0.78);
+}
+
+html.native[data-theme="black"] .transaction-create-box,
+html.native[data-theme="black"] .modal-header {
+    background: #1c1c1e;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+html.native[data-theme="black"] .app-lock {
+    background: #000;
+}
+
+/* ---------- reduced motion: no slides or fades ---------- */
+@media (prefers-reduced-motion: reduce) {
+    html.native .main-content.page-enter,
+    html.native .legal-layout.page-enter,
+    html.native .transaction-create-box {
+        animation: none;
+    }
+}

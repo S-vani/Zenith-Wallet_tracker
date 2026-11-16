@@ -14,7 +14,8 @@ function SignupForm({onSubmit}) {
         email: "",
         password: "",
         name: "",
-        currency: "CAD"
+        currency: "CAD",
+        acceptedTerms: false, // the "I agree" box: required to sign up, by email or with Google
     });
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
@@ -24,7 +25,7 @@ function SignupForm({onSubmit}) {
     const handleChange = (e) => {
         setForm({
             ...form,
-            [e.target.name]: e.target.value
+            [e.target.name]: e.target.type === "checkbox" ? e.target.checked : e.target.value
         });
     };
 
@@ -32,6 +33,10 @@ function SignupForm({onSubmit}) {
         e.preventDefault();
         if (!form.name.trim()) {
             setError("Please enter your name.");
+            return;
+        }
+        if (!form.acceptedTerms) {
+            setError("Please agree to the Terms of Use and Privacy Policy to create an account.");
             return;
         }
         setSubmitting(true);
@@ -97,7 +102,9 @@ function SignupForm({onSubmit}) {
 
                 {error && <p className="alert-error" role="alert">{error}</p>}
 
-                <GoogleButton label="Sign up with Google"/>
+                {/* Google makes the account straight away, so it waits for the same "I agree" as the form */}
+                <GoogleButton label="Sign up with Google" blocked={!form.acceptedTerms}
+                              blockedHint="Tick “I agree” below first to sign up with Google."/>
 
                 <form className="signup-form" onSubmit={handleSubmit}>
                     <div className="signup-field">
@@ -160,13 +167,19 @@ function SignupForm({onSubmit}) {
                         </select>
                     </div>
 
-                    <button type="submit" className="auth-btn signup-btn large signup-submit-btn" disabled={submitting}>
+                    <label className="signup-agree">
+                        <input type="checkbox" name="acceptedTerms" checked={form.acceptedTerms}
+                               onChange={handleChange} required/>
+                        <span>
+                            I agree to the <Link to="/terms">Terms of Use</Link> and{" "}
+                            <Link to="/privacy">Privacy Policy</Link>, and understand Zenith is not financial advice.
+                        </span>
+                    </label>
+
+                    <button type="submit" className="auth-btn signup-btn large signup-submit-btn"
+                            disabled={submitting || !form.acceptedTerms}>
                         {submitting ? "Creating account…" : "Create account"}
                     </button>
-                    <p className="signup-legal">
-                        By creating an account you agree to the <Link to="/terms">Terms of Use</Link> and{" "}
-                        <Link to="/privacy">Privacy Policy</Link>. Zenith is not financial advice.
-                    </p>
                 </form>
 
                 <div className="signup-form-footer">

@@ -15,8 +15,7 @@ html.native #root {
     padding-top: var(--top-inset);
 }
 
-html.native .toaster,
-html.native .skip-link {
+html.native .toaster {
     top: calc(0.75rem + var(--top-inset));
 }
 
@@ -261,10 +260,25 @@ html.native.update-required .update-screen {
 }
 
 /* ---------- pull to refresh ---------- */
+/* the page follows the finger (PullToRefresh.jsx writes --ptr-offset) and springs back like a native list */
+html.native .main-content {
+    transition: transform 0.42s cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+
+html.native.ptr-active .main-content {
+    transform: translateY(var(--ptr-offset, 0px));
+}
+
+html.native.ptr-dragging .main-content {
+    transition: none;
+}
+
+/* the spinner sits in the gap the page leaves at the top */
 .ptr {
     position: fixed;
-    top: calc(var(--top-inset) - 2.4rem);
+    top: calc(var(--top-inset) + var(--ptr-offset, 0px) / 2 - 1.2rem);
     left: 50%;
+    transform: translateX(-50%);
     z-index: 900;
     display: grid;
     place-items: center;

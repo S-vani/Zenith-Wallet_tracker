@@ -56,15 +56,21 @@ function HoldingsItem({holding, index}) {
 
             {isOpen && (
                 <div className="holding-chart-panel">
-                    {/* phones: the compact row leaves these out, so the open panel has them */}
-                    <p className="holding-panel-avg-cost">
-                        Return <span className={`holding-panel-amount ${classReturn}`}>
-                            {priced ? formatSignedMoney(gain, currency) : "—"}</span>
-                    </p>
-                    <p className="holding-panel-avg-cost">
-                        Average cost <span className="holding-panel-amount">{avgCostText}</span>
-                        {" "}per {holding.type === "stock" ? "share" : "coin"}
-                    </p>
+                    {/* phones: the compact row leaves these out, so the open panel has them, as two tiles */}
+                    <div className="holding-panel-stats">
+                        <div className="holding-panel-stat">
+                            <span className="holding-panel-label">Return</span>
+                            <span className={`holding-panel-amount ${classReturn}`}>
+                                {priced ? formatSignedMoney(gain, currency) : "—"}
+                            </span>
+                        </div>
+                        <div className="holding-panel-stat">
+                            <span className="holding-panel-label">
+                                Avg cost / {holding.type === "stock" ? "share" : "coin"}
+                            </span>
+                            <span className="holding-panel-amount">{avgCostText}</span>
+                        </div>
+                    </div>
                     {/* TFSA and non-registered buys are averaged together here; the tax report has the ACB */}
                     <p className="holding-panel-note">{AVG_COST_NOTE}</p>
                     <HoldingsChart symbol={holding.symbol} type={holding.type} coinId={holding.coin_id}/>

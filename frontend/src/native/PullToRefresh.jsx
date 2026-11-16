@@ -7,6 +7,8 @@ import {showToast} from "../utils/toast.js";
 
 const TRIGGER = 70; // px of (damped) pull needed to refresh
 const MAX = 110;
+const HOLD = 58; // where the page waits, with the spinner above it, while the data reloads
+const SETTLE_MS = 420; // the spring back (Native.css) before the page drops its transform
 
 // touches that start on these are someone using a chart, form or scrolling list, not pulling the page
 const IGNORE = ".recharts-wrapper, input, textarea, select, [role=dialog], .search-results-list svg";
@@ -96,13 +98,33 @@ function PullToRefresh() {
         };
     }, [enabled]);
 
+    // The page itself follows the finger down and springs back when the refresh is done, like a native list: the
+    // pull is written to --ptr-offset on <html>, which moves .main-content (Native.css). html.ptr-active is only set
+    // while there's an offset, because a transform on the page would also move the fixed sheets and dialogs inside it.
+    const offset = refreshing ? HOLD : pull;
+    const dragging = pull > 0 && !refreshing;
+    useEffect(() => {
+        const root = document.documentElement;
+        root.style.setProperty("--ptr-offset", `${offset}px`);
+        root.classList.toggle("ptr-dragging", dragging);
+        if (offset > 0) {
+            root.classList.add("ptr-active");
+            return undefined;
+        }
+        const settle = setTimeout(() => root.classList.remove("ptr-active"), SETTLE_MS);
+        return () => clearTimeout(settle);
+    }, [offset, dragging]);
+    useEffect(() => () => {
+        document.documentElement.classList.remove("ptr-active", "ptr-dragging");
+        document.documentElement.style.removeProperty("--ptr-offset");
+    }, []);
+
     if (!enabled) return null;
 
     const visible = refreshing || pull > 4;
-    const offset = refreshing ? TRIGGER * 0.75 : pull * 0.75;
     return (
         <div className={`ptr${visible ? " visible" : ""}${refreshing ? " refreshing" : ""}`} aria-hidden="true"
-             style={{transform: `translate(-50%, ${offset}px)`}}>
+             style={{opacity: refreshing ? 1 : Math.min(1, pull / TRIGGER)}}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"
                  style={refreshing ? undefined : {transform: `rotate(${pull * 3}deg)`}}>
                 <path d="M20 12a8 8 0 1 1-2.34-5.66"/>

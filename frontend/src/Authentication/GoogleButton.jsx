@@ -2,8 +2,9 @@ import {useEffect, useState} from "react";
 import {getAuthProviders, googleSignInUrl} from "../services/api.js";
 import {isNative} from "../native/platform.js";
 
-// Only renders when Google sign in is configured on the backend
-function GoogleButton({label = "Continue with Google", next}) {
+// Only renders when Google sign in is configured on the backend. `blocked` keeps it disabled (sign up: until the
+// Terms box is ticked) and shows `blockedHint` under it.
+function GoogleButton({label = "Continue with Google", next, blocked = false, blockedHint = null}) {
     const [enabled, setEnabled] = useState(false);
     const [redirecting, setRedirecting] = useState(false);
 
@@ -31,7 +32,7 @@ function GoogleButton({label = "Continue with Google", next}) {
             <button
                 type="button"
                 className="google-btn"
-                disabled={redirecting}
+                disabled={redirecting || blocked}
                 onClick={() => {
                     setRedirecting(true);
                     window.location.assign(googleSignInUrl(next));
@@ -45,6 +46,7 @@ function GoogleButton({label = "Continue with Google", next}) {
                 </svg>
                 {redirecting ? "Redirecting to Google…" : label}
             </button>
+            {blocked && blockedHint && <p className="google-blocked-hint">{blockedHint}</p>}
 
             <div className="auth-divider"><span>or</span></div>
         </>

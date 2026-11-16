@@ -70,6 +70,8 @@ ADDED_COLUMNS = {
         ("ever_verified", "BOOLEAN NOT NULL DEFAULT FALSE",
          'UPDATE "user" SET ever_verified = TRUE WHERE is_verified = TRUE '
          'OR id IN (SELECT user_id FROM transactions)'),
+        # when the Terms and Privacy Policy were agreed to at sign up (null: before the checkbox existed)
+        ("terms_accepted_at", "DATETIME", None),
     ],
 }
 

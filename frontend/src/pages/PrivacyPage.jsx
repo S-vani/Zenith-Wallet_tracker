@@ -5,7 +5,7 @@ import LegalLayout from "../components/LegalLayout.jsx";
 import {BRAND_NAME} from "../utils/brand.js";
 
 // Shown publicly and required by the app stores. Keep it in step with what the app actually collects and sends.
-const EFFECTIVE_DATE = "November 5, 2026";
+const EFFECTIVE_DATE = "November 16, 2026";
 
 const SECTIONS = [
     ["disclaimer", "Not financial advice"],
@@ -139,7 +139,10 @@ function PrivacyPage() {
                 <h3>On your iPhone</h3>
                 <p>
                     If you turn on the Face ID lock, Face ID is handled entirely by iOS: we never receive or
-                    store your face data, only whether the check succeeded. So the app can show your portfolio
+                    store your face data, only whether the check succeeded. So that you can log in with Face ID,
+                    the email and password of your last sign in are then kept in the iOS Keychain on your phone
+                    (never sent anywhere else); turning the lock off or deleting your account removes them. With
+                    the lock off, the app signs you out after 10 minutes without use. So the app can show your portfolio
                     without a connection, it keeps a copy of your most recently loaded screens on your phone;
                     signing out or deleting your account removes it.
                 </p>

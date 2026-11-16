@@ -113,7 +113,13 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
   Swift Package Manager, app id `ca.zenithwalletracker.app`). App-only code lives in `src/native/` and every part of
   it checks `isNative` first, so the website is unaffected (`test/native.test.js` guards this): Keychain copy of the
   token (cleared on a fresh install), Face ID lock (decisions in `lockRules.js`: only a quick return to an app that
-  was *unlocked* skips Face ID), haptics, share sheet, pull to refresh (`useRefreshKey`), offline cache of the
+  was *unlocked* skips Face ID; it's a phone setting, kept through Log out, reset only by account deletion
+  `logout({forgetLock})`), "Log in with Face ID" (`faceIdLogin.js`: the last password login kept in the Keychain
+  while the lock is on, offered once after a password login), 10-minute idle rule (`idleAction`: lock with Face ID
+  on, else log out), app switcher always blurred (`SceneDelegate.swift`), the app's own look (`css/NativeLook.css`:
+  SF font, `NativeTitleBar` nav bar with large titles / back chevron / "+" on Transactions (`titleBarRules.js`),
+  `PageTransition`, inset grouped lists, page-sheet add form with `useSheetDrag`, Account > Appearance themes
+  Midnight / Black via `appearance.js`), haptics, share sheet, pull to refresh (`useRefreshKey`), offline cache of the
   portfolio screens (`offlineCache.js`, used by `api.js`; keyed by user + currency, LRU 40), 12 s request timeout
   falling back to saved data (`connectivity.js`), native app-switcher cover in `SceneDelegate.swift` (when the lock
   is on), `@capacitor/keyboard` (accessory bar kept for its Done key; `keyboard-open` on `<html>` hides the tab bar),
@@ -134,6 +140,8 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
   and a timed-out write says it may have been saved. In the app `/` skips the marketing page and
   Google sign-in is hidden (web views can't use it; would also need Sign in with Apple). Backend CORS always allows
   `capacitor://localhost`. The website's "Open the Zenith app" button only shows once `VITE_IOS_APP_STORE_URL` is set.
+  Sign up (website and app) needs the "I agree to the Terms and Privacy Policy" checkbox (Google sign up waits for it
+  too); `accepted_terms` is optional in the API (older app builds) and saved as `user.terms_accepted_at`.
   - Build the app with `npm run build:ios` (`vite build --mode ios` into `dist-ios/` using the committed
     `frontend/.env.ios`, drops website-only files like the demo video and fails unless the bundle has an https API
     URL, then `cap sync ios`); the website's `dist/` is separate. iOS 17+, iPhone only. Cloud builds:

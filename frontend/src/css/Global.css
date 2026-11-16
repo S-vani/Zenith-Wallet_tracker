@@ -362,8 +362,12 @@ button:disabled {
     height: 1.15em;
 }
 
+/* the digits passing through fade out at the top and bottom edge, so a number caught mid-roll reads as moving
+   instead of as broken half-digits */
 .rolling-col {
     overflow: hidden;
+    -webkit-mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
+    mask-image: linear-gradient(transparent, #000 22%, #000 78%, transparent);
 }
 
 .rolling-strip {

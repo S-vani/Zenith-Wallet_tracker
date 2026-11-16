@@ -10,6 +10,7 @@ import usePageTitle from "../utils/usePageTitle.js";
 import useRefreshKey from "../native/useRefreshKey.js";
 import {rememberPortfolioForSiri} from "../native/screens.js";
 import {haptic} from "../native/haptics.js";
+import {isNative} from "../native/platform.js";
 
 import "../css/Dashboard.css";
 
@@ -172,9 +173,12 @@ function DashboardPage() {
                     ))}
                 </div>
 
-                <Link className="btn btn-primary dashboard-nav-btn" to="/holdings">
-                    Holdings →
-                </Link>
+                {/* the app has a Holdings tab right below */}
+                {!isNative && (
+                    <Link className="btn btn-primary dashboard-nav-btn" to="/holdings">
+                        Holdings →
+                    </Link>
+                )}
             </div>
 
             {/* the error and its Try again button are above, so the chart only says it couldn't load */}

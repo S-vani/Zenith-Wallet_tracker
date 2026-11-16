@@ -12,6 +12,7 @@ import '@fontsource/lato/900.css'
 import './css/Global.css'
 import './css/Home.css'
 import './css/Native.css'
+import './css/NativeLook.css'
 
 // In the iOS app this first restores the login from the Keychain and reads the Face ID setting;
 // on the website it resolves immediately. If anything native is slow or fails, the app still starts after 3 s

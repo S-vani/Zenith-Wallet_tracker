@@ -4,9 +4,9 @@ import Capacitor
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
 
-    // Covers the app the moment it stops being active (app switcher, Control Center, leaving) while the Face ID lock
-    // is on. iOS takes the app switcher snapshot right after this, before the web view's own lock screen can paint,
-    // so without it the snapshot could show the portfolio.
+    // Blurs the app the moment it stops being active (app switcher, Control Center, leaving), always: a portfolio
+    // shouldn't be readable in the app switcher. iOS takes the app switcher snapshot right after this, before the
+    // web view could repaint, so it has to be a native view.
     private var privacyCover: UIView?
 
     // Written by @capacitor/preferences (key "biometricLock", see src/native/biometric.js): it stores every key in
@@ -48,16 +48,12 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     func sceneWillResignActive(_ scene: UIScene) {
-        guard privacyCover == nil,
-              let window = window,
-              UserDefaults.standard.string(forKey: SceneDelegate.lockSettingKey) == "on" else { return }
+        guard privacyCover == nil, let window = window else { return }
 
-        // the same picture as the launch screen: the navy #060a12 background with the Zenith logo
-        let cover = UIImageView(frame: window.bounds)
+        // a heavy dark blur, like Apple's own finance apps: the layout shows, no amount or holding can be read
+        let cover = UIVisualEffectView(effect: UIBlurEffect(style: .systemThickMaterialDark))
+        cover.frame = window.bounds
         cover.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        cover.backgroundColor = UIColor(red: 6 / 255, green: 10 / 255, blue: 18 / 255, alpha: 1)
-        cover.image = UIImage(named: "Splash")
-        cover.contentMode = .scaleAspectFill
         cover.isUserInteractionEnabled = false
         window.addSubview(cover)
         privacyCover = cover

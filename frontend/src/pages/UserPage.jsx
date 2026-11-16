@@ -5,6 +5,8 @@ import "../css/User.css"
 import {putUserInfo, putUserEmail, changePassword, logoutAllDevices, deleteAccount, logout} from "../services/api.js"
 import {isNative} from "../native/platform.js";
 import {biometricInfo, isLockEnabled, setLockEnabled, verifyIdentity} from "../native/biometric.js";
+import {forgetFaceIdLogin} from "../native/faceIdLogin.js";
+import {currentTheme, setTheme, THEMES} from "../native/appearance.js";
 import {lockWording} from "../native/lockRules.js";
 import {useUser} from "../context/UserContext.jsx";
 import ConfirmDialog from "../components/ConfirmDialog.jsx";
@@ -131,7 +133,8 @@ function UserSettings({user, setUser}) {
 
     const handleLogout = () => {
         logout();
-        navigate("/login", {replace: true});
+        // loggedOut: the sign in screen waits for a tap on "Log in with Face ID" instead of asking straight away
+        navigate("/login", {replace: true, state: {loggedOut: true}});
     };
 
     // Revokes every token (a lost phone, a shared computer), then signs this device out too. It signs out every
@@ -183,7 +186,7 @@ function UserSettings({user, setUser}) {
         setDeleteError(null);
         try {
             await deleteAccount(deletePassword);
-            logout(); // also turns the app's Face ID lock off (resetLockOnSignOut)
+            logout({forgetLock: true}); // the app's Face ID lock and saved login go with the account
             navigate("/", {replace: true});
             showToast("Your account and all of its data have been deleted.");
         } catch (err) {
@@ -388,6 +391,7 @@ function UserSettings({user, setUser}) {
                 <PasswordCard hasPassword={hasPassword} email={user.email}/>
 
                 {isNative && <SecurityCard/>}
+                {isNative && <AppearanceCard/>}
 
                 <div className="user-card user-danger-card">
                     <div className="user-card-header">
@@ -473,6 +477,8 @@ function NoPasswordHint({action}) {
 // Change password: current, new and confirm. Other devices are signed out; this one gets a fresh token.
 function PasswordCard({hasPassword, email}) {
     const empty = {current: "", next: "", confirm: ""};
+    // the app shows a "Change password" row that opens the form, like iOS Settings; the website shows the form
+    const [open, setOpen] = useState(!isNative);
     const [fields, setFields] = useState(empty);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
@@ -519,12 +525,17 @@ function PasswordCard({hasPassword, email}) {
     };
 
     return (
-        <div className="user-card">
+        <div className="user-card user-password-card">
             <div className="user-card-header">
                 <h2 className="user-card-title">Password</h2>
             </div>
 
-            {!hasPassword ? (
+            {!open ? (
+                <button type="button" className="user-row-button" onClick={() => setOpen(true)}>
+                    Change password
+                    <span className="user-row-chevron" aria-hidden="true">›</span>
+                </button>
+            ) : !hasPassword ? (
                 <NoPasswordHint action="change your password"/>
             ) : (
                 <form className="user-password-form" onSubmit={handleSubmit}>
@@ -596,6 +607,32 @@ function PasswordChecklist({password, email}) {
     );
 }
 
+// App only: the colour theme (native/appearance.js), as a segmented control like iOS's own Appearance setting.
+function AppearanceCard() {
+    const [theme, setThemeState] = useState(currentTheme);
+    const choose = (value) => {
+        setTheme(value);
+        setThemeState(value);
+    };
+    return (
+        <div className="user-card user-appearance-card">
+            <div className="user-card-header">
+                <h2 className="user-card-title">Appearance</h2>
+            </div>
+            <div className="segmented user-theme-picker" role="radiogroup" aria-label="Theme">
+                {THEMES.map(({value, label}) => (
+                    <button key={value} type="button" role="radio" aria-checked={theme === value}
+                            className={theme === value ? "active" : ""} onClick={() => choose(value)}>
+                        <span className={`theme-swatch theme-swatch-${value}`} aria-hidden="true"/>
+                        {label}
+                    </button>
+                ))}
+            </div>
+            <p className="user-field-hint">Black is pure black, easier on the eyes (and the battery) at night.</p>
+        </div>
+    );
+}
+
 // App only: turn the Face ID lock on or off. Turning it on asks for Face ID once, so it can't be switched on
 // by someone whose face won't open it.
 function SecurityCard() {
@@ -617,6 +654,7 @@ function SecurityCard() {
             // both ways: someone holding an unlocked phone shouldn't be able to switch the lock off
             await verifyIdentity(enabled ? words.turnOffReason : words.turnOnReason);
             await setLockEnabled(!enabled);
+            if (enabled) await forgetFaceIdLogin(); // turned off: no more "Log in with Face ID" either
             setEnabled(!enabled);
             showToast(enabled ? words.turnedOff : words.turnedOn);
         } catch {

@@ -1,7 +1,7 @@
 import {useEffect, useId, useRef} from "react";
 
 // Small modal "are you sure?" box. Uses the browser's <dialog>, which keeps keyboard focus inside and closes on Esc
-function ConfirmDialog({open, title, message, confirmLabel = "Confirm", onConfirm, onCancel}) {
+function ConfirmDialog({open, title, message, confirmLabel = "Confirm", cancelLabel = "Cancel", onConfirm, onCancel}) {
     const ref = useRef(null);
     const titleId = useId();
 
@@ -39,7 +39,7 @@ function ConfirmDialog({open, title, message, confirmLabel = "Confirm", onConfir
                     <h2 id={titleId} className="confirm-dialog-title">{title}</h2>
                     {message && <p className="confirm-dialog-message">{message}</p>}
                     <div className="confirm-dialog-actions">
-                        <button type="button" className="btn" onClick={onCancel} autoFocus>Cancel</button>
+                        <button type="button" className="btn" onClick={onCancel} autoFocus>{cancelLabel}</button>
                         <button type="button" className="btn btn-primary" onClick={onConfirm}>{confirmLabel}</button>
                     </div>
                 </div>

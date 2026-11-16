@@ -83,16 +83,35 @@
     margin-top: 0.5rem;
 }
 
-.signup-legal {
-    margin: 0;
-    font-size: 0.78rem;
-    line-height: 1.5;
-    text-align: center;
-    color: var(--text-subtle);
+/* "I agree to the Terms..." above Create account: a real checkbox, with a 44px tap row */
+.signup-agree {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    min-height: 2.75rem;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: var(--text-muted);
+    cursor: pointer;
 }
 
-.signup-legal a {
+.signup-agree input {
+    flex-shrink: 0;
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-top: 0.1rem;
+    accent-color: var(--accent);
+}
+
+.signup-agree a {
     color: var(--accent-soft);
+}
+
+.google-blocked-hint {
+    margin: -0.4rem 0 0;
+    font-size: 0.78rem;
+    text-align: center;
+    color: var(--text-subtle);
 }
 
 .signup-form-footer {

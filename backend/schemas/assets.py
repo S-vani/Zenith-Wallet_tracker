@@ -15,14 +15,31 @@ class UserRead(schemas.BaseUser[uuid.UUID]):
 
 
 class UserCreate(schemas.BaseUserCreate):
-    """A sign up: email, password, name and display currency."""
+    """A sign up: email, password, name, display currency and whether the Terms and Privacy Policy were agreed to."""
     name: str = Field(min_length=1, max_length=100)
     currency: Literal["CAD", "USD", "EUR"] = "CAD"
+    # the sign up form's "I agree" checkbox. Optional so app builds from before it still sign up (API changes stay
+    # additive); the forms don't let anyone submit without ticking it
+    accepted_terms: bool = False
+
+    def create_update_dict(self):
+        """The new user's columns: the checkbox becomes the time it was ticked (it isn't a column itself)."""
+        return _terms_to_time(super().create_update_dict())
+
+    def create_update_dict_superuser(self):
+        return _terms_to_time(super().create_update_dict_superuser())
 
     @field_validator("name", mode="before")
     @classmethod
     def strip_name(cls, value):
         return _strip(value)  # "   " shouldn't count as a name
+
+
+def _terms_to_time(fields: dict) -> dict:
+    """Replaces accepted_terms with terms_accepted_at (now) when it was ticked."""
+    if fields.pop("accepted_terms", False):
+        fields["terms_accepted_at"] = datetime.now(timezone.utc)
+    return fields
 
 
 # The database keeps 10 decimal places, so anything smaller would be saved as 0

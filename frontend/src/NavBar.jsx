@@ -32,7 +32,7 @@ function NavBar() {
         logout();
         window.dispatchEvent(new Event("app:toast-clear")); // e.g. a "Logged in" toast from a moment ago
         showToast("Logged out");
-        navigate("/login", {replace: true});
+        navigate("/login", {replace: true, state: {loggedOut: true}});
     };
 
     // on the phone tab bar Log out sits right next to Account, so one stray tap shouldn't sign you out

@@ -203,21 +203,44 @@ html:not(.native) .cell-amount {
     color: var(--text-subtle);
 }
 
-/* phones only: the average cost moves into the expanded panel (its row column is hidden there) */
-.holding-panel-avg-cost {
+/* phones only: return and average cost move into the expanded panel (their row columns are hidden there) */
+.holding-panel-stats {
     display: none;
-    margin: 0 0 0.75rem;
-    font-size: 0.85rem;
-    color: var(--text-muted);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem;
+    margin: 0.15rem 0 0.6rem;
+}
+
+.holding-panel-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+    padding: 0.65rem 0.8rem;
+    border: 1px solid var(--card-border);
+    border-radius: 0.8rem;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.holding-panel-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-subtle);
 }
 
 .holding-panel-note {
     margin: 0 0 0.75rem;
-    font-size: 0.78rem;
-    color: var(--text-muted);
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: var(--text-subtle);
 }
 
 .holding-panel-amount {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 1rem;
     font-weight: 700;
     color: var(--text);
     font-variant-numeric: tabular-nums;
@@ -279,8 +302,8 @@ html:not(.native) .cell-amount {
         display: none;
     }
 
-    .holding-panel-avg-cost {
-        display: block;
+    .holding-panel-stats {
+        display: grid;
     }
 
     .holdings-totals-label {
@@ -321,8 +344,9 @@ html:not(.native) .cell-amount {
         right: 1.1rem;
     }
 
+    /* the same side padding as the row above, so the panel lines up with the symbol instead of the card edge */
     .holding-chart-panel {
-        padding: 0 0.75rem 1rem;
+        padding: 0 1.1rem 1.1rem;
     }
 
     .chart-wrapper {

@@ -355,14 +355,32 @@ describe("Face ID lock rules", () => {
         const passcode = lockWording("Passcode");
         const all = Object.values(passcode).join(" ");
         expect(all).not.toMatch(/Passcode or your passcode|Passcode lock|with Passcode/);
-        expect(passcode.hint).toBe("Lock Zenith whenever you leave the app. Open it again with your iPhone passcode.");
+        expect(passcode.hint).toBe("Lock Zenith when you leave it or after 10 minutes without use, and open it again with your iPhone passcode.");
         expect(passcode.turnedOn).toBe("Zenith will now ask for your passcode");
         expect(lockWording()).toEqual(face);
     });
 });
 
 describe("Face ID lock in the app", () => {
-    it("is turned off by every sign out", async () => {
+    it("stays on through a normal log out (it's this phone's setting)", async () => {
+        const remove = vi.fn(async () => undefined);
+        vi.doMock("../src/native/platform.js", () => ({
+            isNative: true,
+            loadPlugin: (importer) => () => (String(importer).includes("preferences")
+                ? Promise.resolve({Preferences: {set: vi.fn(), remove}})
+                : Promise.reject(new Error("no plugin"))),
+        }));
+        vi.stubEnv("VITE_BACKEND_URL", "http://api.test");
+        store.set("token", "abc");
+        const api = await import("../src/services/api.js");
+        api.logout();
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(remove).not.toHaveBeenCalledWith({key: "biometricLock"});
+        expect(events).not.toContain("app:lock-setting");
+        expect(store.has("token")).toBe(false);
+    });
+
+    it("is turned off when the account is deleted", async () => {
         const set = vi.fn();
         const remove = vi.fn(async () => undefined);
         vi.doMock("../src/native/platform.js", () => ({
@@ -374,11 +392,51 @@ describe("Face ID lock in the app", () => {
         vi.stubEnv("VITE_BACKEND_URL", "http://api.test");
         store.set("token", "abc");
         const api = await import("../src/services/api.js");
-        api.logout();
+        api.logout({forgetLock: true});
         await vi.waitFor(() => expect(events).toContain("app:lock-setting"));
         expect(remove).toHaveBeenCalledWith({key: "biometricLock"});
         expect(set).not.toHaveBeenCalled();
         expect(store.has("token")).toBe(false);
+    });
+});
+
+describe("navigation bar", () => {
+    it("names the screens and only gives sub-screens a back chevron", async () => {
+        const {titleFor, backTarget} = await import("../src/native/titleBarRules.js");
+        expect(titleFor("/holdings/")).toBe("Holdings");
+        expect(titleFor("/login")).toBeNull();
+        expect(backTarget("/dashboard", {canGoBack: true, signedIn: true})).toBeNull();
+        expect(backTarget("/import", {canGoBack: false, signedIn: true})).toEqual({to: "/transactions", label: "Transactions"});
+        expect(backTarget("/privacy", {canGoBack: true, signedIn: true})).toEqual({to: -1, label: "Back"});
+        expect(backTarget("/terms", {canGoBack: false, signedIn: true})).toEqual({to: "/user", label: "Account"});
+        expect(backTarget("/support", {canGoBack: false, signedIn: false})).toEqual({to: "/login", label: "Log in"});
+    });
+});
+
+describe("website: Face ID sign in and themes do nothing", () => {
+    it("offers no Face ID login and paints no theme", async () => {
+        const login = await import("../src/native/faceIdLogin.js");
+        await expect(login.faceIdLoginEmail()).resolves.toBeNull();
+        await expect(login.shouldOfferFaceId()).resolves.toBe(false);
+        await expect(login.rememberLoginForFaceId("a@b.co", "pw")).resolves.toBeUndefined();
+        await expect(login.forgetFaceIdLogin()).resolves.toBeUndefined();
+        const {applyTheme, currentTheme} = await import("../src/native/appearance.js");
+        expect(currentTheme()).toBe("midnight");
+        expect(applyTheme("black")).toBeUndefined();
+        expect(classes.size).toBe(0);
+    });
+});
+
+describe("idle sign out", () => {
+    it("locks with Face ID on, logs out without it, after 10 minutes", async () => {
+        const {idleAction, IDLE_LIMIT_MS} = await import("../src/native/lockRules.js");
+        expect(IDLE_LIMIT_MS).toBe(10 * 60 * 1000);
+        expect(idleAction({signedIn: true, enabled: true, idleMs: IDLE_LIMIT_MS - 1})).toBe("none");
+        expect(idleAction({signedIn: true, enabled: true, idleMs: IDLE_LIMIT_MS})).toBe("lock");
+        expect(idleAction({signedIn: true, enabled: false, idleMs: IDLE_LIMIT_MS})).toBe("logout");
+        expect(idleAction({signedIn: true, enabled: null, idleMs: IDLE_LIMIT_MS})).toBe("lock"); // fail closed
+        expect(idleAction({signedIn: false, enabled: false, idleMs: 1e9})).toBe("none");
+        expect(idleAction({signedIn: true, enabled: false, idleMs: NaN})).toBe("none");
     });
 });
 

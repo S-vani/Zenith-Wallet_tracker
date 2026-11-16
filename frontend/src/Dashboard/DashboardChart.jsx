@@ -7,6 +7,7 @@ import {
 } from "../utils/chart.js";
 import {dashboardChartSummary} from "./dashboardText.js";
 import ChartSkeleton from "../components/ChartSkeleton.jsx";
+import {isNative} from "../native/platform.js";
 
 // The values' own range with 15% room above and below (not below 0 for money that never went negative), so a small
 // move fills the chart instead of a share of the whole amount
@@ -171,16 +172,27 @@ function DashboardChart({entry, updating = false, currency, error}) {
             </div>
             {charted && (
                 <figcaption className="chart-note">
-                    {showInvested
-                        ? "The solid line is your portfolio's value and the dashed line is what you paid for what " +
-                        "you still hold, so buys and sells move both and the gap between them is your unrealized " +
-                        "gain or loss. The return above leaves buys and sells out."
-                        : "The line is your total portfolio value, so buys and sells move it too. The return above " +
-                        "leaves them out."}
+                    {/* the app keeps the explanation one tap away instead of a paragraph under every chart */}
+                    {isNative ? (
+                        <details className="chart-note-details">
+                            <summary>How to read this chart</summary>
+                            {chartNote(showInvested)}
+                        </details>
+                    ) : chartNote(showInvested)}
                 </figcaption>
             )}
         </figure>
     );
+}
+
+// What the lines mean: buys and sells move the value line (a jump right after adding a trade is that trade).
+function chartNote(showInvested) {
+    return showInvested
+        ? "The solid line is your portfolio's value and the dashed line is what you paid for what you still hold, so " +
+        "buys and sells move both and the gap between them is your unrealized gain or loss. The return above leaves " +
+        "buys and sells out."
+        : "The line is your total portfolio value, so buys and sells move it too (a jump right after you add a trade " +
+        "is that trade). The return above leaves them out.";
 }
 
 export default DashboardChart;

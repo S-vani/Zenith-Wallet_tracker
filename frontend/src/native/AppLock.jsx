@@ -4,7 +4,10 @@ import {getToken, logout} from "../services/api.js";
 import {biometricInfo, isLockEnabled, isPromptOpen, isSettling, verifyIdentity} from "./biometric.js";
 import {restoreToken} from "./secureToken.js";
 import {haptic} from "./haptics.js";
-import {initiallyLocked, onLeave, onReturn, onStartup} from "./lockRules.js";
+import {idleAction, initiallyLocked, onLeave, onReturn, onStartup} from "./lockRules.js";
+
+// how often the open app checks whether it has been left untouched for IDLE_LIMIT_MS
+const IDLE_CHECK_MS = 30 * 1000;
 
 // how long a slow start may keep waiting for the Keychain and the setting before showing the normal lock screen
 const SLOW_START_WAIT_MS = 10000;
@@ -144,10 +147,41 @@ function AppLock({initiallyEnabled}) {
         };
     }, [enabled, unlock, lock]);
 
+    // The 10-minute idle rule (lockRules.idleAction): any touch or key counts as use, and time away from the app
+    // counts as idle too, so it's checked every 30 s while open and the moment the app comes back.
+    const lastUsed = useRef(0);
+    useEffect(() => {
+        const used = () => {
+            lastUsed.current = Date.now();
+        };
+        used(); // the clock starts when the app opens
+        const check = () => {
+            const action = idleAction({signedIn: Boolean(getToken()), enabled, idleMs: Date.now() - lastUsed.current});
+            if (action === "lock") {
+                if (!lockedRef.current) lock(true);
+                used(); // locked now: Face ID decides, not the clock
+            } else if (action === "logout") {
+                logout();
+                used();
+                navigate("/login", {replace: true, state: {notice: "You were logged out after 10 minutes without using Zenith."}});
+            }
+        };
+        const timer = setInterval(check, IDLE_CHECK_MS);
+        window.addEventListener("pointerdown", used, true);
+        window.addEventListener("keydown", used, true);
+        window.addEventListener("app:resume", check);
+        return () => {
+            clearInterval(timer);
+            window.removeEventListener("pointerdown", used, true);
+            window.removeEventListener("keydown", used, true);
+            window.removeEventListener("app:resume", check);
+        };
+    }, [enabled, lock, navigate]);
+
     if (!locked) return null;
 
     const signOut = () => {
-        logout(); // also turns the lock off (api.js)
+        logout(); // the lock stays on: it's this phone's setting (api.js)
         lock(false);
         navigate("/login", {replace: true});
     };

@@ -24,6 +24,21 @@ def test_register_creates_an_unverified_user(client, db):
     assert db.get_user(email).hashed_password != PASSWORD
 
 
+def test_register_records_when_the_terms_were_accepted(client, db):
+    email = unique_email()
+    res = client.post("/auth/register", json={"email": email, "password": PASSWORD, "name": "Ada",
+                                              "accepted_terms": True})
+    assert res.status_code == 201, res.text
+    assert "accepted_terms" not in res.json() and "terms_accepted_at" not in res.json()
+    assert db.get_user(email).terms_accepted_at is not None
+
+
+def test_register_without_the_checkbox_still_works_for_older_app_builds(client, db):
+    email = unique_email()
+    assert register(client, email=email).status_code == 201
+    assert db.get_user(email).terms_accepted_at is None
+
+
 def test_register_defaults_currency_to_cad(client):
     res = register(client, currency=None)
     assert res.status_code == 201, res.text

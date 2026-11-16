@@ -49,8 +49,10 @@ or move money, execute trades, or give financial advice.
 >   Zenith holdings" and "Search in Zenith" open those screens. They also appear in Spotlight, the Shortcuts app and
 >   on the Action button. Open the dashboard once after signing in so the value is available.
 > - Home Screen quick actions: press and hold the app icon for Add Trade, Search, Holdings and Dashboard.
-> - Face ID app lock (Account → Security; the card appears when the device has Face ID or a passcode set up). While
->   it's on, Siri doesn't read out the value, and the app switcher shows a cover instead of the portfolio.
+> - Face ID (Account → Security, or offered once after the first sign in): locks the app when it's left, and the
+>   sign in screen offers "Log in with Face ID" (the login is kept in the iOS Keychain on the device only). While
+>   it's on, Siri doesn't read out the value. Without it the app signs out after 10 minutes without use.
+> - The app switcher always shows the app blurred, so no amounts can be read there.
 > - Offline mode: turn on Airplane Mode and reopen Dashboard or Holdings; saved data shows under a "You're
 >   offline" banner.
 > - CSV export and the tax report's CSV go through the iOS share sheet as real .csv files (Save to Files, Mail).

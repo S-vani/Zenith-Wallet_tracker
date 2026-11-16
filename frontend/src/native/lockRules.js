@@ -36,6 +36,16 @@ export function onReturn({enabled, signedIn, settling, locked, unlockedWhenLeft,
     return quickReturn && unlockedWhenLeft ? "unlock" : "ask";
 }
 
+// Ten minutes without a touch (in the app or away from it) ends the session: with the Face ID lock on the app locks
+// and Face ID opens it again; without it the person is logged out and signs in again next time.
+export const IDLE_LIMIT_MS = 10 * 60 * 1000;
+
+// "none", "lock" or "logout" after `idleMs` without use. An unknown lock setting (null) locks: fail closed.
+export function idleAction({signedIn, enabled, idleMs}) {
+    if (!signedIn || !(idleMs >= IDLE_LIMIT_MS)) return "none";
+    return enabled === false ? "logout" : "lock";
+}
+
 // What to call the lock, from NativeBiometric.isAvailable(). Face ID hardware with no face enrolled still reports
 // FACE_ID as its type, but then only the passcode works, so it's called "Passcode".
 const TOUCH_ID = 1; // BiometryType.TOUCH_ID in @capgo/capacitor-native-biometric
@@ -52,7 +62,7 @@ export function lockWording(label = "Face ID") {
     if (label === "Passcode") {
         return {
             title: "Require passcode",
-            hint: "Lock Zenith whenever you leave the app. Open it again with your iPhone passcode.",
+            hint: "Lock Zenith when you leave it or after 10 minutes without use, and open it again with your iPhone passcode.",
             turnOnReason: "Turn on the passcode lock for Zenith",
             turnOffReason: "Turn off the passcode lock",
             turnedOn: "Zenith will now ask for your passcode",
@@ -62,7 +72,7 @@ export function lockWording(label = "Face ID") {
     }
     return {
         title: `Require ${label}`,
-        hint: `Lock Zenith whenever you leave the app. Open it again with ${label}, or with your iPhone passcode if ${label} doesn't recognize you.`,
+        hint: `Lock Zenith when you leave it or after 10 minutes without use, and open it or log in with ${label} (or your iPhone passcode) instead of your password.`,
         turnOnReason: `Turn on ${label} for Zenith`,
         turnOffReason: `Turn off the ${label} lock`,
         turnedOn: `${label} lock turned on`,

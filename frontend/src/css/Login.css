@@ -369,3 +369,45 @@
     width: 100%;
     text-align: left;
 }
+
+/* App only: "Log in with Face ID" above the form, once a login is saved for it (native/faceIdLogin.js) */
+.faceid-login-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    width: 100%;
+    min-height: 3.5rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--accent-border);
+    border-radius: 0.9rem;
+    background: var(--accent-bg);
+    color: var(--text);
+    font-weight: 700;
+    text-align: left;
+}
+
+.faceid-login-btn svg {
+    flex-shrink: 0;
+    width: 1.9rem;
+    height: 1.9rem;
+    color: var(--accent-soft);
+}
+
+.faceid-login-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.faceid-login-text small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.8rem;
+    font-weight: 400;
+    color: var(--text-muted);
+}
+
+.faceid-login-btn:active:not(:disabled) {
+    transform: scale(0.98);
+}

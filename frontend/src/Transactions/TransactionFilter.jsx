@@ -26,6 +26,16 @@ function TransactionFilter({filters, onFiltered}) {
         })
     };
 
+    // iOS's date picker "Reset" puts back the field's default, which React keeps equal to the current value, so it
+    // never cleared a date: each date gets its own Clear button, next to its label (inside the field it covered
+    // the date on narrow screens)
+    const clearButton = (name, label) => filters[name] ? (
+        <button type="button" className="filter-date-clear" aria-label={`Clear ${label}`}
+                onClick={() => onFiltered({...filters, [name]: ""})}>
+            Clear
+        </button>
+    ) : null;
+
     return (
         <div className="filter-container">
             <form className="filter-form" onSubmit={(e) => e.preventDefault()}>
@@ -86,35 +96,45 @@ function TransactionFilter({filters, onFiltered}) {
                 </div>
 
                 <div className="filter-group">
-                    <label className="filter-label" htmlFor="filter-start">
-                        Start date
-                    </label>
+                    <div className="filter-label-row">
+                        <label className="filter-label" htmlFor="filter-start">
+                            Start date
+                        </label>
+                        {clearButton("start_date", "start date")}
+                    </div>
 
-                    <input
-                        id="filter-start"
-                        className="filter-input filter-date-input"
-                        type="date"
-                        name="start_date"
-                        value={filters.start_date}
-                        max={filters.end_date || undefined}
-                        onChange={handleChange}
-                    />
+                    <div className="filter-date-wrap">
+                        <input
+                            id="filter-start"
+                            className="filter-input filter-date-input"
+                            type="date"
+                            name="start_date"
+                            value={filters.start_date}
+                            max={filters.end_date || undefined}
+                            onChange={handleChange}
+                        />
+                    </div>
                 </div>
 
                 <div className="filter-group">
-                    <label className="filter-label" htmlFor="filter-end">
-                        End date
-                    </label>
+                    <div className="filter-label-row">
+                        <label className="filter-label" htmlFor="filter-end">
+                            End date
+                        </label>
+                        {clearButton("end_date", "end date")}
+                    </div>
 
-                    <input
-                        id="filter-end"
-                        className="filter-input filter-date-input"
-                        type="date"
-                        name="end_date"
-                        value={filters.end_date}
-                        min={filters.start_date || undefined}
-                        onChange={handleChange}
-                    />
+                    <div className="filter-date-wrap">
+                        <input
+                            id="filter-end"
+                            className="filter-input filter-date-input"
+                            type="date"
+                            name="end_date"
+                            value={filters.end_date}
+                            min={filters.start_date || undefined}
+                            onChange={handleChange}
+                        />
+                    </div>
                 </div>
 
             </form>

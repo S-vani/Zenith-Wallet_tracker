@@ -37,13 +37,14 @@ export function getToken() {
     return localStorage.getItem(TOKEN_KEY);
 }
 
-// keepLock: an expired session keeps the app's Face ID lock on for the next sign in on this phone; signing out on
-// purpose (Log out, "Sign out instead", deleting the account) turns it off
-export function logout({keepLock = false} = {}) {
+// The app's Face ID lock is a setting of this phone, so it stays on through a log out (it used to switch itself off,
+// which looked like Face ID forgetting it was enabled). forgetLock: the account is gone (deleted), so the lock and the
+// login saved for Face ID sign in go too.
+export function logout({forgetLock = false} = {}) {
     localStorage.removeItem(TOKEN_KEY);
     keepInKeychain(null); // the iOS app also keeps the token in the Keychain; no-op on the website
     forgetAll(); // and the app's offline copy of the portfolio screens
-    if (!keepLock) resetLockOnSignOut(); // and the app's Face ID lock; no-op on the website
+    if (forgetLock) resetLockOnSignOut(); // and the app's Face ID lock and saved login; no-op on the website
     forgetLastAccount(); // and the add form's remembered account, which was this person's
     forgetPortfolioForSiri(); // and the portfolio total the app keeps for Siri; no-op on the website
 }
@@ -52,7 +53,7 @@ export function logout({keepLock = false} = {}) {
 // the sign in answering late), that old token's refusal must not sign out the new session.
 function sessionExpired(sentToken) {
     if (getToken() === sentToken) {
-        logout({keepLock: true});
+        logout();
         window.dispatchEvent(new Event("auth:expired"));
     }
     return new Error("Your session has expired. Please log in again.");
@@ -634,6 +635,7 @@ export async function signupAuthentication(form) {
             password: form.password,
             name: form.name.trim(),
             currency: form.currency,
+            accepted_terms: Boolean(form.acceptedTerms), // when it was ticked is saved with the account
         }),
         fallbackError: "Couldn't create your account. Please try again.",
     });

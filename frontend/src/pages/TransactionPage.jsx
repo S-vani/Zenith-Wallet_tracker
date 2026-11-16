@@ -8,6 +8,7 @@ import TransactionFilter from "../Transactions/TransactionFilter.jsx"
 import TransactionSymbolSearch from "../Transactions/TransactionSymbolSearch.jsx";
 import usePageTitle from "../utils/usePageTitle.js";
 import useDialog from "../Transactions/useDialog.js";
+import useSheetDrag from "../native/useSheetDrag.js";
 
 import '../css/Transaction.css'
 
@@ -46,6 +47,13 @@ function TransactionsPage() {
         setOpenedFor(location.key);
         setStep("search");
     }
+
+    // App only: the navigation bar's "+" (native/NativeTitleBar.jsx) opens the add form
+    useEffect(() => {
+        const open = () => setStep("search");
+        window.addEventListener("app:add-trade", open);
+        return () => window.removeEventListener("app:add-trade", open);
+    }, []);
 
     useEffect(() => {
         let ignore = false; // drop responses for filters the user has already changed
@@ -127,6 +135,7 @@ function TransactionsPage() {
     // Tab stays in the dialog, Esc asks to close it, the page and nav behind it are inert, and focus goes back to
     // the "Add transaction" button that opened it
     useDialog(dialogRef, modalOpen, requestClose, addButtonRef);
+    useSheetDrag(dialogRef, modalOpen, requestClose); // app only
 
     // stop the page behind the modal from scrolling
     useEffect(() => {

@@ -20,6 +20,8 @@ import OfflineBanner from "./native/OfflineBanner.jsx";
 import PullToRefresh from "./native/PullToRefresh.jsx";
 import UpdateRequired from "./native/UpdateRequired.jsx";
 import AppLinkNavigator from "./native/AppLinkNavigator.jsx";
+import NativeTitleBar from "./native/NativeTitleBar.jsx";
+import PageTransition from "./native/PageTransition.jsx";
 import AccountLoadError from "./components/AccountLoadError.jsx";
 import ScrollToTop from "./components/ScrollToTop.jsx";
 import SegmentedThumbs from "./components/SegmentedThumbs.jsx";
@@ -81,7 +83,9 @@ function ProtectedLayout() {
 function App({lockEnabled = false}) {
     return (
         <>
-        <SkipLink/>
+        {/* keyboard users' first Tab stop on the website; the app has no hardware keyboard Tab order to skip, and
+            under the status bar the link was left peeking out at the top of every screen */}
+        {!isNative && <SkipLink/>}
         <ScrollToTop/>
         <SegmentedThumbs/>
         <Toaster/>
@@ -89,6 +93,8 @@ function App({lockEnabled = false}) {
         {isNative && <AppLock initiallyEnabled={lockEnabled}/>}
         {isNative && <UpdateRequired/>}
         {isNative && <AppLinkNavigator/>}
+        {isNative && <NativeTitleBar/>}
+        {isNative && <PageTransition/>}
         <Routes>
             {/* the app opens straight to your portfolio (or sign in); the marketing page is for the website */}
             <Route path="/" element={isNative

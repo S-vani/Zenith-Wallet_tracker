@@ -10,6 +10,7 @@ import {loadAppVersion} from "./appVersion.js";
 import {handleAppUrl} from "./appLinks.js";
 import {renewSessionIfOld} from "../services/api.js";
 import {watchScreenRequests} from "./screens.js";
+import {applyTheme} from "./appearance.js";
 
 const appPlugin = loadPlugin(() => import("@capacitor/app"));
 const networkPlugin = loadPlugin(() => import("@capacitor/network"));
@@ -25,6 +26,7 @@ export async function initNative() {
     if (!isNative) return {lockEnabled: false};
 
     document.documentElement.classList.add("native");
+    applyTheme(); // Account > Appearance, before the first paint
     // apps don't pinch-zoom their own UI (the website keeps zoom for accessibility)
     document.querySelector('meta[name="viewport"]')
         ?.setAttribute("content", "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover");
@@ -38,7 +40,6 @@ export async function initNative() {
     watchKeyboard();
     addHaptics();
     watchNumbers();
-    privacyBackGoesBack();
     openLinksInAppBrowser();
     applyPreferredTextSize(); // the iPhone's Text Size setting, capped so layouts still fit
     // the version every request reports (X-Zenith-App-Version); read alongside the Keychain so the first requests
@@ -128,20 +129,6 @@ function watchKeyboard() {
             }
         });
     }).catch(() => null);
-}
-
-// The policy pages' (privacy, terms, support) "Back to the app" link goes to the dashboard, which suits the
-// website. In the app they are opened from another screen (Account, sign in, another policy page), so "Back"
-// returns there, like a native back button. Runs in the capture phase, before React Router's own click handling;
-// with no earlier page in this session the link works as usual.
-function privacyBackGoesBack() {
-    document.addEventListener("click", (e) => {
-        const link = e.target.closest?.(".legal-page .home-auth a");
-        if (!link || !(window.history.state?.idx > 0)) return; // idx: React Router's position in the history
-        e.preventDefault();
-        e.stopPropagation();
-        window.history.back();
-    }, true);
 }
 
 // A light haptic when a tab, range or toggle actually changes.

@@ -71,10 +71,10 @@ export async function setLockEnabled(enabled) {
     window.dispatchEvent(new CustomEvent("app:lock-setting", {detail: enabled}));
 }
 
-// Signing out on purpose (Log out, "Sign out instead", account deletion) turns the lock off: it belongs to that
-// session, and a fresh sign in starts without it (and without the native app switcher cover). An expired session
-// keeps it (api.js logout({keepLock})): the same person signs back in and expects it still on. No-op on the website.
+// Deleting the account turns the lock off and forgets the login saved for Face ID sign in (api.js
+// logout({forgetLock})). A normal log out keeps both: the lock is this phone's setting. No-op on the website.
 export function resetLockOnSignOut() {
     if (!isNative) return;
     setLockEnabled(false).catch(() => null);
+    import("./faceIdLogin.js").then(({forgetFaceIdLogin}) => forgetFaceIdLogin()).catch(() => null);
 }

@@ -235,11 +235,20 @@
     }
 }
 
-.search-powered-by {
-    margin: 0.75rem 0 0;
+.search-results-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 0 0.25rem 0.6rem;
     font-size: 0.78rem;
-    text-align: right;
+    font-weight: 600;
     color: var(--text-subtle);
+}
+
+.search-powered-by {
+    font-weight: 400;
+    white-space: nowrap;
 }
 
 .search-powered-by a {

@@ -3,6 +3,7 @@ import {useRef, useState} from "react";
 import {searchCrypto, searchStock} from "../services/api.js";
 import SearchResults from "../Search/SearchResults.jsx"
 import usePageTitle from "../utils/usePageTitle.js";
+import {isNative} from "../native/platform.js";
 
 // tappable examples shown before the first search
 const EXAMPLES = {
@@ -99,7 +100,8 @@ function SearchPage() {
                         placeholder={searchSymbol.type === "stock" ? "Search a ticker, e.g. AAPL" : "Search a coin, e.g. BTC"}
                         autoComplete="off"
                         maxLength={MAX_QUERY_LENGTH}
-                        autoFocus
+                        enterKeyHint="search"
+                        autoFocus={!isNative} /* the app opens the tab without throwing up the keyboard */
                     />
                     <button className="btn btn-primary" type="submit" disabled={!searchSymbol.symbol.trim()}>
                         {loading ? "Searching…" : "Search"}
@@ -130,15 +132,20 @@ function SearchPage() {
             {searchResults && (
                 searchResults.length > 0 ? (
                     <>
+                        {/* the CoinGecko credit its free plan asks for, in the list's header where it reads as
+                            the source of these results instead of floating under the last one */}
+                        <div className="search-results-head">
+                            <span>{searchResults.length} {searchResults.length === 1 ? "result" : "results"}</span>
+                            {searchSymbol.type === "crypto" && (
+                                <span className="search-powered-by">
+                                    Powered by{" "}
+                                    <a href="https://www.coingecko.com/" target="_blank" rel="noopener noreferrer">
+                                        CoinGecko
+                                    </a>
+                                </span>
+                            )}
+                        </div>
                         <SearchResults results={searchResults}/>
-                        {searchSymbol.type === "crypto" && (
-                            <p className="search-powered-by">
-                                Powered by{" "}
-                                <a href="https://www.coingecko.com/" target="_blank" rel="noopener noreferrer">
-                                    CoinGecko
-                                </a>
-                            </p>
-                        )}
                     </>
                 ) : (
                     <div className="state-message">

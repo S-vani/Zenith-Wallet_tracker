@@ -4,6 +4,24 @@
     max-width: 72rem;
 }
 
+/* the top bar sticks, with a frosted background so the policy text doesn't show through it */
+.legal-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    margin: -0.5rem -1.5rem 0;
+    padding: 0.75rem 1.5rem;
+    background: rgba(6, 10, 18, 0.82);
+    -webkit-backdrop-filter: saturate(160%) blur(14px);
+    backdrop-filter: saturate(160%) blur(14px);
+    border-bottom: 1px solid transparent;
+    transition: transform 0.28s var(--ease-out);
+}
+
+.legal-topbar.hidden {
+    transform: translateY(calc(-100% - 1.5rem));
+}
+
 .legal-layout {
     display: grid;
     grid-template-columns: 13rem minmax(0, 1fr);
@@ -67,7 +85,7 @@
 
 .legal-summary {
     margin: 1.25rem 0 0;
-    padding: 1rem 1.25rem 1rem 2.25rem;
+    padding: 1.1rem 1.4rem 1.1rem 2.6rem;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--surface);
@@ -97,8 +115,13 @@
 
 .legal-content ul {
     margin: 0 0 0.85rem;
-    padding-left: 1.25rem;
+    padding-left: 1.5rem;
     list-style: disc; /* the global reset removes bullets; a policy reads better with them */
+}
+
+/* the summary box is a list too: without this the rule above (more specific) put its bullets on the box's edge */
+.legal-content .legal-summary {
+    padding-left: 2.6rem;
 }
 
 .legal-content li {
