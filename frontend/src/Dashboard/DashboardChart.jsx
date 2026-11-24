@@ -2,7 +2,7 @@ import {Link} from "react-router-dom";
 import {AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer} from "recharts";
 import {formatMoney} from "../utils/format.js";
 import {
-    CHART_DOWN, CHART_INVESTED, CHART_UP, INITIAL_DIMENSION, TOOLTIP_STYLE, axisMoneyOptions, axisTicks,
+    CHART_DOWN, CHART_INVESTED, CHART_UP, INITIAL_DIMENSION, TOOLTIP_STYLE, axisMoneyOptions, axisTicks, tickBudget,
     formatAxisTick, niceAxis, tickUnit, tooltipDate,
 } from "../utils/chart.js";
 import {dashboardChartSummary} from "./dashboardText.js";
@@ -91,7 +91,7 @@ function DashboardChart({entry, updating = false, currency, error}) {
                     </defs>
                     <XAxis
                         dataKey="time"
-                        ticks={axisTicks(data, unit)}
+                        ticks={axisTicks(data, unit, "time", tickBudget())}
                         minTickGap={24}
                         tickMargin={10}
                         tick={{fill: "#8b93a1", fontSize: 11}}
@@ -126,7 +126,7 @@ function DashboardChart({entry, updating = false, currency, error}) {
                         fill="url(#dashboardFill)"
                         dot={(props) => <NowDot key={props.index} {...props} last={data.length - 1} color={color}/>}
                         activeDot={{r: 4, fill: color, strokeWidth: 0}}
-                        animationDuration={800}
+                        animationDuration={420}
                         animationEasing="ease-out"
                     />
                     {showInvested && (
@@ -142,7 +142,7 @@ function DashboardChart({entry, updating = false, currency, error}) {
                             dot={false}
                             activeDot={{r: 3, fill: CHART_INVESTED, strokeWidth: 0}}
                             animationBegin={120}
-                            animationDuration={800}
+                            animationDuration={420}
                             animationEasing="ease-out"
                         />
                     )}

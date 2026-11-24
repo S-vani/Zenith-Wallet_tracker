@@ -196,6 +196,7 @@ function UserSettings({user, setUser}) {
         }
     };
 
+    const NameHeading = isNative ? "h2" : "h1"; // one <h1> per screen
     const initials = user.name
         .split(" ")
         .filter(Boolean)
@@ -213,10 +214,12 @@ function UserSettings({user, setUser}) {
     return (
         <div className="user-page-wrapper">
             <div className="user-page">
+                {/* the app titles this tab like the others ("Account"), with the person as its first row */}
+                {isNative && <h1 className="page-headers user-page-title">Account</h1>}
                 <div className="user-header">
                     <div className="user-avatar" aria-hidden="true">{initials}</div>
                     <div className="user-header-info">
-                        <h1 className="user-header-name">{user.name}</h1>
+                        <NameHeading className="user-header-name">{user.name}</NameHeading>
                         <span className="user-header-sub">Account settings</span>
                     </div>
                 </div>

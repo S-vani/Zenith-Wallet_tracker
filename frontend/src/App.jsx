@@ -79,8 +79,23 @@ function ProtectedLayout() {
     );
 }
 
+// App only: the policy pages' code is fetched in the background a few seconds after startup, so opening one shows
+// its text straight away instead of a blank screen with a spinner while the page loads
+function usePreloadPolicyPages() {
+    useEffect(() => {
+        if (!isNative) return undefined;
+        const timer = setTimeout(() => {
+            import("./pages/PrivacyPage.jsx");
+            import("./pages/TermsPage.jsx");
+            import("./pages/SupportPage.jsx");
+        }, 3000);
+        return () => clearTimeout(timer);
+    }, []);
+}
+
 // The routes, plus everything every page shares (skip link, toasts, the app's lock and banners).
 function App({lockEnabled = false}) {
+    usePreloadPolicyPages();
     return (
         <>
         {/* keyboard users' first Tab stop on the website; the app has no hardware keyboard Tab order to skip, and

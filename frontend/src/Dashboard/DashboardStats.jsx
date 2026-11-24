@@ -14,11 +14,14 @@ const RANGE_LABELS = {
 // value doesn't depend on the range, so it stays on screen while another range loads. `unavailable`: nothing could
 // be loaded, so both cards show "—" (the page shows the error and a Try again button) instead of shimmering forever.
 // The amount as one unbreakable piece: on the website it shrinks with its card by its length (--chars, see
-// Dashboard.css) instead of wrapping between digits. The app shrinks it with fitNumbers.js instead
-function Amount({text}) {
+// Dashboard.css) instead of wrapping between digits. The app shrinks it with fitNumbers.js instead.
+// `roll`: the odometer (the portfolio value). The period return changes with every range switch, and caught
+// mid-roll it was unreadable, so it fades in instead.
+function Amount({text, roll = true}) {
     return (
-        <span className="stat-amount" style={{"--chars": text.length}}
-              title={text.length > 16 ? text : undefined}><RollingNumber text={text}/></span>
+        <span className="stat-amount" style={{"--chars": text.length}} title={text.length > 16 ? text : undefined}>
+            {roll ? <RollingNumber text={text}/> : <span key={text} className="stat-swap">{text}</span>}
+        </span>
     );
 }
 
@@ -60,7 +63,7 @@ function DashboardStats({stats, loading, valueLoading = loading, unavailable = f
                         <span className="skeleton stat-skeleton"/>
                     ) : (
                         <div className={`stat-value ${changeClass(change)}`}>
-                            <Amount text={formatSignedMoney(change, currency)}/>
+                            <Amount text={formatSignedMoney(change, currency)} roll={false}/>
                             {changePct !== null && (
                                 <span className="stat-pct">{percentText(change, changePct)}</span>
                             )}

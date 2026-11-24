@@ -23,7 +23,7 @@ export const OTHER_KEY = "__other__";
 
 // The card's tabs: which list of the /portfolio/allocation reply each one shows
 const ALLOCATION_VIEWS = [
-    {value: "asset_type", label: "Asset type", field: "by_asset_type", title: "by asset type"},
+    {value: "asset_type", label: "Type", field: "by_asset_type", title: "by asset type"},
     {value: "account", label: "Account", field: "by_account", title: "by account"},
     {value: "holding", label: "Holdings", field: "by_holding", title: "by holding"},
     {value: "currency", label: "Currency", field: "by_currency", title: "by listing currency"},

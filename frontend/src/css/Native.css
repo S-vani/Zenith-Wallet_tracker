@@ -356,17 +356,3 @@ html.native.ptr-dragging .main-content {
 .user-toggle:disabled {
     opacity: 0.5;
 }
-
-/* ---------- share button under a search result ---------- */
-.search-share-btn {
-    display: flex;
-    align-items: center;
-    gap: 0.45rem;
-    width: fit-content;
-    margin: 1rem 0 0 auto;
-}
-
-.search-share-btn svg {
-    width: 1rem;
-    height: 1rem;
-}

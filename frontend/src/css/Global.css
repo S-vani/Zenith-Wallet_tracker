@@ -498,9 +498,13 @@ button:disabled {
     transition: background 0.15s ease, color 0.15s ease;
 }
 
-.segmented button:hover {
-    color: var(--text);
-    background: rgba(255, 255, 255, 0.06);
+/* only for a real pointer: on a touch screen :hover sticks to the last tapped option, which then looked selected
+   next to the one that really is */
+@media (hover: hover) {
+    .segmented button:hover {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.06);
+    }
 }
 
 .segmented button.active {
@@ -954,6 +958,7 @@ body::before {
     font-size: 0.75rem;
     text-align: center;
     color: var(--text-subtle);
+    text-wrap: balance; /* two even lines instead of "be delayed" alone on the second */
 }
 
 .data-credits a {

@@ -94,6 +94,12 @@ export function axisTicks(data, unit, key = "time", maxTicks = 8) {
     return kept;
 }
 
+// How many date labels fit under a chart: on a phone eight were too close, so the chart itself hid some of them and
+// left the gaps uneven (the last one longer than the rest)
+export function tickBudget(width = typeof window === "undefined" ? 1024 : window.innerWidth) {
+    return width < 640 ? 4 : 8;
+}
+
 // Label for one x axis tick in the given unit
 export function formatAxisTick(value, unit) {
     const date = new Date(value);

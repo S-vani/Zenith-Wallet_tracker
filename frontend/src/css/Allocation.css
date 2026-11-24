@@ -33,20 +33,21 @@
 
 /* four tabs don't fit on one line in a 320px wide card, so they wrap instead of overflowing the page */
 /* one row that scrolls sideways on a narrow phone, instead of leaving "Currency" alone on a second line */
+/* the tabs share the card's width equally, so all of them always show: a row that scrolled sideways cut "Currency"
+   off, and once scrolled the sliding pill no longer lined up with the chosen tab */
 .allocation-tabs {
-    flex-wrap: nowrap;
-    align-self: flex-start;
-    max-width: 100%;
-    overflow-x: auto;
-    scrollbar-width: none;
-}
-
-.allocation-tabs::-webkit-scrollbar {
-    display: none;
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    width: 100%;
 }
 
 .allocation-tabs button {
-    flex: 1 0 auto;
+    min-width: 0;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 

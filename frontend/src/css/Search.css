@@ -1,238 +1,179 @@
+/* Search (pages/SearchPage.jsx): a compact search field with a scope control under it, results as one list, and a
+   detail view for the picked asset (Search/AssetDetail.jsx). On wide screens the list and the detail sit side by
+   side; on phones the detail replaces the list. */
+
 .search-page-wrapper {
     max-width: 52rem;
 }
 
-.search-header {
-    text-align: center;
+/* side by side needs more room */
+.search-page-wrapper.has-detail {
+    max-width: 78rem;
 }
 
 .search-area {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    align-items: center;
+    gap: 0.75rem;
+    max-width: 52rem;
 }
 
+/* ---------- the field ---------- */
 .search-form {
-    position: relative;
     display: flex;
     gap: 0.5rem;
     width: 100%;
 }
 
+.search-field {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+}
+
 .search-form-icon {
     position: absolute;
-    left: 1rem;
-    top: 1.5rem; /* centered on the 3rem input, even when the button wraps below */
+    left: 0.85rem;
+    top: 50%;
+    width: 1.05rem;
+    height: 1.05rem;
     transform: translateY(-50%);
-    width: 1.1rem;
-    height: 1.1rem;
     color: var(--text-subtle);
     pointer-events: none;
 }
 
 .search-bar {
-    flex: 1;
-    min-width: 0;
-    height: 3rem;
-    padding: 0 1rem 0 2.75rem;
-
-    background: linear-gradient(180deg, #111a2d, #0d1322);
-    border: 1px solid #1b2a44;
-    border-radius: 0.875rem;
-
+    width: 100%;
+    height: 2.75rem;
+    padding: 0 2.75rem 0 2.5rem;
+    border: 1px solid transparent;
+    border-radius: 0.75rem;
+    background: rgba(255, 255, 255, 0.07); /* a quiet filled field, like iOS's search bar */
     color: var(--text);
     font-size: 1rem;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .search-bar::placeholder {
-    color: #5a6785;
+    color: var(--text-subtle);
+}
+
+.search-bar:hover {
+    background: rgba(255, 255, 255, 0.09);
 }
 
 .search-bar:focus {
-    border-color: #3b5b94;
-    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.18);
+    border-color: var(--accent-border);
+    background: rgba(255, 255, 255, 0.09);
+    outline: none;
+}
+
+/* the clear (×) button, and the spinner in its place while searching */
+.search-clear {
+    position: absolute;
+    right: 0.45rem;
+    top: 50%;
+    display: grid;
+    place-items: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 50%;
+    transform: translateY(-50%);
+    background: none;
+    color: var(--text-subtle);
+}
+
+.search-clear svg {
+    width: 1.15rem;
+    height: 1.15rem;
+}
+
+.search-clear:hover {
+    color: var(--text);
+}
+
+.search-spinner {
+    position: absolute;
+    right: 0.85rem;
+    top: 50%;
+    width: 1.1rem;
+    height: 1.1rem;
+    margin-top: -0.55rem;
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-top-color: var(--accent-soft);
+    border-radius: 50%;
+    animation: search-spin 0.7s linear infinite;
+}
+
+@keyframes search-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.search-submit {
+    height: 2.75rem;
+    padding: 0 1.25rem;
+}
+
+/* Stocks & ETFs | Crypto: the full width under the field, like an iOS scope bar */
+.search-scope {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
 }
 
 .search-error {
-    align-self: center;
-}
-
-.search-results-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    width: 100%;
-}
-
-.search-result-wrapper {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    animation: rise-in 0.3s var(--ease-out) both;
-}
-
-.search-result-item {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-
-    padding: 1rem 1.25rem;
-    border-radius: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    background: linear-gradient(180deg, #111a2d, #0d1322);
-    color: var(--text);
-    text-align: left;
-
-    transition: border-color 0.2s ease, background 0.2s ease;
-}
-
-.search-result-item:hover,
-.search-result-item.open {
-    border-color: rgba(59, 130, 246, 0.3);
-    background: linear-gradient(180deg, #13213e, #0d1526);
-}
-
-.search-result-left {
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    min-width: 0; /* lets a long name shrink instead of pushing the price off the card */
-}
-
-.search-result-image {
-    flex-shrink: 0;
-    width: 2.25rem; /* the same size as the lettered badges (AssetAvatar) */
-    height: 2.25rem;
-    border-radius: 50%;
-}
-
-.search-result-info {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-}
-
-.search-result-name {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.search-result-right {
-    flex-shrink: 0;
-    padding-left: 1rem;
+    margin-top: 1rem;
 }
 
 /* ---------- before the first search ---------- */
 .search-intro {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-    padding: 2rem 1rem;
-    text-align: center;
-    color: var(--text-muted);
-    font-size: 0.95rem;
+    gap: 1.5rem;
+    max-width: 52rem;
+    margin-top: 1.75rem;
 }
 
-.search-intro strong {
-    color: var(--text);
-    font-size: 1.05rem;
+.search-suggestions h2 {
+    margin: 0 0 0.6rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-subtle);
 }
 
 .search-examples {
     display: flex;
     flex-wrap: wrap;
-    justify-content: center;
     gap: 0.5rem;
 }
 
 .search-example {
-    min-height: 2.75rem;
-    min-width: 4.5rem;
-    padding: 0.5rem 1rem;
+    min-height: 2.5rem;
+    padding: 0.4rem 1rem;
+    border: none;
     border-radius: 999px;
-    border: 1px solid var(--accent-border);
-    background: rgba(29, 52, 97, 0.35);
-    color: var(--accent-soft);
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text);
     font-size: 0.9rem;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    transition: background 0.15s ease, border-color 0.15s ease;
+    font-weight: 600;
+    transition: background 0.15s ease;
 }
 
 .search-example:hover {
-    background: rgba(29, 52, 97, 0.7);
-    border-color: rgba(59, 130, 246, 0.6);
+    background: rgba(255, 255, 255, 0.12);
 }
 
-.search-result-symbol {
-    text-transform: uppercase;
-    font-size: 1.1rem;
-    font-weight: 700;
-}
-
-.search-result-type {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
+.search-intro-note {
+    margin: 0;
+    font-size: 0.85rem;
     color: var(--text-subtle);
 }
 
-.search-result-right {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.2rem;
-    font-variant-numeric: tabular-nums;
-}
-
-.search-result-price {
-    font-size: 1.05rem;
-    font-weight: 700;
-}
-
-.search-result-change {
-    font-size: 0.85rem;
-    font-weight: 600;
-}
-
-.search-result-change.positive {
-    color: var(--positive);
-}
-
-.search-result-change.negative {
-    color: var(--negative);
-}
-
-.search-result-chart-box {
-    margin-top: 0.5rem;
-    padding: 1rem;
-    border-radius: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    background: linear-gradient(145deg, #070b14, #05070d);
-    animation: rise-in 0.3s var(--ease-out) both;
-}
-
-
-@media (max-width: 640px) {
-    .search-form {
-        flex-wrap: wrap;
-    }
-
-    .search-form .btn {
-        width: 100%;
-    }
-
-    /* the analyst panel inside has its own padding, so keep the outer box tight on phones */
-    .search-result-chart-box {
-        padding: 0.75rem;
-    }
+/* ---------- results + detail ---------- */
+.search-layout {
+    margin-top: 1.5rem;
 }
 
 .search-results-head {
@@ -240,8 +181,8 @@
     align-items: baseline;
     justify-content: space-between;
     gap: 1rem;
-    margin: 0 0.25rem 0.6rem;
-    font-size: 0.78rem;
+    margin: 0 0.25rem 0.5rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: var(--text-subtle);
 }
@@ -253,4 +194,225 @@
 
 .search-powered-by a {
     color: var(--accent-soft);
+}
+
+/* one list with hairline dividers, like Holdings */
+.search-results-list {
+    overflow: hidden;
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    background: var(--card-bg);
+}
+
+.search-results-list li + li {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.search-result-item {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    width: 100%;
+    padding: 0.8rem 0.9rem 0.8rem 1rem;
+    background: none;
+    color: var(--text);
+    text-align: left;
+    transition: background 0.15s ease;
+    animation: rise-in 0.3s var(--ease-out) both;
+}
+
+.search-result-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.search-result-item.selected {
+    background: rgba(59, 130, 246, 0.12);
+}
+
+.search-result-image {
+    flex-shrink: 0;
+    width: 2.25rem; /* the same size as the lettered badges (AssetAvatar) */
+    height: 2.25rem;
+    border-radius: 50%;
+}
+
+.search-result-info {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0; /* a long name shrinks instead of pushing the price off the row */
+}
+
+.search-result-symbol {
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.search-result-name {
+    overflow: hidden;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.search-result-right {
+    display: flex;
+    flex-shrink: 0;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+}
+
+.search-result-price {
+    font-size: 0.98rem;
+    font-weight: 700;
+}
+
+.search-result-chevron {
+    flex-shrink: 0;
+    margin-left: 0.15rem;
+    font-size: 1.35rem;
+    line-height: 1;
+    color: var(--text-subtle);
+}
+
+/* today's change as a small filled pill, like the Stocks app */
+.change-pill {
+    padding: 0.1rem 0.45rem;
+    border-radius: 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.change-pill.positive {
+    background: rgba(34, 197, 94, 0.85);
+}
+
+.change-pill.negative {
+    background: rgba(239, 68, 68, 0.85);
+}
+
+/* ---------- an opened asset ---------- */
+.asset-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+    animation: rise-in 0.3s var(--ease-out) both;
+}
+
+.asset-detail-back {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    width: fit-content;
+    min-height: 2.75rem;
+    padding: 0 0.25rem;
+    background: none;
+    color: var(--accent-soft);
+    font-size: 1rem;
+}
+
+.asset-detail-back svg {
+    width: 0.7rem;
+    height: 1.15rem;
+}
+
+.asset-detail-head {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.asset-detail-head .asset-avatar,
+.asset-detail-logo {
+    width: 2.9rem;
+    height: 2.9rem;
+    border-radius: 50%;
+}
+
+.asset-detail-names {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.asset-detail-names h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    line-height: 1.2;
+}
+
+.asset-detail-names span {
+    overflow: hidden;
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.asset-detail-share {
+    display: grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--accent-soft);
+}
+
+.asset-detail-share svg {
+    width: 1.2rem;
+    height: 1.2rem;
+}
+
+.asset-detail-price {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.asset-detail-amount {
+    font-size: 2.1rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+/* wide screens: the list on the left, the opened asset on the right */
+@media (min-width: 1100px) {
+    .has-detail .search-layout {
+        display: grid;
+        grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr);
+        gap: 2rem;
+        align-items: start;
+    }
+
+    .has-detail .search-results {
+        position: sticky;
+        top: 1.5rem;
+    }
+
+    /* the list stays in view, so no Back button */
+    .asset-detail-back {
+        display: none;
+    }
+}
+
+/* narrower screens: the opened asset replaces the list, and the field above it goes too */
+@media (max-width: 1099.98px) {
+    .has-detail .search-results,
+    .has-detail .search-area,
+    .has-detail .search-header {
+        display: none;
+    }
+
+    .has-detail .search-layout {
+        margin-top: 0;
+    }
 }

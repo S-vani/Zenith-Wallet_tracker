@@ -123,12 +123,27 @@ function watchKeyboard() {
         Keyboard.addListener("keyboardWillShow", () => classes.add("keyboard-open"));
         Keyboard.addListener("keyboardWillHide", () => classes.remove("keyboard-open"));
         Keyboard.addListener("keyboardDidShow", () => {
-            const field = document.activeElement;
-            if (field?.matches?.("input, textarea, select, [contenteditable=true]")) {
-                field.scrollIntoView({block: "center", behavior: "smooth"});
-            }
+            // after the web view has shrunk to the space above the keys
+            requestAnimationFrame(() => keepFieldInView(document.activeElement));
         });
     }).catch(() => null);
+}
+
+// Puts the field being typed in between the navigation bar and the keyboard. scrollIntoView centred it on the
+// whole window, which could leave it behind the bar (the trade edit form, with the number pad up). Fields in a
+// sheet (its own scrolling box, over the bar) still scroll inside it.
+export function keepFieldInView(field) {
+    if (!field?.matches?.("input, textarea, select, [contenteditable=true]")) return;
+    if (field.closest(".transaction-create-box")) {
+        field.scrollIntoView({block: "center", behavior: "smooth"});
+        return;
+    }
+    const top = document.querySelector(".native-titlebar")?.getBoundingClientRect().bottom ?? 0;
+    const rect = field.getBoundingClientRect();
+    const bottom = window.innerHeight;
+    if (rect.top >= top + 8 && rect.bottom <= bottom - 8) return; // already in view
+    // a third of the way down the visible space, so the fields under it show too
+    window.scrollBy({top: rect.top - (top + (bottom - top) / 3), behavior: "smooth"});
 }
 
 // A light haptic when a tab, range or toggle actually changes.

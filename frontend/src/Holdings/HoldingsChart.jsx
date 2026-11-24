@@ -6,7 +6,7 @@ import useRefreshKey from "../native/useRefreshKey.js";
 import ChartSkeleton from "../components/ChartSkeleton.jsx";
 import {formatMoney, formatPrice} from "../utils/format.js";
 import {
-    CHART_DOWN, CHART_UP, INITIAL_DIMENSION, TOOLTIP_STYLE, axisMoneyOptions, axisTicks, formatAxisTick, niceAxis,
+    CHART_DOWN, CHART_UP, INITIAL_DIMENSION, TOOLTIP_STYLE, axisMoneyOptions, axisTicks, tickBudget, formatAxisTick, niceAxis,
     priceChartSummary, tickUnit, tooltipDate,
 } from "../utils/chart.js";
 
@@ -100,7 +100,7 @@ function HoldingChart({symbol, type, coinId = null, initialRange = "1M", compact
                     </defs>
                     <XAxis
                         dataKey="time"
-                        ticks={axisTicks(data, unit)}
+                        ticks={axisTicks(data, unit, "time", tickBudget())}
                         axisLine={false}
                         tickLine={false}
                         tick={{fill: "#8b93a1", fontSize: 11}}
@@ -131,6 +131,8 @@ function HoldingChart({symbol, type, coinId = null, initialRange = "1M", compact
                         strokeWidth={2}
                         fill={`url(#${gradientId})`}
                         dot={false}
+                        animationDuration={420} // recharts' 1.5 s draw looked like missing data on every range switch
+                        animationEasing="ease-out"
                     />
                 </AreaChart>
             </ResponsiveContainer>
