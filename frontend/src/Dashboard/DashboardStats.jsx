@@ -1,6 +1,7 @@
 import {changeClass, formatMoney, formatPercent, formatSignedMoney} from "../utils/format.js";
 import {unpricedNote} from "./dashboardText.js";
 import RollingNumber from "../components/RollingNumber.jsx";
+import PrivacyToggle from "../components/PrivacyToggle.jsx";
 
 const RANGE_LABELS = {
     day: "Today's return",
@@ -45,7 +46,7 @@ function DashboardStats({stats, loading, valueLoading = loading, unavailable = f
         <>
             <div className="dashboard-stats">
                 <div className="stat-card stat-card-hero">
-                    <div className="stat-label">Portfolio value</div>
+                    <div className="stat-label stat-label-row">Portfolio value <PrivacyToggle/></div>
                     {unavailable ? (
                         <div className="stat-value">—</div>
                     ) : valueLoading ? (

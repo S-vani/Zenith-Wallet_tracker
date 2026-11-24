@@ -38,7 +38,14 @@ function HoldingsItem({holding, index}) {
                         <span className="position-symbol">{holding.symbol}</span>
                         <span className="position-type">{holding.type}</span>
                         {/* phones: the compact row says how many instead of the type */}
-                        <span className="position-qty">{formatQuantity(holding.quantity)} {holding.type === "crypto" ? "coins" : "shares"}</span>
+                        <span className="position-qty">
+                            {formatQuantity(holding.quantity)} {holding.type === "crypto" ? "coins" : "shares"}
+                            {Number.isFinite(holding.day_change_pct) && (
+                                <span className={`position-today ${changeClass(holding.day_change_pct)}`}>
+                                    {" · "}{formatPercent(holding.day_change_pct)} today
+                                </span>
+                            )}
+                        </span>
                     </div>
                 </div>
 

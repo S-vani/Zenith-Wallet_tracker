@@ -5,7 +5,7 @@ import LegalLayout from "../components/LegalLayout.jsx";
 import {BRAND_NAME} from "../utils/brand.js";
 
 // Shown publicly and required by the app stores. Keep it in step with what the app actually collects and sends.
-const EFFECTIVE_DATE = "November 16, 2026";
+const EFFECTIVE_DATE = "November 24, 2026";
 
 const SECTIONS = [
     ["disclaimer", "Not financial advice"],
@@ -109,6 +109,14 @@ function PrivacyPage() {
                     Broker exports can include other columns, such as an account number; those are skipped
                     and never saved.
                     Exports are created on request and sent straight to you.
+                </p>
+                <h3>Watchlist, alerts and notifications</h3>
+                <p>
+                    The assets you star, the price alerts you set and your notification settings are stored with
+                    your account. So we can send them, the notifications themselves (price alerts, earnings and
+                    dividend reminders for what you hold, and the morning briefing, which mentions your portfolio's
+                    value and change) are kept in your in-app inbox for 60 days. If you allow notifications in the
+                    iPhone app, your phone's push token is stored too; logging out removes it.
                 </p>
                 <h3>Screenshots you scan</h3>
                 <p>
@@ -214,6 +222,11 @@ function PrivacyPage() {
                     <li>
                         <strong>Vultr</strong>: our servers and database run on Vultr, a cloud hosting
                         provider.
+                    </li>
+                    <li>
+                        <strong>Apple Push Notification service</strong>: if you allow notifications in the iPhone
+                        app, each notification's title and text (which can include your portfolio's value) and your
+                        phone's push token pass through Apple so it can deliver them.
                     </li>
                     <li>
                         <strong>Google Drive</strong>: backup copies of the database are stored on Google Drive.

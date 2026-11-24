@@ -66,6 +66,21 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
     account within ±30 trade days, held at the window's end) / sold gives `superficial_amount`; registered
     repurchases are worded as lost for good, taxable ones mark later sales of that pool `acb_may_rise`; totals carry
     `possibly_superficial`. Interlisted `X` + `X.TO` taxable trades give a `warnings` entry (pools stay separate).
+  - `routes/xray.py` + `services/xray.py` — Portfolio X-Ray (`GET /portfolio/xray`, 30 min cache per user +
+    currency, 20 fresh/user/hour): concentration (top holding, effective number of holdings), look-through exposure
+    (ETF sector weights + top holdings from `services/profiles.py`, a 6 h cache of Yahoo info / calendar / fund data;
+    fund regions guessed from names), a year of daily returns at today's weights (volatility, max drawdown, beta and
+    correlation vs ^GSPC, correlated pairs), stress tests, a 0-100 diversification score and findings built only from
+    those numbers (no advice). The maths is pure and tested with made-up data (`tests/test_xray.py`).
+  - `routes/alerts.py` + `services/alerts.py` + `db_models/alerts.py` — watchlist (`/watchlist`, 50 max), price
+    alerts (`/alerts`: above / below fire once and switch off, `move` = % in 24 h at most once a Toronto day; 50
+    active max), inbox (`/notifications`, 60 days), settings (`/notifications/settings`: daily briefing, holding
+    events, push) and APNs devices (`/push/devices`). One background loop (`run_alerts_forever`, started in the
+    lifespan; `DISABLE_BACKGROUND_JOBS=1` in tests) checks price alerts every 5 min and once a day after 8:00 Toronto
+    sends holding events (earnings / ex-dividend the day before, 200-day average crossings, deduped) and the morning
+    briefing. `services/push.py` sends through APNs (HTTP/2 + ES256 key) only when `APNS_*` is set; the inbox works
+    without it. Every new table is deleted with the account (`delete_users`). `/holdings` rows carry
+    `day_change_pct` (24 h).
   - `routes/allocation.py` + `services/allocation.py` — `GET /portfolio/allocation` (by asset type, account, holding,
     listing currency) priced exactly like `/holdings`; per-account quantities via `replay_accounts` (a sell takes
     from its own account, then "not set", then the largest, never negative).
@@ -140,6 +155,13 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
   and a timed-out write says it may have been saved. In the app `/` skips the marketing page and
   Google sign-in is hidden (web views can't use it; would also need Sign in with Apple). Backend CORS always allows
   `capacitor://localhost`. The website's "Open the Zenith app" button only shows once `VITE_IOS_APP_STORE_URL` is set.
+  Push (`native/push.js`, `PushNavigator.jsx`, @capacitor/push-notifications, AppDelegate forwards the token): asked
+  for after the first alert or from the Alerts page, re-registered after sign in, unregistered on log out (api.js),
+  taps open only `safeLink` screens. It needs the Push Notifications capability + `aps-environment` entitlement,
+  which aren't in the Xcode project yet (they need the App ID / profile updated first).
+  Search (website and app): one result list + `Search/AssetDetail.jsx` (☆ watch, 🔔 `Alerts/AlertForm.jsx`, chart,
+  analyst) beside it on wide screens or instead of it on phones (`?asset=`; `?q=&type=` from notifications opens one).
+  Privacy mode (`utils/privacy.js`, the eye on the value card) blurs the user's own amounts on web and app.
   Sign up (website and app) needs the "I agree to the Terms and Privacy Policy" checkbox (Google sign up waits for it
   too); `accepted_terms` is optional in the API (older app builds) and saved as `user.terms_accepted_at`.
   - Build the app with `npm run build:ios` (`vite build --mode ios` into `dist-ios/` using the committed
@@ -242,7 +264,8 @@ offer AI screenshot reading as a fallback; off by default, and then add Photos o
 App Privacy), `GEMINI_API_KEY`
 (+ optional `GEMINI_MODEL`, default `gemini-2.5-flash`; used for analyst rewording and screenshot scans; the key's
 project must have billing on: the free tier lets Google use what's sent, which /privacy rules out, and isn't allowed
-for EU/UK/Swiss users), `MIN_IOS_APP_VERSION` (forced update; unset = off), `BACKUP_DIR`/`BACKUP_REMOTE`/`BACKUP_PING_URL` (backups every 6 h; off-site = encrypted rclone remote on Google
+for EU/UK/Swiss users), `MIN_IOS_APP_VERSION` (forced update; unset = off), `APNS_KEY_ID`/`APNS_TEAM_ID`/`APNS_KEY_FILE` (or `APNS_KEY`)
+(+ optional `APNS_TOPIC`, `APNS_SANDBOX`) for push notifications, `BACKUP_DIR`/`BACKUP_REMOTE`/`BACKUP_PING_URL` (backups every 6 h; off-site = encrypted rclone remote on Google
 Drive via `deploy/offsite-backup.sh`, keep its two passwords off the server; the ping URL alerts when they stop).
 Frontend: `frontend/.env` → `VITE_BACKEND_URL`; `frontend/.env.ios` for the app build.
 

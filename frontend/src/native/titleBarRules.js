@@ -12,10 +12,14 @@ const TITLES = {
     "/privacy": "Privacy",
     "/terms": "Terms of Use",
     "/support": "Support",
+    "/alerts": "Alerts",
+    "/xray": "Portfolio X-Ray",
 };
 
 // opened from the Transactions screen's links
 const UNDER_TRANSACTIONS = ["/import", "/reports"];
+// opened from the dashboard (its bell and X-Ray card)
+const UNDER_DASHBOARD = ["/alerts", "/xray"];
 // opened from Account, the sign in screens or each other
 const POLICY_PAGES = ["/privacy", "/terms", "/support"];
 
@@ -37,6 +41,7 @@ export function actionFor(pathname) {
 export function backTarget(pathname, {canGoBack, signedIn}) {
     const path = clean(pathname);
     if (UNDER_TRANSACTIONS.includes(path)) return {to: "/transactions", label: "Transactions"};
+    if (UNDER_DASHBOARD.includes(path)) return {to: "/dashboard", label: "Portfolio"};
     if (POLICY_PAGES.includes(path)) {
         if (canGoBack) return {to: -1, label: "Back"};
         return signedIn ? {to: "/user", label: "Account"} : {to: "/login", label: "Log in"};

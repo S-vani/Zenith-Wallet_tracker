@@ -1,0 +1,380 @@
+/* Portfolio X-Ray (pages/XrayPage.jsx) and its score ring (Xray/ScoreRing.jsx), also on the dashboard card */
+.xray-page {
+    max-width: 52rem;
+}
+
+.xray-section {
+    margin-top: 1.75rem;
+}
+
+.xray-section h2 {
+    margin: 0 0 0.7rem;
+    font-size: 1.05rem;
+}
+
+/* ---------- score ---------- */
+.xray-hero {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    margin-top: 1.25rem;
+    padding: 1.25rem;
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    background: var(--card-bg);
+}
+
+.xray-hero-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.xray-score-label {
+    font-size: 1.35rem;
+    font-weight: 700;
+}
+
+.xray-hero-sub {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.score-ring {
+    position: relative;
+    display: inline-grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 6.5rem;
+    height: 6.5rem;
+}
+
+.score-ring.sm {
+    width: 3.4rem;
+    height: 3.4rem;
+}
+
+.score-ring svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.score-ring circle {
+    fill: none;
+    stroke-width: 9;
+}
+
+.score-ring-track {
+    stroke: rgba(255, 255, 255, 0.08);
+}
+
+.score-ring-fill {
+    stroke-linecap: round;
+    stroke-dasharray: var(--dash);
+    stroke-dashoffset: var(--offset);
+    animation: score-fill 0.9s var(--ease-out) backwards;
+}
+
+@keyframes score-fill {
+    from {
+        stroke-dashoffset: var(--dash);
+    }
+}
+
+.score-ring.good .score-ring-fill {
+    stroke: var(--positive);
+}
+
+.score-ring.fair .score-ring-fill {
+    stroke: #f59e0b;
+}
+
+.score-ring.poor .score-ring-fill {
+    stroke: var(--negative);
+}
+
+.score-ring-value {
+    font-size: 1.8rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.score-ring.sm .score-ring-value {
+    font-size: 1rem;
+}
+
+/* ---------- findings ---------- */
+.xray-findings {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.xray-finding {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    background: var(--card-bg);
+    animation: rise-in 0.3s var(--ease-out) both;
+}
+
+.xray-finding strong {
+    display: block;
+    margin-bottom: 0.15rem;
+}
+
+.xray-finding span span {
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: var(--text-muted);
+}
+
+.xray-finding-icon {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 50%;
+    font-size: 0.85rem;
+    font-weight: 800;
+}
+
+.xray-finding.warn .xray-finding-icon {
+    background: rgba(245, 158, 11, 0.18);
+    color: #fbbf24;
+}
+
+.xray-finding.info .xray-finding-icon {
+    background: rgba(59, 130, 246, 0.18);
+    color: var(--accent-soft);
+}
+
+.xray-finding.good .xray-finding-icon {
+    background: rgba(34, 197, 94, 0.18);
+    color: var(--positive);
+}
+
+/* ---------- exposure bars ---------- */
+.xray-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+    margin-bottom: 0.75rem;
+}
+
+.xray-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    padding: 1rem;
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    background: var(--card-bg);
+}
+
+.xray-bars li {
+    display: grid;
+    grid-template-columns: minmax(0, 9rem) minmax(0, 1fr) 3.5rem;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.88rem;
+}
+
+.xray-bar-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.xray-bar-name small {
+    color: var(--text-subtle);
+}
+
+.xray-bar-track {
+    height: 0.55rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.xray-bar-fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--accent);
+    transform-origin: left;
+    animation: bar-grow 0.6s var(--ease-out) backwards;
+}
+
+@keyframes bar-grow {
+    from {
+        transform: scaleX(0);
+    }
+}
+
+.xray-bar-value {
+    text-align: right;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.xray-note {
+    margin: 0.6rem 0 0;
+    font-size: 0.82rem;
+    color: var(--text-subtle);
+}
+
+/* ---------- risk tiles ---------- */
+.xray-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+    gap: 0.6rem;
+}
+
+.xray-tile {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    background: var(--card-bg);
+}
+
+.xray-tile-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.xray-tile-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.xray-tile-hint {
+    font-size: 0.72rem;
+    color: var(--text-subtle);
+}
+
+/* ---------- scenarios ---------- */
+.xray-tests {
+    overflow: hidden;
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    background: var(--card-bg);
+}
+
+.xray-tests li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.85rem 1rem;
+}
+
+.xray-tests li + li {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.xray-test-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.xray-test-text span {
+    font-size: 0.8rem;
+    color: var(--text-subtle);
+}
+
+.xray-test-change {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    font-weight: 700;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.xray-test-change small {
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.xray-test-change.negative {
+    color: var(--negative);
+}
+
+.xray-test-change.positive {
+    color: var(--positive);
+}
+
+.xray-footer p {
+    margin: 0 0 0.4rem;
+    font-size: 0.78rem;
+    color: var(--text-subtle);
+}
+
+/* ---------- the dashboard's X-Ray card ---------- */
+.xray-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1.25rem;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    background: var(--card-bg);
+    color: var(--text);
+    transition: border-color 0.15s ease;
+}
+
+.xray-card:hover {
+    border-color: var(--accent-border);
+}
+
+.xray-card-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.xray-card-text small {
+    font-size: 0.78rem;
+    color: var(--text-subtle);
+}
+
+.xray-card-text span {
+    overflow: hidden;
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.xray-card-chevron {
+    font-size: 1.4rem;
+    color: var(--text-subtle);
+}
+
+@media (max-width: 640px) {
+    .xray-bars li {
+        grid-template-columns: minmax(0, 6.5rem) minmax(0, 1fr) 3.2rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .score-ring-fill,
+    .xray-bar-fill {
+        animation: none;
+    }
+}

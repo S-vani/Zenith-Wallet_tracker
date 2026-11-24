@@ -41,6 +41,15 @@ export function getToken() {
 // which looked like Face ID forgetting it was enabled). forgetLock: the account is gone (deleted), so the lock and the
 // login saved for Face ID sign in go too.
 export function logout({forgetLock = false} = {}) {
+    // the app stops sending this account's notifications to this phone (fire and forget, while the token works);
+    // the key is native/push.js's PUSH_TOKEN_KEY, read here directly so api.js doesn't import the plugin code
+    const pushToken = isNative ? localStorage.getItem("pushToken") : null;
+    const signedIn = getToken();
+    if (pushToken && signedIn) {
+        fetch(`${BASE_URL}/push/devices/${encodeURIComponent(pushToken)}`, {
+            method: "DELETE", headers: {Authorization: `Bearer ${signedIn}`, ...appVersionHeaders()},
+        }).catch(() => null);
+    }
     localStorage.removeItem(TOKEN_KEY);
     keepInKeychain(null); // the iOS app also keeps the token in the Keychain; no-op on the website
     forgetAll(); // and the app's offline copy of the portfolio screens
@@ -208,6 +217,11 @@ async function request(path, {
             const error = new Error(await errorMessage(res, fallbackError));
             error.status = res.status; // lets callers treat e.g. 429 differently
             throw error;
+        }
+
+        if (res.status === 204) { // done, nothing to read (e.g. removing a watchlist item)
+            markFresh();
+            return null;
         }
 
         let data;
@@ -523,6 +537,70 @@ export async function getPortfolioHistory(range) {
 // Today's value split by asset type, account, holding and listing currency (the dashboard's Allocation card)
 export async function getPortfolioAllocation() {
     return request("/portfolio/allocation", {fallbackError: "Couldn't load your allocation."});
+}
+
+// Portfolio X-Ray: concentration, look-through exposure, risk, stress tests, score and findings (or {empty: true})
+export async function getPortfolioXray() {
+    return request("/portfolio/xray", {fallbackError: "Couldn't load your Portfolio X-Ray."});
+}
+
+// ---------- watchlist, alerts, notifications ----------
+
+// The starred assets with today's price and 24-hour change
+export async function getWatchlist() {
+    return request("/watchlist", {fallbackError: "Couldn't load your watchlist."});
+}
+
+// Stars an asset: {api_id, type, coin_id, name}
+export async function addToWatchlist(item) {
+    return request("/watchlist", {method: "POST", body: JSON.stringify(item), savesNothing: true,
+        fallbackError: "Couldn't add it to your watchlist."});
+}
+
+export async function removeFromWatchlist(type, apiId) {
+    return request(`/watchlist/${encodeURIComponent(type)}/${encodeURIComponent(apiId)}`, {method: "DELETE",
+        savesNothing: true, fallbackError: "Couldn't remove it from your watchlist."});
+}
+
+export async function getAlerts() {
+    return request("/alerts", {fallbackError: "Couldn't load your alerts."});
+}
+
+// {api_id, type, coin_id, kind: "above" | "below" | "move", threshold}
+export async function createAlert(alert) {
+    return request("/alerts", {method: "POST", body: JSON.stringify(alert), fallbackError: "Couldn't save the alert."});
+}
+
+export async function deleteAlert(id) {
+    return request(`/alerts/${encodeURIComponent(id)}`, {method: "DELETE", savesNothing: true,
+        fallbackError: "Couldn't delete the alert."});
+}
+
+// {unread, items: [{id, kind, title, body, link, created_at, read}]}
+export async function getNotifications() {
+    return request("/notifications", {fallbackError: "Couldn't load your notifications."});
+}
+
+export async function markNotificationsRead() {
+    return request("/notifications/read", {method: "POST", savesNothing: true});
+}
+
+export async function getNotificationSettings() {
+    return request("/notifications/settings", {fallbackError: "Couldn't load your notification settings."});
+}
+
+export async function putNotificationSettings(settings) {
+    return request("/notifications/settings", {method: "PUT", body: JSON.stringify(settings), savesNothing: true,
+        fallbackError: "Couldn't save your notification settings."});
+}
+
+// App only: this phone's APNs token, so pushes reach it (native/push.js)
+export async function registerPushDevice(token) {
+    return request("/push/devices", {method: "POST", body: JSON.stringify({token}), savesNothing: true});
+}
+
+export async function unregisterPushDevice(token) {
+    return request(`/push/devices/${encodeURIComponent(token)}`, {method: "DELETE", savesNothing: true});
 }
 
 // Capital gains (Canada): the years with taxable sales, newest first

@@ -415,3 +415,37 @@ html:not(.native) .cell-amount {
         font-size: 0.75rem;
     }
 }
+
+/* Sort: Value / Today / Return / A–Z (HoldingsList) */
+.holdings-sort {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1.5rem 0;
+    font-size: 0.8rem;
+    color: var(--text-subtle);
+}
+
+.holdings-sort .segmented button {
+    padding: 0.3rem 0.7rem;
+    font-size: 0.8rem;
+}
+
+/* "· +1.2% today" after the quantity */
+.position-today.positive {
+    color: var(--positive);
+}
+
+.position-today.negative {
+    color: var(--negative);
+}
+
+@media (max-width: 768px) {
+    .holdings-sort {
+        padding: 0.85rem 1.1rem 0.25rem;
+    }
+
+    .holdings-sort .segmented {
+        flex: 1;
+    }
+}

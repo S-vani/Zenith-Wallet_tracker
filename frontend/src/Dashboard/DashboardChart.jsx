@@ -1,6 +1,8 @@
+import {useRef} from "react";
 import {Link} from "react-router-dom";
 import {AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer} from "recharts";
-import {formatMoney} from "../utils/format.js";
+import {formatMoney, formatPercent} from "../utils/format.js";
+import {haptic} from "../native/haptics.js";
 import {
     CHART_DOWN, CHART_INVESTED, CHART_UP, INITIAL_DIMENSION, TOOLTIP_STYLE, axisMoneyOptions, axisTicks, tickBudget,
     formatAxisTick, niceAxis, tickUnit, tooltipDate,
@@ -35,6 +37,18 @@ function NowDot({cx, cy, index, last, color}) {
 // `entry` is one range's {days, stats, chart}, loaded by the page; `updating` dims it while another range loads
 function DashboardChart({entry, updating = false, currency, error}) {
     const data = entry?.chart ?? [];
+    // scrubbing: the tooltip says how far the value had moved from the range's start, and in the app each new
+    // point under the finger gives a light tick, like the Stocks app
+    const startValue = data.find((p) => Number(p.value) > 0)?.value ?? null;
+    const lastIndex = useRef(null);
+    const scrub = (state) => {
+        const index = state?.activeTooltipIndex;
+        if (index === undefined || index === lastIndex.current) return;
+        lastIndex.current = index;
+        haptic("light");
+    };
+    const sinceStart = (value) => (startValue
+        ? ` (${formatPercent((value / startValue - 1) * 100)} since start)` : "");
     const days = entry?.days ?? 1;
     const hasValues = data.some((d) => d.value > 0);
     // older saved charts (the app's offline copy) have no invested amounts: then only the value line is drawn
@@ -82,7 +96,11 @@ function DashboardChart({entry, updating = false, currency, error}) {
             <ResponsiveContainer width="100%" height="100%" initialDimension={INITIAL_DIMENSION}>
                 {/* keyed by range: a new range draws in fresh instead of morphing through shapes that mean nothing
                     (a 1D line bending into a 1Y one); a refresh of the same range still updates in place */}
-                <AreaChart key={entry.range} data={data} margin={{top: 8, right: 8, left: 0, bottom: 0}}>
+                <AreaChart key={entry.range} data={data} margin={{top: 8, right: 8, left: 0, bottom: 0}}
+                           onMouseMove={isNative ? scrub : undefined}
+                           onMouseLeave={() => {
+                               lastIndex.current = null;
+                           }}>
                     <defs>
                         <linearGradient id="dashboardFill" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stopColor={color} stopOpacity={0.18}/>
@@ -112,7 +130,8 @@ function DashboardChart({entry, updating = false, currency, error}) {
                     <Tooltip
                         contentStyle={TOOLTIP_STYLE}
                         separator=": "
-                        formatter={(value, name) => [formatMoney(value, currency), name]}
+                        formatter={(value, name) => [
+                            formatMoney(value, currency) + (name === "Value" ? sinceStart(value) : ""), name]}
                         labelFormatter={(value) => tooltipDate(value, days <= 7)}
                         itemSorter={(item) => (item.dataKey === "value" ? 0 : 1)} // same order as the legend
                         cursor={{stroke: "rgba(59,130,246,0.3)", strokeWidth: 1}}

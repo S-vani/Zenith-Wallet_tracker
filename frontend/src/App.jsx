@@ -22,6 +22,7 @@ import UpdateRequired from "./native/UpdateRequired.jsx";
 import AppLinkNavigator from "./native/AppLinkNavigator.jsx";
 import NativeTitleBar from "./native/NativeTitleBar.jsx";
 import PageTransition from "./native/PageTransition.jsx";
+import PushNavigator from "./native/PushNavigator.jsx";
 import AccountLoadError from "./components/AccountLoadError.jsx";
 import ScrollToTop from "./components/ScrollToTop.jsx";
 import SegmentedThumbs from "./components/SegmentedThumbs.jsx";
@@ -37,6 +38,8 @@ const PrivacyPage = lazy(() => import("./pages/PrivacyPage.jsx"));
 const TermsPage = lazy(() => import("./pages/TermsPage.jsx"));
 const SupportPage = lazy(() => import("./pages/SupportPage.jsx"));
 const ImportPage = lazy(() => import("./pages/ImportPage.jsx"));
+const AlertsPage = lazy(() => import("./pages/AlertsPage.jsx"));
+const XrayPage = lazy(() => import("./pages/XrayPage.jsx"));
 
 // shown while a page's code loads; the hidden text tells screen readers what the spinner means
 // shown only if a page's code takes over a quarter second to load (page-fallback in Global.css): a quick load shows
@@ -110,6 +113,7 @@ function App({lockEnabled = false}) {
         {isNative && <AppLinkNavigator/>}
         {isNative && <NativeTitleBar/>}
         {isNative && <PageTransition/>}
+        {isNative && <PushNavigator/>}
         <Routes>
             {/* the app opens straight to your portfolio (or sign in); the marketing page is for the website */}
             <Route path="/" element={isNative
@@ -134,6 +138,8 @@ function App({lockEnabled = false}) {
                 <Route path="/user" element={<UserPage/>}/>
                 <Route path="/import" element={<ImportPage/>}/>
                 <Route path="/reports" element={<ReportsPage/>}/>
+                <Route path="/alerts" element={<AlertsPage/>}/>
+                <Route path="/xray" element={<XrayPage/>}/>
             </Route>
 
             <Route path="*" element={<NotFoundPage/>}/>

@@ -36,6 +36,7 @@ _TMP_DIR = tempfile.mkdtemp(prefix="zenith-tests-")
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///" + (Path(_TMP_DIR) / "test.db").as_posix()
 os.environ["SECRET"] = "test-secret-not-used-anywhere-else-0123456789"
 os.environ["GMAIL_USER"] = ""
+os.environ["DISABLE_BACKGROUND_JOBS"] = "1"  # the alerts loop; tests call its steps directly
 os.environ["GMAIL_PASS"] = ""
 os.environ["FRONTEND_URL"] = "http://localhost:5173"
 os.environ["API_KEY"] = "test-twelvedata-key"

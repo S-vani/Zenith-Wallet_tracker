@@ -410,6 +410,27 @@ describe("navigation bar", () => {
         expect(backTarget("/privacy", {canGoBack: true, signedIn: true})).toEqual({to: -1, label: "Back"});
         expect(backTarget("/terms", {canGoBack: false, signedIn: true})).toEqual({to: "/user", label: "Account"});
         expect(backTarget("/support", {canGoBack: false, signedIn: false})).toEqual({to: "/login", label: "Log in"});
+        expect(backTarget("/xray", {canGoBack: true, signedIn: true})).toEqual({to: "/dashboard", label: "Portfolio"});
+        expect(titleFor("/alerts")).toBe("Alerts");
+    });
+});
+
+describe("push notifications", () => {
+    it("only opens the app's own screens from a notification", async () => {
+        const {safeLink} = await import("../src/native/push.js");
+        expect(safeLink("/search?q=AAPL&type=stock")).toBe("/search?q=AAPL&type=stock");
+        expect(safeLink("/dashboard")).toBe("/dashboard");
+        expect(safeLink("https://evil.example")).toBeNull();
+        expect(safeLink("//evil.example/x")).toBeNull();
+        expect(safeLink("/user")).toBeNull();
+        expect(safeLink(undefined)).toBeNull();
+    });
+
+    it("does nothing on the website", async () => {
+        const push = await import("../src/native/push.js");
+        await expect(push.pushPermission()).resolves.toBe("unsupported");
+        await expect(push.enablePush(() => null)).resolves.toBe("unsupported");
+        expect(events).toEqual([]);
     });
 });
 

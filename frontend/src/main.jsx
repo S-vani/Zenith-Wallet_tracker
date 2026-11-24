@@ -4,6 +4,7 @@ import {BrowserRouter} from "react-router-dom"
 import App from './App.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import {hideSplash, initNative} from "./native/bootstrap.js";
+import {applyAmountsHidden} from "./utils/privacy.js";
 
 // served from our own site, so no third party sees visitors' IPs and the app works offline
 import '@fontsource/lato/400.css'
@@ -19,6 +20,8 @@ import './css/NativeLook.css'
 // instead of staying on the splash screen. The Face ID setting is then unknown (null): the app starts covered by
 // the lock screen whatever the token says, and AppLock waits for the Keychain and the setting before opening it
 // (and moves a signed-in person off the login page the 3 s limit may have shown).
+applyAmountsHidden(); // privacy mode (the dashboard's eye), before the first paint
+
 const nativeStartup = Promise.race([
     initNative(),
     new Promise((resolve) => setTimeout(() => resolve({lockEnabled: null}), 3000)),

@@ -1,4 +1,6 @@
+import {useState} from "react";
 import HoldingsItem, {Amount} from "./HoldingsItem.jsx";
+import {SORT_KEY, SORTS, savedSort, sortHoldings} from "./holdingsSort.js";
 import {useUser} from "../context/UserContext.jsx";
 import {changeClass, formatMoney, formatPercent, formatSignedMoney} from "../utils/format.js";
 import {holdingsTotals} from "./holdingsTotals.js";
@@ -54,15 +56,33 @@ function HoldingsTotals({holdings}) {
     );
 }
 
-// The holdings table with its header and the totals row.
+// The holdings table with its sort control and the totals row.
 function HoldingsList({holdings}) {
+    const [sort, setSort] = useState(savedSort);
+    const sorted = sortHoldings(holdings, sort);
 
-    // biggest positions first, ones with no price (null) last
-    const value = (h) => h.current_price ?? -Infinity;
-    const sorted = [...holdings].sort((a, b) => value(b) - value(a) || 0);
+    const choose = (value) => {
+        setSort(value);
+        try {
+            localStorage.setItem(SORT_KEY, value);
+        } catch {
+            // just not remembered
+        }
+    };
 
     return (
         <>
+            <div className="holdings-sort" role="group" aria-label="Sort holdings by">
+                <span>Sort</span>
+                <div className="segmented">
+                    {SORTS.map((s) => (
+                        <button key={s.value} type="button" className={sort === s.value ? "active" : ""}
+                                aria-pressed={sort === s.value} onClick={() => choose(s.value)}>
+                            {s.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
             <div className="holdings-list-items">
                 {sorted.map((t, i) => (
                     <HoldingsItem

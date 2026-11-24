@@ -1,6 +1,7 @@
 import {useEffect, useRef, useState} from "react";
 import {Link} from "react-router-dom";
-import {getDashboardStats, getPortfolioAllocation, getPortfolioHistory} from "../services/api.js";
+import {getDashboardStats, getNotifications, getPortfolioAllocation, getPortfolioHistory} from "../services/api.js";
+import XrayCard from "../Dashboard/XrayCard.jsx";
 import DashboardStats from "../Dashboard/DashboardStats.jsx";
 import DashboardChart from "../Dashboard/DashboardChart.jsx";
 import AllocationCard from "../Dashboard/AllocationCard.jsx";
@@ -65,6 +66,16 @@ function DashboardPage() {
     const [shownKey, setShownKey] = useState(null); // the newest fully loaded range, shown while another loads
     const fetchedWith = useRef({}); // key -> refreshKey of the last fetch made while this page is open
     const refreshKey = useRefreshKey(); // app only: pull to refresh / coming back to the app
+
+    // the bell's count of unread notifications (alerts, reminders, the morning briefing)
+    const [unread, setUnread] = useState(0);
+    useEffect(() => {
+        let ignore = false;
+        getNotifications().then((n) => !ignore && setUnread(n?.unread ?? 0)).catch(() => null);
+        return () => {
+            ignore = true;
+        };
+    }, [refreshKey]);
 
     const days = rangeDays(activeRange);
     // no key until the user (and so the currency every amount comes in) is known, so nothing is cached or shown
@@ -141,11 +152,22 @@ function DashboardPage() {
 
     return (
         <div className="app-page dashboard-page">
-            <header>
-                <h1 className="page-headers">
-                    {greeting()}{firstName ? `, ${firstName}` : ""}
-                </h1>
-                <p className="page-subtitle">Here's how your portfolio is doing.</p>
+            <header className="dashboard-title-row">
+                <div>
+                    <h1 className="page-headers">
+                        {greeting()}{firstName ? `, ${firstName}` : ""}
+                    </h1>
+                    <p className="page-subtitle">Here's how your portfolio is doing.</p>
+                </div>
+                <Link to="/alerts" className="dashboard-bell"
+                      aria-label={unread ? `Alerts, ${unread} new` : "Alerts"}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+                         strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M18 16v-5a6 6 0 0 0-12 0v5l-2 2h16z"/>
+                        <path d="M10 20a2 2 0 0 0 4 0"/>
+                    </svg>
+                    {unread > 0 && <span className="dashboard-bell-count" aria-hidden="true">{unread > 9 ? "9+" : unread}</span>}
+                </Link>
             </header>
 
             {loadError && (
@@ -184,6 +206,8 @@ function DashboardPage() {
             {/* the error and its Try again button are above, so the chart only says it couldn't load */}
             <DashboardChart entry={shown} updating={pending && !!shown} currency={currency}
                             error={failed ? "Your portfolio history couldn't be loaded." : null}/>
+
+            <XrayCard currency={currency}/>
 
             {/* the same for every range, but loaded with each one so its total matches the value card above;
                 a dashboard error is already shown above */}

@@ -249,3 +249,78 @@ html:not(.native) .stat-amount {
     display: inline-block;
     animation: rise-in 0.25s var(--ease-out) backwards;
 }
+
+/* "Portfolio value" with the privacy eye (components/PrivacyToggle.jsx) */
+.stat-label-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.privacy-toggle {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: 50%;
+    background: none;
+    color: var(--text-subtle);
+}
+
+.privacy-toggle svg {
+    width: 1.05rem;
+    height: 1.05rem;
+}
+
+.privacy-toggle[aria-pressed="true"] {
+    color: var(--accent-soft);
+}
+
+/* a 44pt tap area around the small icon */
+.privacy-toggle::after {
+    content: "";
+    position: absolute;
+    inset: -0.6rem;
+}
+
+/* the dashboard title with the Alerts bell (DashboardPage) */
+.dashboard-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.dashboard-bell {
+    position: relative;
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text);
+}
+
+.dashboard-bell svg {
+    width: 1.3rem;
+    height: 1.3rem;
+}
+
+.dashboard-bell-count {
+    position: absolute;
+    top: -0.15rem;
+    right: -0.15rem;
+    min-width: 1.15rem;
+    height: 1.15rem;
+    padding: 0 0.3rem;
+    border-radius: 999px;
+    background: var(--negative);
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 800;
+    line-height: 1.15rem;
+    text-align: center;
+}

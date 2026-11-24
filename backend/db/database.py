@@ -12,6 +12,7 @@ from sqlalchemy import event, inspect, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
 from backend.db_models.assets import Base, User, OAuthAccount
+import backend.db_models.alerts  # noqa: F401  (registers the watchlist / alerts / notification tables for create_all)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 

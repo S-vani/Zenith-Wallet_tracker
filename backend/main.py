@@ -24,6 +24,7 @@ from sqlalchemy import text
 from contextlib import asynccontextmanager
 from backend.authentication.authentication import auth_backend, fastapi_users
 from backend.authentication.cleanup import sweep_unverified_forever
+from backend.services.alerts import background_jobs_enabled, run_alerts_forever
 from backend.ratelimit import auth_rate_limit
 from backend.routes.assets import router as user_router
 from backend.routes.oauth import router as oauth_router
@@ -57,10 +58,15 @@ async def lifespan(app: FastAPI):
     await create_db_and_tables()
     # deletes accounts that never verified their email within 7 days (right away, then every few hours)
     sweeper = asyncio.create_task(sweep_unverified_forever())
+    # price alerts every few minutes, holding events and the daily briefing each morning (services/alerts.py)
+    alerts = asyncio.create_task(run_alerts_forever()) if background_jobs_enabled() else None
     yield
-    sweeper.cancel()
-    with contextlib.suppress(asyncio.CancelledError):
-        await sweeper
+    for task in (sweeper, alerts):
+        if task is None:
+            continue
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
 
 
 def api_docs_enabled() -> bool:
@@ -251,6 +257,10 @@ app.include_router(imports_router)
 # screenshot import (POST /transactions/scan); before user_router too, like the CSV import
 from backend.routes.scan import router as scan_router  # noqa: E402
 app.include_router(scan_router)
+from backend.routes.alerts import router as alerts_router  # noqa: E402 - watchlist, alerts, inbox, push devices
+app.include_router(alerts_router)
+from backend.routes.xray import router as xray_router  # noqa: E402 - GET /portfolio/xray
+app.include_router(xray_router)
 app.include_router(user_router)
 
 if __name__ == "__main__":

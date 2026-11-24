@@ -435,11 +435,13 @@ async def get_holdings_at_time_list(
     result = await get_holdings_at_time(db, user_id, timestamp, currency)
     await end_read(db)
     prices = await get_curr_holdings_prices(result, currency)
+    day_ago = await previous_day_prices(result, timestamp, currency)
 
     curr_holdings_list = []
 
     for key, value in result.items():
         price = prices.get(key)
+        before = day_ago.get(key)
 
         curr_holdings_list.append({
             "symbol": key,
@@ -449,10 +451,23 @@ async def get_holdings_at_time_list(
             "coin_id": value.get("coin_id"),  # CoinGecko id when the trades name the exact coin (for its chart)
             "accounts": value.get("accounts", {}),  # quantity per account (see account_split); adds up to quantity
             # None = "price unavailable" (no source has one), so it isn't shown as worth $0 / -100%
-            "current_price": float(price) * float(value["quantity"]) if price is not None else None
+            "current_price": float(price) * float(value["quantity"]) if price is not None else None,
+            # the price's change over the last 24 hours, in % (for a stock outside market hours: since the last
+            # close before that); None when either price is missing
+            "day_change_pct": (float(price) / float(before) - 1) * 100 if price is not None and before else None,
         })
 
     return curr_holdings_list
+
+
+async def previous_day_prices(holdings: dict, timestamp: datetime, currency: str) -> dict:
+    """Each holding's price 24 hours before `timestamp` ({api_id: price or None}); {} if the sources fail."""
+    try:
+        return await get_prices_at({api_id: str(data["type"]) for api_id, data in holdings.items()},
+                                   timestamp - timedelta(days=1), currency, coin_ids=holding_coin_ids(holdings))
+    except Exception as exc:  # a missing "today" figure must never break the holdings list
+        log.warning("No previous-day prices: %s", exc)
+        return {}
 
 
 def get_holdings_helper(curr_avg: float, new_price: float, curr_quantity: float, new_quantity: float):

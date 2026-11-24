@@ -969,3 +969,22 @@ body::before {
 .data-credits a:focus-visible {
     color: var(--accent-soft);
 }
+
+/* ---------- privacy mode (utils/privacy.js): the person's own amounts blurred, market prices left alone ---------- */
+html.amounts-hidden .stat-amount,
+html.amounts-hidden .stat-pct,
+html.amounts-hidden .holding-cell,
+html.amounts-hidden .holding-panel-amount,
+html.amounts-hidden .price-paid,
+html.amounts-hidden .transaction-row span:last-child,
+html.amounts-hidden .transaction-quantity,
+html.amounts-hidden .position-qty,
+html.amounts-hidden .allocation-value,
+html.amounts-hidden .allocation-total,
+html.amounts-hidden .chart-wrapper-dashboard .recharts-cartesian-axis-tick-value,
+html.amounts-hidden .chart-wrapper-dashboard .recharts-tooltip-wrapper,
+html.amounts-hidden .xray-hero-sub,
+html.amounts-hidden .xray-test-change {
+    filter: blur(0.45rem);
+    user-select: none;
+}

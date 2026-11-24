@@ -1,7 +1,12 @@
 import "../css/Search.css"
 import {useEffect, useRef, useState} from "react";
 import {useLocation, useNavigate, useSearchParams} from "react-router-dom";
-import {searchCrypto, searchStock} from "../services/api.js";
+import {addToWatchlist, getWatchlist, removeFromWatchlist, searchCrypto, searchStock} from "../services/api.js";
+import AssetAvatar from "../components/AssetAvatar.jsx";
+import {useUser} from "../context/UserContext.jsx";
+import {formatPercent, formatPrice} from "../utils/format.js";
+import {showToast} from "../utils/toast.js";
+import {haptic} from "../native/haptics.js";
 import SearchResults from "../Search/SearchResults.jsx"
 import AssetDetail from "../Search/AssetDetail.jsx";
 import {loadRecent, rememberRecent} from "../Search/recentSearches.js";
@@ -16,25 +21,65 @@ const POPULAR = {
 
 const MAX_QUERY_LENGTH = 20; // the backend rejects longer searches
 
-// Stock and crypto search. The results are one list; picking one opens its detail (price, chart, Market Analyst),
-// which replaces the list on phones and sits beside it on wide screens. The open asset is in the address
-// (?asset=…), so Back closes it like any other screen.
+// Stock and crypto search. The results are one list; picking one opens its detail (price, chart, Market Analyst,
+// watch and alert buttons), which replaces the list on phones and sits beside it on wide screens. The open asset is
+// in the address (?asset=…), so Back closes it like any other screen. Before a search the page shows the watchlist,
+// recent and popular picks. A notification's link (?q=AAPL&type=stock) searches for that asset and opens it.
 function SearchPage() {
     usePageTitle("Search");
     const navigate = useNavigate();
     const location = useLocation();
     const [params, setParams] = useSearchParams();
 
-    const [searchSymbol, setSearchSymbol] = useState({"symbol": "", "type": "stock"});
+    // ?q=AAPL&type=stock from a notification: the field starts with it, and the effect below searches it
+    const [linked] = useState(() => (params.get("q")
+        ? {q: params.get("q").slice(0, MAX_QUERY_LENGTH), type: params.get("type") === "crypto" ? "crypto" : "stock"}
+        : null));
+    const [searchSymbol, setSearchSymbol] = useState(() => ({symbol: linked?.q ?? "", type: linked?.type ?? "stock"}));
     const [searchResults, setSearchResults] = useState(null) // null until the first search
     const [lastQuery, setLastQuery] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [recent, setRecent] = useState(loadRecent);
+    const [watchlist, setWatchlist] = useState([]);
     const searchId = useRef(0); // only the newest search may update the page
+    const {currency} = useUser();
 
+    useEffect(() => {
+        if (!currency) return; // prices come in the user's currency
+        getWatchlist().then((items) => setWatchlist(items ?? [])).catch(() => null);
+    }, [currency]);
+
+    const watchedAsResults = watchlist.map((w) => ({
+        api_id: w.api_id, symbol: w.api_id, type: w.type, coin_id: w.coin_id, name: w.name, price: w.price,
+        change_pct: w.day_change_pct,
+    }));
     const selectedId = params.get("asset");
-    const selected = selectedId ? searchResults?.find((r) => r.api_id === selectedId) ?? null : null;
+    const selected = selectedId
+        ? searchResults?.find((r) => r.api_id === selectedId)
+        ?? watchedAsResults.find((r) => r.api_id === selectedId) ?? null
+        : null;
+    const isWatched = (r) => watchlist.some((w) => w.api_id === r.api_id && w.type === r.type);
+
+    const toggleWatch = async (result) => {
+        const watched = isWatched(result);
+        try {
+            if (watched) {
+                await removeFromWatchlist(result.type, result.api_id);
+                setWatchlist((list) => list.filter((w) => !(w.api_id === result.api_id && w.type === result.type)));
+            } else {
+                await addToWatchlist({api_id: result.api_id, type: result.type, coin_id: result.coin_id ?? null,
+                    name: [result.type === "stock" ? result.exchange : "", result.name].filter(Boolean).join(" · ")
+                        || null});
+                setWatchlist((list) => [{api_id: result.api_id, type: result.type, coin_id: result.coin_id,
+                    name: result.name, price: result.price, day_change_pct: result.change_pct}, ...list]);
+            }
+            haptic("light");
+        } catch (err) {
+            showToast(err.message, {type: "error"});
+        }
+    };
+
 
     // a new asset opens at the top of its detail (on phones the list was scrolled somewhere else)
     useEffect(() => {
@@ -81,15 +126,28 @@ function SearchPage() {
         if (selectedId) setParams({}, {replace: true});
         try {
             const data = type === "stock" ? await searchStock(query) : await searchCrypto(query);
-            if (id !== searchId.current) return;
+            if (id !== searchId.current) return null;
             setSearchResults(data);
             setLastQuery(query);
+            return data;
         } catch (err) {
             if (id === searchId.current) setError(err.message);
         } finally {
             if (id === searchId.current) setLoading(false);
         }
+        return null;
     }
+
+    // ?q=AAPL&type=stock (a notification or the briefing): search it once and open the matching result
+    useEffect(() => {
+        if (!linked) return;
+        runSearch(linked.q, linked.type).then((data) => {
+            const match = data?.find((r) => r.api_id.toLowerCase() === linked.q.toLowerCase()) ?? data?.[0];
+            setParams(match ? {asset: match.api_id} : {}, {replace: true});
+        });
+        // once, for the link the page was opened with
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const open = (result) => {
         setRecent(rememberRecent(result.symbol, result.type));
@@ -174,6 +232,37 @@ function SearchPage() {
 
             {!searchResults && !loading && !error && (
                 <div className="search-intro">
+                    {watchlist.length > 0 && (
+                        <section className="search-watchlist" aria-label="Watchlist">
+                            <h2>Watchlist</h2>
+                            <ul className="search-results-list">
+                                {watchedAsResults.map((w) => (
+                                    <li key={`${w.type}:${w.api_id}`}>
+                                        <button type="button" className="search-result-item" onClick={() => open(w)}>
+                                            <AssetAvatar symbol={w.symbol} type={w.type}/>
+                                            <span className="search-result-info">
+                                                <span className="search-result-symbol">{w.symbol}</span>
+                                                <span className="search-result-name">
+                                                    {w.name || (w.type === "crypto" ? "Crypto" : "Stock")}
+                                                </span>
+                                            </span>
+                                            <span className="search-result-right">
+                                                <span className="search-result-price">
+                                                    {w.price === null ? "—" : formatPrice(w.price, currency)}
+                                                </span>
+                                                {Number.isFinite(Number(w.change_pct)) && w.change_pct !== null && (
+                                                    <span className={`change-pill ${w.change_pct >= 0 ? "positive" : "negative"}`}>
+                                                        {formatPercent(w.change_pct)}
+                                                    </span>
+                                                )}
+                                            </span>
+                                            <span className="search-result-chevron" aria-hidden="true">›</span>
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </section>
+                    )}
                     {recentOfType.length > 0 && (
                         <SuggestionGroup title="Recent" symbols={recentOfType.map((r) => r.symbol)}
                                          onPick={searchFor}/>
@@ -185,12 +274,21 @@ function SearchPage() {
                 </div>
             )}
 
+            {!searchResults && selected && (
+                <div className="search-layout">
+                    <AssetDetail key={selected.api_id} result={selected} onBack={close} watched={isWatched(selected)}
+                                 onToggleWatch={() => toggleWatch(selected)}/>
+                </div>
+            )}
+
             {searchResults && (
                 searchResults.length > 0 ? (
                     <div className="search-layout">
                         <SearchResults results={searchResults} selectedId={selected?.api_id ?? null} onSelect={open}
                                        credit={credit}/>
-                        {selected && <AssetDetail key={selected.api_id} result={selected} onBack={close}/>}
+                        {selected && <AssetDetail key={selected.api_id} result={selected} onBack={close}
+                                                  watched={isWatched(selected)}
+                                                  onToggleWatch={() => toggleWatch(selected)}/>}
                     </div>
                 ) : (
                     <div className="state-message">

@@ -8,6 +8,7 @@ import {LegalLinks} from "../components/LegalLayout.jsx";
 import ConfirmDialog from "../components/ConfirmDialog.jsx";
 import {isNative} from "../native/platform.js";
 import {biometricInfo} from "../native/biometric.js";
+import {registerPushIfAllowed} from "../native/push.js";
 import {
     faceIdLoginEmail, forgetFaceIdLogin, markFaceIdOffered, rememberLoginForFaceId, savedLoginAfterFaceId,
     shouldOfferFaceId, turnOnFaceId,
@@ -55,6 +56,7 @@ function LoginForm({onSubmit}) {
     const finish = () => {
         // the app just opens the dashboard; the website confirms with a toast
         if (!isNative) showToast("Logged in"); // neutral: this is also a brand-new account's very first sign in
+        registerPushIfAllowed(navigate); // app only: notifications for this account on this phone
         navigate(location.state?.from ?? "/dashboard", {replace: true});
     };
 

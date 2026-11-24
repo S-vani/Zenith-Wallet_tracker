@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.analyst.service import forget_user
 from backend.db.database import async_session_maker
+from backend.db_models.alerts import Alert, Notification, NotificationSettings, PushDevice, WatchItem
 from backend.db_models.assets import OAuthAccount, Transaction, User
 
 UNVERIFIED_GRACE = timedelta(days=7)
@@ -22,10 +23,15 @@ SWEEP_EVERY_SECONDS = 6 * 60 * 60
 
 
 async def delete_users(session: AsyncSession, user_ids: list) -> None:
-    """Delete these users with their transactions and linked Google sign-ins, in the session's transaction."""
+    """
+    Delete these users with their transactions, linked Google sign-ins, watchlist, alerts, notifications, push
+    devices and notification settings, in the session's transaction.
+    """
     if not user_ids:
         return
     # bulk deletes, so the ORM doesn't try to null out the foreign keys of the user's children first
+    for table in (WatchItem, Alert, Notification, PushDevice, NotificationSettings):
+        await session.execute(delete(table).where(table.user_id.in_(user_ids)))
     await session.execute(delete(Transaction).where(Transaction.user_id.in_(user_ids)))
     await session.execute(delete(OAuthAccount).where(OAuthAccount.user_id.in_(user_ids)))
     await session.execute(delete(User).where(User.id.in_(user_ids)))
