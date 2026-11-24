@@ -157,8 +157,8 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
   `capacitor://localhost`. The website's "Open the Zenith app" button only shows once `VITE_IOS_APP_STORE_URL` is set.
   Push (`native/push.js`, `PushNavigator.jsx`, @capacitor/push-notifications, AppDelegate forwards the token): asked
   for after the first alert or from the Alerts page, re-registered after sign in, unregistered on log out (api.js),
-  taps open only `safeLink` screens. It needs the Push Notifications capability + `aps-environment` entitlement,
-  which aren't in the Xcode project yet (they need the App ID / profile updated first).
+  taps open only `safeLink` screens. `ios/App/App/App.entitlements` (`aps-environment` production, set as
+  CODE_SIGN_ENTITLEMENTS) needs the App ID's Push Notifications capability and an App Store profile made after it.
   Search (website and app): one result list + `Search/AssetDetail.jsx` (☆ watch, 🔔 `Alerts/AlertForm.jsx`, chart,
   analyst) beside it on wide screens or instead of it on phones (`?asset=`; `?q=&type=` from notifications opens one).
   Privacy mode (`utils/privacy.js`, the eye on the value card) blurs the user's own amounts on web and app.

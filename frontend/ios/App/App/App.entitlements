@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Push notifications (src/native/push.js). "production" is what TestFlight and App Store builds use; the App
+	     ID and its App Store provisioning profile must have Push Notifications enabled or signing fails. -->
+	<key>aps-environment</key>
+	<string>production</string>
+</dict>
+</plist>
