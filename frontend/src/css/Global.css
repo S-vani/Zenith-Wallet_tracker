@@ -2,41 +2,7 @@
 
 
 /* Design tokens (same navy / blue palette used across the app) */
-:root {
-    color-scheme: dark;
-
-    --bg: #060a12;
-    --surface: #0b1220;
-    --surface-2: #111a2d;
-    --surface-raised: #1e2433;
-    --border: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(255, 255, 255, 0.14);
-
-    --text: #f5f7ff;
-    --text-muted: #9aa0a6;
-    --text-subtle: #8b93a1;
-
-    --accent: #3b82f6;
-    --accent-soft: #93c5fd;
-    --accent-bg: linear-gradient(180deg, #1d3461, #162344);
-    --accent-border: rgba(59, 130, 246, 0.35);
-    /* the one solid accent, for the main action on a screen (white text on #2563eb is ~5.2:1) */
-    --accent-solid: linear-gradient(180deg, #3b82f6, #2563eb);
-
-    /* one card surface everywhere (there used to be three slightly different ones) */
-    --card-bg: linear-gradient(150deg, #1c2335, #141a28);
-    --card-border: rgba(255, 255, 255, 0.07);
-    --card-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 0.75rem 2rem -1rem rgba(0, 0, 0, 0.75);
-
-    /* motion: quick and calm (finance, not a game); everything also stops under prefers-reduced-motion */
-    --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
-
-    --positive: #22c55e;
-    --negative: #ef4444;
-
-    --radius: 1rem;
-    --nav-offset: 6.5rem;
-}
+/* design tokens (colours, radius, fonts, themes): src/design/*.css, imported first in main.jsx */
 
 /* Basic resetting and layout */
 * {
@@ -97,11 +63,9 @@ body {
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
 
-    font-family: 'Lato',
-    sans-serif;
 
-    background-color: #060a12;
-    color: #F3F6FC;
+    background-color: var(--bg);
+    color: var(--text);
 
     min-height: 100vh;
 
@@ -131,7 +95,7 @@ button:disabled {
 }
 
 ::selection {
-    background: rgba(59, 130, 246, 0.35);
+    background: rgb(var(--accent-rgb) / 0.35);
 }
 
 /* "Skip to main content" (components/SkipLink.jsx): the first Tab stop on every page, off screen until focused */
@@ -142,10 +106,10 @@ button:disabled {
     z-index: 4000; /* over the nav bar, toasts and dialogs */
     padding: 0.6rem 1rem;
     border-radius: 0.5rem;
-    background: #1d4ed8; /* darker than --accent: white on it is 6.7:1 (the accent was 3.7:1) */
+    background: var(--accent-deep); /* darker than --accent: white on it is 6.7:1 (the accent was 3.7:1) */
     color: #fff;
     font-weight: 700;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 6px 18px rgb(var(--shadow-rgb) / 0.45);
     transform: translateY(calc(-100% - 1.5rem));
 }
 
@@ -200,7 +164,7 @@ button:disabled {
     display: inline-flex;
     align-items: center;
     min-height: 44px; /* tap target */
-    color: #93c5fd; /* the light link blue used on dark cards */
+    color: var(--accent-text); /* the light link blue used on dark cards */
     font-size: 0.9rem;
     font-weight: 600;
 }
@@ -224,29 +188,29 @@ button:disabled {
 }
 
 .alert-error {
-    color: #fca5a5;
+    color: var(--negative-text);
     font-size: 0.875rem;
-    background: rgba(248, 113, 113, 0.08);
-    border: 1px solid rgba(248, 113, 113, 0.25);
+    background: rgb(var(--negative-rgb) / 0.08);
+    border: 1px solid rgb(var(--negative-rgb) / 0.25);
     border-radius: 0.625rem;
     padding: 0.65rem 1rem;
 }
 
 .alert-success {
-    color: #86efac;
+    color: var(--positive-text);
     font-size: 0.875rem;
-    background: rgba(34, 197, 94, 0.08);
-    border: 1px solid rgba(34, 197, 94, 0.25);
+    background: rgb(var(--positive-rgb) / 0.08);
+    border: 1px solid rgb(var(--positive-rgb) / 0.25);
     border-radius: 0.625rem;
     padding: 0.65rem 1rem;
 }
 
 /* something the user should know that isn't an error, e.g. "Your session expired" */
 .alert-warning {
-    color: #fcd34d;
+    color: var(--warn-text);
     font-size: 0.875rem;
-    background: rgba(245, 158, 11, 0.08);
-    border: 1px solid rgba(245, 158, 11, 0.3);
+    background: rgb(var(--warn-rgb) / 0.08);
+    border: 1px solid rgb(var(--warn-rgb) / 0.3);
     border-radius: 0.625rem;
     padding: 0.65rem 1rem;
 }
@@ -281,7 +245,7 @@ button:disabled {
     position: relative;
     overflow: hidden;
     border-radius: 0.4rem;
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--fill-faint);
 }
 
 .skeleton::after {
@@ -438,11 +402,11 @@ button:disabled {
     border-color: transparent;
     background: var(--accent-solid);
     color: #fff;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0.5rem 1.25rem -0.5rem rgba(59, 130, 246, 0.7);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0.5rem 1.25rem -0.5rem rgb(var(--accent-rgb) / 0.7);
 }
 
 .btn-primary:hover:not(:disabled) {
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 0.6rem 1.6rem -0.4rem rgba(59, 130, 246, 0.8);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 0.6rem 1.6rem -0.4rem rgb(var(--accent-rgb) / 0.8);
 }
 
 /* the old quiet navy style, for second actions next to a primary one */
@@ -465,13 +429,13 @@ button:disabled {
 
 /* #15803d → #166534 keeps white text at 5:1 or more everywhere (the old #16a34a top was only ~3.1:1) */
 .btn-success {
-    border-color: rgba(34, 197, 94, 0.45);
+    border-color: rgb(var(--positive-rgb) / 0.45);
     background: linear-gradient(180deg, #15803d, #166534);
     color: #fff;
 }
 
 .btn-success:hover:not(:disabled) {
-    box-shadow: 0 0 0.9rem rgba(34, 197, 94, 0.3);
+    box-shadow: 0 0 0.9rem rgb(var(--positive-rgb) / 0.3);
 }
 
 .btn-ghost {
@@ -484,7 +448,7 @@ button:disabled {
     gap: 0.25rem;
     padding: 0.25rem;
     border-radius: 0.75rem;
-    background: rgba(0, 0, 0, 0.25);
+    background: var(--sunken);
     border: 1px solid var(--border);
 }
 
@@ -503,12 +467,12 @@ button:disabled {
 @media (hover: hover) {
     .segmented button:hover {
         color: var(--text);
-        background: rgba(255, 255, 255, 0.06);
+        background: var(--fill);
     }
 }
 
 .segmented button.active {
-    background: #1d3461;
+    background: var(--accent-fill);
     color: var(--accent-soft);
 }
 
@@ -531,8 +495,8 @@ button:disabled {
     height: var(--thumb-h);
     transform: translate(var(--thumb-x), var(--thumb-y));
     border-radius: 0.5rem;
-    background: #1d3461;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    background: var(--accent-fill);
+    box-shadow: inset 0 1px 0 var(--edge-light);
 }
 
 .segmented.thumb-ready::before {
@@ -578,55 +542,14 @@ button:disabled {
 }
 
 
-body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: -1;
-
-    background: radial-gradient(circle at 50% 45%, #07101f 0%, transparent 60%),
-    radial-gradient(circle at 55% 55%, #0f1f45 0%, transparent 65%),
-    radial-gradient(circle at 45% 60%, #050912 0%, transparent 65%);
-
-    /* the blur is drawn once; only transform and opacity move (an animated filter re-blurred the whole screen
-       every frame, which cost battery and could make scrolling stutter on iPhones) */
-    filter: blur(3.2rem);
-    opacity: 1;
-    will-change: transform, opacity;
-
-    animation: bg-pulse 12s ease-in-out infinite;
-}
-
-@keyframes bg-pulse {
-    0%, 100% {
-        transform: translate3d(-6%, -6%, 0) scale(1.05);
-        opacity: 0.55;
-    }
-
-    25% {
-        transform: translate3d(4%, -2%, 0) scale(1.15);
-        opacity: 0.95;
-    }
-
-    50% {
-        transform: translate3d(0%, 6%, 0) scale(1.2);
-        opacity: 1;
-    }
-
-    75% {
-        transform: translate3d(-3%, 2%, 0) scale(1.12);
-        opacity: 0.85;
-    }
-}
-
 /* a disabled button shouldn't look clickable. Every variant fades to the same quiet navy (a grayscale filter over
    the green / blue buttons used to turn them olive) */
 .btn:disabled,
 .btn-success:disabled,
 .btn-primary:disabled {
-    background: #121a2b;
-    border-color: rgba(255, 255, 255, 0.07);
-    color: #6b7790;
+    background: var(--surface-2);
+    border-color: var(--line);
+    color: var(--text-subtle);
     filter: none;
     opacity: 1;
     box-shadow: none;
@@ -690,7 +613,7 @@ body::before {
     border: 1px solid var(--border-strong);
     background: var(--card-bg);
     color: var(--text);
-    box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.5);
+    box-shadow: 0 1.5rem 3rem rgb(var(--shadow-rgb) / 0.5);
 }
 
 .confirm-dialog[open] {
@@ -764,9 +687,9 @@ body::before {
     max-width: 24rem;
     padding: 0.85rem 0.9rem 0.85rem 1rem;
     border-radius: 0.875rem;
-    background: rgba(17, 26, 45, 0.96);
-    border: 1px solid rgba(34, 197, 94, 0.35);
-    box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.45);
+    background: rgb(var(--surface-2-rgb) / 0.96);
+    border: 1px solid rgb(var(--positive-rgb) / 0.35);
+    box-shadow: 0 0.75rem 2rem rgb(var(--shadow-rgb) / 0.45);
     color: var(--text);
     font-size: 0.9rem;
     font-weight: 600;
@@ -784,13 +707,13 @@ body::before {
     right: 0;
     bottom: 0;
     height: 2px;
-    background: rgba(34, 197, 94, 0.45);
+    background: rgb(var(--positive-rgb) / 0.45);
     transform-origin: left;
     animation: toast-time var(--toast-ms, 3000ms) linear both;
 }
 
 .toast.error::after {
-    background: rgba(239, 68, 68, 0.5);
+    background: rgb(var(--negative-rgb) / 0.5);
 }
 
 .toast.leaving {
@@ -831,7 +754,7 @@ body::before {
 }
 
 .toast.error {
-    border-color: rgba(239, 68, 68, 0.4);
+    border-color: rgb(var(--negative-rgb) / 0.4);
 }
 
 .toast-icon {
@@ -844,12 +767,12 @@ body::before {
     font-size: 0.8rem;
     font-weight: 800;
     color: var(--positive);
-    background: rgba(34, 197, 94, 0.15);
+    background: rgb(var(--positive-rgb) / 0.15);
 }
 
 .toast.error .toast-icon {
-    color: #f87171;
-    background: rgba(239, 68, 68, 0.15);
+    color: var(--negative-text);
+    background: rgb(var(--negative-rgb) / 0.15);
 }
 
 .toast-message {
@@ -870,7 +793,7 @@ body::before {
 
 .toast-close:hover {
     color: var(--text);
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--fill);
 }
 
 @keyframes toast-in {
@@ -987,4 +910,19 @@ html.amounts-hidden .xray-hero-sub,
 html.amounts-hidden .xray-test-change {
     filter: blur(0.45rem);
     user-select: none;
+}
+
+/* chart text and lines follow the theme: the tick colours are set as attributes by recharts, and a CSS rule beats a
+   presentation attribute */
+.recharts-cartesian-axis-tick-value {
+    fill: var(--text-subtle);
+}
+
+.recharts-cartesian-axis-line,
+.recharts-cartesian-axis-tick-line {
+    stroke: var(--line);
+}
+
+.recharts-cartesian-grid line {
+    stroke: var(--line-faint);
 }

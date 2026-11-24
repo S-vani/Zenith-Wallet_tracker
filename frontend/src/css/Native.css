@@ -28,7 +28,7 @@ html.native body::after {
     right: 0;
     z-index: 1500; /* over pages and their pop-ups, under the offline strip and the lock screen */
     height: env(safe-area-inset-top);
-    background: #060a12;
+    background: var(--bg);
     pointer-events: none;
 }
 
@@ -157,7 +157,7 @@ html.native .nav-link:focus-visible .nav-tooltip {
     gap: 0.9rem;
     padding: 2rem 1.5rem calc(2rem + env(safe-area-inset-bottom));
     text-align: center;
-    background: radial-gradient(ellipse at 50% 38%, #13254a 0%, #0b1220 45%, #060a12 100%);
+    background: radial-gradient(ellipse at 50% 38%, var(--glow-2) 0%, var(--surface) 45%, var(--bg) 100%);
 }
 
 .app-lock-logo {
@@ -165,7 +165,7 @@ html.native .nav-link:focus-visible .nav-tooltip {
     height: 84px;
     margin-bottom: 0.5rem;
     border-radius: 1.2rem;
-    box-shadow: 0 12px 40px rgba(59, 130, 246, 0.35);
+    box-shadow: 0 12px 40px rgb(var(--accent-rgb) / 0.35);
 }
 
 .app-lock h1 {
@@ -216,7 +216,7 @@ html.native.update-required .update-screen {
     gap: 0.9rem;
     padding: calc(2rem + env(safe-area-inset-top)) 1.5rem calc(2rem + env(safe-area-inset-bottom));
     text-align: center;
-    background: radial-gradient(ellipse at 50% 38%, #13254a 0%, #0b1220 45%, #060a12 100%);
+    background: radial-gradient(ellipse at 50% 38%, var(--glow-2) 0%, var(--surface) 45%, var(--bg) 100%);
 }
 
 .update-screen h1 {
@@ -256,7 +256,7 @@ html.native.update-required .update-screen {
     overflow: hidden;
     text-overflow: ellipsis;
     color: #1f1300;
-    background: #fbbf24;
+    background: var(--warn-text);
 }
 
 /* ---------- pull to refresh ---------- */
@@ -288,7 +288,7 @@ html.native.ptr-dragging .main-content {
     border-radius: 50%;
     color: var(--accent-soft);
     background: var(--surface-2);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 6px 18px rgb(var(--shadow-rgb) / 0.45);
     opacity: 0;
     transition: opacity 0.15s ease;
     pointer-events: none;
@@ -328,7 +328,7 @@ html.native.ptr-dragging .main-content {
     height: 1.9rem;
     border: none;
     border-radius: 999px;
-    background: #2b3446;
+    background: var(--surface-3);
     transition: background 0.2s ease;
 }
 
@@ -341,7 +341,7 @@ html.native.ptr-dragging .main-content {
     height: 1.5rem;
     border-radius: 50%;
     background: #fff;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 2px 6px rgb(var(--shadow-rgb) / 0.35);
     transition: transform 0.2s ease;
 }
 

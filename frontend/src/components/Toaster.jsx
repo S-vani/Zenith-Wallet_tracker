@@ -23,8 +23,8 @@ function Toaster() {
     useEffect(() => {
         const onToast = (e) => {
             const id = ++nextId;
-            const {message, type, duration} = e.detail;
-            setToasts((current) => [...current, {id, message, type, duration, at: Date.now()}]);
+            const {message, type, duration, action} = e.detail;
+            setToasts((current) => [...current, {id, message, type, duration, action, at: Date.now()}]);
             setTimeout(() => leave(id), duration);
         };
         // dispatched on log out, before the "Logged out" toast
@@ -61,6 +61,12 @@ function Toaster() {
                         )}
                     </span>
                     <span className="toast-message">{toast.message}</span>
+                    {toast.action && (
+                        <button className="toast-action" onClick={() => {
+                            toast.action.run();
+                            leave(toast.id);
+                        }}>{toast.action.label}</button>
+                    )}
                     <button className="toast-close" onClick={() => leave(toast.id)} aria-label="Dismiss">×</button>
                 </div>
             ))}

@@ -1,0 +1,74 @@
+/* Themes: each one overrides only the semantic values in tokens.css. Midnight is the default (tokens.css itself).
+   Chosen in Account > Appearance, saved in this browser / phone, applied before first paint (index.html). */
+
+/* Black: pure black for OLED screens; the glow shrinks to a thin line at the top (cheap, and black stays black) */
+:root[data-theme="black"] {
+    --bg: #000;
+    --bg-rgb: 0 0 0;
+    --surface: #0c0c10;
+    --surface-rgb: 12 12 16;
+    --surface-2: #15151b;
+    --surface-2-rgb: 21 21 27;
+    --surface-3: #1e1e26;
+    --surface-sunken: #050507;
+    --glow-1: #000;
+    --glow-2: #05070f;
+}
+
+/* Daylight: a light theme on cool paper with navy ink and the same blue accent */
+:root[data-theme="daylight"] {
+    color-scheme: light;
+
+    --bg: #f2f5fb;
+    --bg-rgb: 242 245 251;
+    --surface: #ffffff;
+    --surface-rgb: 255 255 255;
+    --surface-2: #f4f7fd;
+    --surface-2-rgb: 244 247 253;
+    --surface-3: #e6ecf7;
+    --surface-sunken: #eaeff8;
+
+    --line-faint: rgb(20 40 100 / 0.06);
+    --line: rgb(20 40 100 / 0.12);
+    --line-strong: rgb(20 40 100 / 0.22);
+    --fill-faint: rgb(20 40 100 / 0.03);
+    --fill: rgb(20 40 100 / 0.06);
+    --fill-strong: rgb(20 40 100 / 0.1);
+    --sunken: rgb(20 40 100 / 0.05);
+    --edge-light: rgb(255 255 255 / 0.9);
+    --shadow-rgb: 20 35 80;
+
+    --text: #0c1630;
+    --text-soft: #2b3a5e;
+    --text-muted: #46567c;
+    --text-subtle: #5a6a8f;
+    --placeholder: #75829f;
+
+    --accent: #2563eb;
+    --accent-rgb: 37 99 235;
+    --accent-deep: #1b45b8;
+    --accent-text: #1d4ed8;
+    --accent-fill: #dbe6ff;
+    --accent-fill-2: #cddcff;
+    --accent-line: rgb(37 99 235 / 0.4);
+    --cyan: #0891b2;
+    --violet: #5b45d6;
+    --violet-text: #5b45d6;
+    --gold: #b7791f;
+
+    --positive: #0e7c4a;
+    --positive-rgb: 14 124 74;
+    --positive-text: #0b6b3f;
+    --negative: #c22a43;
+    --negative-rgb: 194 42 67;
+    --negative-text: #b4233a;
+    --warn: #d97706;
+    --warn-rgb: 217 119 6;
+    --warn-text: #92400e;
+
+    --glow-1: #e3ebff;
+    --glow-2: #d3e0ff;
+
+    --card-bg: linear-gradient(180deg, var(--surface), var(--surface-2));
+    --card-shadow: 0 1px 2px rgb(var(--shadow-rgb) / 0.06), 0 0.75rem 1.75rem -1rem rgb(var(--shadow-rgb) / 0.22);
+}

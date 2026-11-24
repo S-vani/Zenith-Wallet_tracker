@@ -27,5 +27,6 @@ export function toggleAmountsHidden() {
         // still applied for now
     }
     document.documentElement.classList.toggle("amounts-hidden", hidden);
+    window.dispatchEvent(new Event("amounts-hidden-change")); // the glow goes neutral while amounts are hidden (mood.js)
     return hidden;
 }

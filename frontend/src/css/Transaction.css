@@ -36,8 +36,8 @@
 
 .transaction-item-wrapper {
     border-radius: 1rem;
-    background: linear-gradient(145deg, #111a2d, #0d1322);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: linear-gradient(145deg, var(--surface-2), var(--surface));
+    border: 1px solid var(--line);
     overflow: hidden;
 
     animation: rise-in 0.35s var(--ease-out) both;
@@ -52,13 +52,13 @@
 
 @keyframes just-added {
     from {
-        border-color: rgba(96, 165, 250, 0.7);
-        box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.45), 0 0 1.5rem rgba(59, 130, 246, 0.35);
+        border-color: rgb(var(--accent-rgb) / 0.7);
+        box-shadow: 0 0 0 1px rgb(var(--accent-rgb) / 0.45), 0 0 1.5rem rgb(var(--accent-rgb) / 0.35);
     }
 }
 
 .transaction-item-wrapper.open {
-    border-color: rgba(59, 130, 246, 0.25);
+    border-color: rgb(var(--accent-rgb) / 0.25);
 }
 
 .transaction-item {
@@ -114,12 +114,12 @@
 
 .action-badge.buy {
     color: var(--positive);
-    background: rgba(34, 197, 94, 0.12);
+    background: rgb(var(--positive-rgb) / 0.12);
 }
 
 .action-badge.sell {
-    color: #f87171;
-    background: rgba(239, 68, 68, 0.12);
+    color: var(--negative-text);
+    background: rgb(var(--negative-rgb) / 0.12);
 }
 
 /* the account a trade was made in (TFSA, RRSP...): quieter than buy/sell, it's a label, not a direction */
@@ -130,8 +130,8 @@
     text-transform: none; /* "Non-registered", not "Non-Registered" (the row capitalizes) */
     padding: 0.1rem 0.45rem;
     border-radius: 0.4rem;
-    border: 1px solid #1b2a44;
-    color: #c7d2e6;
+    border: 1px solid var(--line-strong);
+    color: var(--text-soft);
     white-space: nowrap;
 }
 
@@ -188,7 +188,7 @@
     margin: 0 1.25rem 1.25rem;
     padding: 1rem 1.25rem;
     border-radius: 0.75rem;
-    background: rgba(6, 10, 18, 0.55);
+    background: rgb(var(--bg-rgb) / 0.55);
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
@@ -226,7 +226,7 @@
 
 .divider {
     height: 1px;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--fill);
     margin: 0.35rem 0;
     width: 100%;
 }
@@ -241,13 +241,13 @@
 }
 
 .transaction-delete-button {
-    color: #fca5a5;
-    border-color: rgba(239, 68, 68, 0.35);
+    color: var(--negative-text);
+    border-color: rgb(var(--negative-rgb) / 0.35);
 }
 
 .transaction-delete-button:hover:not(:disabled) {
-    background: rgba(239, 68, 68, 0.1);
-    border-color: rgba(239, 68, 68, 0.55);
+    background: rgb(var(--negative-rgb) / 0.1);
+    border-color: rgb(var(--negative-rgb) / 0.55);
 }
 
 .transaction-delete-confirm {
@@ -257,8 +257,8 @@
     margin-top: 0.5rem;
     padding: 0.85rem 1rem;
     border-radius: 0.75rem;
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    background: rgba(239, 68, 68, 0.06);
+    border: 1px solid rgb(var(--negative-rgb) / 0.3);
+    background: rgb(var(--negative-rgb) / 0.06);
     font-size: 0.9rem;
 }
 
@@ -337,7 +337,7 @@
     background: var(--card-bg);
     border: 1px solid var(--card-border);
     border-radius: 1.25rem;
-    box-shadow: 0 0.5rem 2.5rem #000000cc;
+    box-shadow: 0 0.5rem 2.5rem rgb(var(--shadow-rgb) / 0.8);
 }
 
 .filter-title {
@@ -345,7 +345,7 @@
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #c7d2e6;
+    color: var(--text-soft);
 }
 
 .filter-container {
@@ -381,8 +381,8 @@
     padding: 0 0.9rem;
 
     border-radius: 0.75rem;
-    border: 1px solid #1b2a44;
-    background: linear-gradient(180deg, #0b1220, #070b14);
+    border: 1px solid var(--line-strong);
+    background: linear-gradient(180deg, var(--surface), var(--surface-sunken));
 
     color: var(--text);
     font-size: 0.95rem;
@@ -394,22 +394,22 @@
 .filter-input::placeholder,
 .symbol-search-input::placeholder,
 .create-transaction-input::placeholder {
-    color: #5a6785;
+    color: var(--placeholder);
 }
 
 .filter-input:hover,
 .filter-select:hover,
 .symbol-search-input:hover,
 .create-transaction-input:hover {
-    border-color: #2a3d60;
+    border-color: var(--line-strong);
 }
 
 .filter-input:focus,
 .filter-select:focus,
 .symbol-search-input:focus,
 .create-transaction-input:focus {
-    border-color: #3b5b94;
-    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.18);
+    border-color: var(--accent-line);
+    box-shadow: 0 0 0 0.2rem rgb(var(--accent-rgb) / 0.18);
 }
 
 .filter-select {
@@ -417,9 +417,9 @@
     appearance: none;
     padding-right: 2.25rem;
 
-    background-image: linear-gradient(45deg, transparent 50%, #9aa0a6 50%),
-    linear-gradient(135deg, #9aa0a6 50%, transparent 50%),
-    linear-gradient(180deg, #0b1220, #070b14);
+    background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%),
+    linear-gradient(180deg, var(--surface), var(--surface-sunken));
     background-position: calc(100% - 1.15rem) 50%,
     calc(100% - 0.8rem) 50%,
     0 0;
@@ -428,7 +428,7 @@
 }
 
 .filter-select option {
-    background: #05070d;
+    background: var(--surface-sunken);
     color: var(--text);
 }
 
@@ -506,13 +506,13 @@
     max-height: calc(100vh - 3rem);
     overflow-y: auto;
 
-    background: #050e1c;
-    border: 1px solid #13213a;
+    background: var(--surface-sunken);
+    border: 1px solid var(--line);
     border-radius: 1.5rem;
     padding: 1.75rem;
     padding-top: 0; /* the sticky header carries the top padding, so it sticks flush to the top edge */
 
-    box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.6);
+    box-shadow: 0 1.5rem 4rem rgb(var(--shadow-rgb) / 0.6);
 
     display: flex;
     flex-direction: column;
@@ -528,7 +528,7 @@
     z-index: 2; /* above the price chart's label */
     padding: 1.75rem 0 0.75rem;
     margin-bottom: -0.75rem; /* keep the box's usual gap below it */
-    background: #050e1c;
+    background: var(--surface-sunken);
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
@@ -553,8 +553,8 @@
     gap: 0.6rem 1rem;
     padding: 0.75rem 1rem;
     border-radius: 0.75rem;
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    background: rgba(239, 68, 68, 0.06);
+    border: 1px solid rgb(var(--negative-rgb) / 0.3);
+    background: rgb(var(--negative-rgb) / 0.06);
     animation: rise-in 0.2s var(--ease-out) both;
 }
 
@@ -578,7 +578,7 @@
 }
 
 .transaction-create-close-button:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--fill);
 }
 
 .transaction-create-close-button img {
@@ -619,8 +619,8 @@
 
     padding: 1rem;
     border-radius: 1rem;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: var(--fill-faint);
+    border: 1px solid var(--line);
     transition: border-color 0.15s ease;
 }
 
@@ -656,12 +656,12 @@
 }
 
 .transaction-symbol-item-wrapper:hover {
-    border-color: rgba(59, 130, 246, 0.3);
+    border-color: rgb(var(--accent-rgb) / 0.3);
 }
 
 .transaction-symbol-item-wrapper.selected {
-    border-color: rgba(59, 130, 246, 0.45);
-    background: rgba(29, 52, 97, 0.35);
+    border-color: rgb(var(--accent-rgb) / 0.45);
+    background: var(--accent-fill);
 }
 
 .symbol-cell {
@@ -765,7 +765,7 @@
     flex-direction: column;
     gap: 1rem;
     padding-top: 1.25rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid var(--line);
 }
 
 .transaction-create-wrapper h3 {
@@ -783,13 +783,13 @@
 }
 
 .create-transaction-form .segmented button.active.buy {
-    background: rgba(34, 197, 94, 0.18);
+    background: rgb(var(--positive-rgb) / 0.18);
     color: var(--positive);
 }
 
 .create-transaction-form .segmented button.active.sell {
-    background: rgba(239, 68, 68, 0.18);
-    color: #f87171;
+    background: rgb(var(--negative-rgb) / 0.18);
+    color: var(--negative-text);
 }
 
 .quantity-price-buy {
@@ -937,7 +937,7 @@
 .create-hint {
     margin-top: 0.75rem;
     font-size: 0.8rem;
-    color: #fbbf24;
+    color: var(--warn-text);
 }
 
 .create-hint {
@@ -993,7 +993,7 @@
     display: inline-grid;
     place-items: center;
     border-radius: 1rem;
-    background: #1d3461;
+    background: var(--accent-fill);
     color: var(--accent-soft);
     font-size: 0.7rem;
     letter-spacing: 0;
@@ -1127,13 +1127,13 @@
     height: 0.4rem;
     border: none;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.08);
-    accent-color: #3b82f6;
+    background: var(--fill);
+    accent-color: var(--accent);
     overflow: hidden;
 }
 
 .trade-scan-progress progress::-webkit-progress-bar {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--fill);
     border-radius: 999px;
 }
 
@@ -1143,7 +1143,7 @@
 }
 
 .trade-scan-progress progress::-moz-progress-bar {
-    background: #3b82f6;
+    background: var(--accent);
     border-radius: 999px;
 }
 
@@ -1197,7 +1197,7 @@
     border-radius: 0.625rem;
     border: 1px solid var(--border);
     border-left: 3px solid var(--positive);
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--fill-faint);
     color: var(--text);
     font-size: 0.9rem;
     font-weight: 600;
@@ -1206,12 +1206,12 @@
 }
 
 .trade-scan-choice.sell {
-    border-left-color: #f87171;
+    border-left-color: var(--negative-text);
 }
 
 .trade-scan-choice:hover:not(:disabled) {
     border-color: var(--border-strong);
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--fill);
 }
 
 .trade-scan-choice:disabled {
@@ -1227,14 +1227,14 @@
 
 .trade-scan-warning {
     font-size: 0.8rem;
-    color: #fbbf24;
+    color: var(--warn-text);
 }
 
 /* what the add form was filled in from: informational, so blue, not the amber of a problem */
 .scan-notes {
     padding: 0.7rem 0.9rem;
     border-radius: 0.625rem;
-    background: rgba(59, 130, 246, 0.08);
+    background: rgb(var(--accent-rgb) / 0.08);
     border: 1px solid var(--accent-border);
     color: var(--accent-soft);
     font-size: 0.85rem;

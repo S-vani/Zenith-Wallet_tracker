@@ -394,7 +394,7 @@ function UserSettings({user, setUser}) {
                 <PasswordCard hasPassword={hasPassword} email={user.email}/>
 
                 {isNative && <SecurityCard/>}
-                {isNative && <AppearanceCard/>}
+                <AppearanceCard/>
 
                 <div className="user-card user-danger-card">
                     <div className="user-card-header">
@@ -613,8 +613,8 @@ function PasswordChecklist({password, email}) {
 // App only: the colour theme (native/appearance.js), as a segmented control like iOS's own Appearance setting.
 function AppearanceCard() {
     const [theme, setThemeState] = useState(currentTheme);
-    const choose = (value) => {
-        setTheme(value);
+    const choose = (value, origin) => {
+        setTheme(value, origin);
         setThemeState(value);
     };
     return (
@@ -625,13 +625,15 @@ function AppearanceCard() {
             <div className="segmented user-theme-picker" role="radiogroup" aria-label="Theme">
                 {THEMES.map(({value, label}) => (
                     <button key={value} type="button" role="radio" aria-checked={theme === value}
-                            className={theme === value ? "active" : ""} onClick={() => choose(value)}>
+                            className={theme === value ? "active" : ""} onClick={(e) => choose(value, e.currentTarget)}>
                         <span className={`theme-swatch theme-swatch-${value}`} aria-hidden="true"/>
                         {label}
                     </button>
                 ))}
             </div>
-            <p className="user-field-hint">Black is pure black, easier on the eyes (and the battery) at night.</p>
+            <p className="user-field-hint">
+                Black is pure black (easier on OLED screens at night); Daylight is a light theme.
+            </p>
         </div>
     );
 }

@@ -261,6 +261,8 @@ from backend.routes.alerts import router as alerts_router  # noqa: E402 - watchl
 app.include_router(alerts_router)
 from backend.routes.xray import router as xray_router  # noqa: E402 - GET /portfolio/xray
 app.include_router(xray_router)
+from backend.routes.config import router as config_router  # noqa: E402 - GET /config (effects kill switch)
+app.include_router(config_router)
 app.include_router(user_router)
 
 if __name__ == "__main__":

@@ -48,7 +48,7 @@
     padding: 0 2.75rem 0 2.5rem;
     border: 1px solid transparent;
     border-radius: 0.75rem;
-    background: rgba(255, 255, 255, 0.07); /* a quiet filled field, like iOS's search bar */
+    background: var(--fill); /* a quiet filled field, like iOS's search bar */
     color: var(--text);
     font-size: 1rem;
     transition: background 0.15s ease, border-color 0.15s ease;
@@ -59,12 +59,12 @@
 }
 
 .search-bar:hover {
-    background: rgba(255, 255, 255, 0.09);
+    background: var(--fill);
 }
 
 .search-bar:focus {
     border-color: var(--accent-border);
-    background: rgba(255, 255, 255, 0.09);
+    background: var(--fill);
     outline: none;
 }
 
@@ -99,7 +99,7 @@
     width: 1.1rem;
     height: 1.1rem;
     margin-top: -0.55rem;
-    border: 2px solid rgba(255, 255, 255, 0.15);
+    border: 2px solid var(--line-strong);
     border-top-color: var(--accent-soft);
     border-radius: 50%;
     animation: search-spin 0.7s linear infinite;
@@ -155,7 +155,7 @@
     padding: 0.4rem 1rem;
     border: none;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.07);
+    background: var(--fill);
     color: var(--text);
     font-size: 0.9rem;
     font-weight: 600;
@@ -163,7 +163,7 @@
 }
 
 .search-example:hover {
-    background: rgba(255, 255, 255, 0.12);
+    background: var(--fill-strong);
 }
 
 .search-intro-note {
@@ -206,7 +206,7 @@
 }
 
 .search-results-list li + li {
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--line);
 }
 
 .search-result-item {
@@ -223,11 +223,11 @@
 }
 
 .search-result-item:hover {
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--fill-faint);
 }
 
 .search-result-item.selected {
-    background: rgba(59, 130, 246, 0.12);
+    background: rgb(var(--accent-rgb) / 0.12);
 }
 
 .search-result-image {
@@ -289,11 +289,11 @@
 }
 
 .change-pill.positive {
-    background: rgba(34, 197, 94, 0.85);
+    background: rgb(var(--positive-rgb) / 0.85);
 }
 
 .change-pill.negative {
-    background: rgba(239, 68, 68, 0.85);
+    background: rgb(var(--negative-rgb) / 0.85);
 }
 
 /* ---------- an opened asset ---------- */
@@ -364,7 +364,7 @@
     width: 2.6rem;
     height: 2.6rem;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.07);
+    background: var(--fill);
     color: var(--accent-soft);
     transition: background 0.15s ease, color 0.15s ease;
 }
@@ -376,7 +376,7 @@
 
 .asset-detail-icon.on {
     background: rgba(250, 204, 21, 0.16);
-    color: #facc15;
+    color: var(--gold);
 }
 
 /* ---------- Set an alert (Alerts/AlertForm.jsx) ---------- */
@@ -409,7 +409,7 @@
     padding: 0 0.9rem;
     border: 1px solid var(--border-strong);
     border-radius: 0.75rem;
-    background: rgba(0, 0, 0, 0.25);
+    background: var(--sunken);
     color: var(--text);
     font-size: 1rem;
 }

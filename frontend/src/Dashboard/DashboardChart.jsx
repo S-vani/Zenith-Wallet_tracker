@@ -29,7 +29,7 @@ function NowDot({cx, cy, index, last, color}) {
     return (
         <g className="now-dot" aria-hidden="true">
             <circle className="now-dot-pulse" cx={cx} cy={cy} r={4} fill={color}/>
-            <circle cx={cx} cy={cy} r={4} fill={color} stroke="#0b1220" strokeWidth={2}/>
+            <circle cx={cx} cy={cy} r={4} fill={color} style={{stroke: "var(--surface)"}} strokeWidth={2}/>
         </g>
     );
 }
@@ -113,7 +113,7 @@ function DashboardChart({entry, updating = false, currency, error}) {
                         minTickGap={24}
                         tickMargin={10}
                         tick={{fill: "#8b93a1", fontSize: 11}}
-                        axisLine={{stroke: "rgba(255,255,255,0.06)"}}
+                        axisLine={{stroke: "var(--line)"}}
                         tickLine={false}
                         tickFormatter={(v) => formatAxisTick(v, unit)}
                     />
@@ -134,7 +134,7 @@ function DashboardChart({entry, updating = false, currency, error}) {
                             formatMoney(value, currency) + (name === "Value" ? sinceStart(value) : ""), name]}
                         labelFormatter={(value) => tooltipDate(value, days <= 7)}
                         itemSorter={(item) => (item.dataKey === "value" ? 0 : 1)} // same order as the legend
-                        cursor={{stroke: "rgba(59,130,246,0.3)", strokeWidth: 1}}
+                        cursor={{stroke: "var(--accent-line)", strokeWidth: 1}}
                     />
                     <Area
                         type="monotone"

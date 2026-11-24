@@ -110,6 +110,16 @@ Live at https://zenithwalletracker.ca (frontend) with the API at https://api.zen
     Use, incl. the CoinGecko clause its API terms require) and `/support` (App Store Connect's Support URL) share
     `components/LegalLayout.jsx` (`LegalLinks` = Privacy · Terms · Support, also under `DataCredits`); the contact
     address is `utils/contact.js`.
+  - Design layer (`src/design/`): semantic tokens in `tokens.css`, themes Midnight/Black/Daylight override them in
+    `themes.css` (`<html data-theme>`, Account > Appearance on web and app, circular reveal in `native/appearance.js`),
+    per-page tint `areas.css`, fonts Manrope (UI/amounts) + Fraunces (headings) in `type.css`. No raw colours in CSS:
+    use tokens (`node scripts/check-contrast.mjs` checks WCAG AA in all themes). Motion level `<html data-motion>`
+    (`motion/motionLevel.js`: full desktop / lite phone browser / app iPhone app / reduced; a slow-frame watchdog and
+    the server kill switch `FX_LEVEL=full|lite|off` via public `GET /config` only ever lower it); the ambient "zenith
+    light" mood is `motion/mood.js` (forced neutral while privacy mode hides amounts).
+  - Transactions filters: the page loads every trade once and filters in the browser (`Transactions/filterModel.js`,
+    pure + tested; `FilterBar.jsx`: search that turns words like "buy tfsa >500 2026" into chips, chips with live
+    counts, panel/bottom sheet, pills, summary); filters live in the address (`?action=&kind=&acct=&from=&to=&min=&max=&q=&sort=`).
   - `context/UserContext.jsx` (current user + `loading`/`error`/`reload`; `currency` is null until `/user` loads, so
     nothing is formatted or cached under a guessed currency), `utils/format.js` (money/price/percent formatting — use
     `formatPrice` for asset prices so tiny coins never show $0.00; a null currency gives "—"), `utils/chart.js`,

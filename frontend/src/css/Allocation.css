@@ -6,8 +6,8 @@
     min-width: 0;
     padding: 1.25rem 1.5rem;
     border-radius: 1.25rem;
-    background: linear-gradient(145deg, rgba(30, 36, 51, 0.6), rgba(22, 27, 40, 0.6));
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    background: linear-gradient(145deg, rgb(var(--surface-2-rgb) / 0.6), rgb(var(--surface-rgb) / 0.6));
+    border: 1px solid var(--line);
 }
 
 .allocation-header {

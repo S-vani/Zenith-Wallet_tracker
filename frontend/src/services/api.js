@@ -539,6 +539,11 @@ export async function getPortfolioAllocation() {
     return request("/portfolio/allocation", {fallbackError: "Couldn't load your allocation."});
 }
 
+// The public settings read at startup: {fx_level: "full" | "lite" | "off"} (the effects kill switch, motion/killSwitch.js)
+export async function getPublicConfig() {
+    return request("/config", {auth: false, fallbackError: "Couldn't load settings."});
+}
+
 // Portfolio X-Ray: concentration, look-through exposure, risk, stress tests, score and findings (or {empty: true})
 export async function getPortfolioXray() {
     return request("/portfolio/xray", {fallbackError: "Couldn't load your Portfolio X-Ray."});

@@ -26,6 +26,7 @@ import PushNavigator from "./native/PushNavigator.jsx";
 import AccountLoadError from "./components/AccountLoadError.jsx";
 import ScrollToTop from "./components/ScrollToTop.jsx";
 import SegmentedThumbs from "./components/SegmentedThumbs.jsx";
+import AreaTint from "./motion/AreaTint.jsx";
 
 // signed in pages (and the charting library they use) load on demand to keep the landing page fast
 const DashboardPage = lazy(() => import("./pages/DashboardPage.jsx"));
@@ -105,6 +106,7 @@ function App({lockEnabled = false}) {
             under the status bar the link was left peeking out at the top of every screen */}
         {!isNative && <SkipLink/>}
         <ScrollToTop/>
+        <AreaTint/>
         <SegmentedThumbs/>
         <Toaster/>
         {isNative && <OfflineBanner/>}

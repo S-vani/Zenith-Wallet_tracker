@@ -5,7 +5,7 @@
 
     background: var(--card-bg);
     border-radius: 1.25rem;
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--line);
 }
 
 /* header and rows share the same columns so everything lines up */
@@ -25,7 +25,7 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--text-subtle);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    border-bottom: 1px solid var(--line);
 }
 
 .holdings-list-items {
@@ -34,7 +34,7 @@
 }
 
 .holding-item-wrapper {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--line-faint);
     animation: rise-in 0.4s var(--ease-out) both;
 }
 
@@ -55,7 +55,7 @@
 
 .holding-item:hover,
 .holding-item-wrapper.open .holding-item {
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--fill-faint);
 }
 
 .position-column {
@@ -138,8 +138,8 @@ html:not(.native) .cell-amount {
     width: 100%;
     height: 22rem;
 
-    background: rgba(6, 10, 18, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgb(var(--bg-rgb) / 0.5);
+    border: 1px solid var(--line);
     border-radius: 1rem;
 
     padding: 1rem 1.25rem;
@@ -170,8 +170,8 @@ html:not(.native) .cell-amount {
 
 /* the totals row under the list: same columns as a holding, set apart by a stronger rule */
 .holdings-totals {
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
-    background: rgba(255, 255, 255, 0.02);
+    border-top: 1px solid var(--line-strong);
+    background: var(--fill-faint);
 }
 
 .holdings-totals-row {
@@ -219,7 +219,7 @@ html:not(.native) .cell-amount {
     padding: 0.65rem 0.8rem;
     border: 1px solid var(--card-border);
     border-radius: 0.8rem;
-    background: rgba(255, 255, 255, 0.03);
+    background: var(--fill-faint);
 }
 
 .holding-panel-label {

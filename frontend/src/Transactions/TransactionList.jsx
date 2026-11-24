@@ -1,38 +1,30 @@
-import {useId, useState} from "react";
+import {useState} from "react";
 import TransactionItem from "./TransactionItem.jsx";
-import {DEFAULT_TRANSACTION_SORT, sortTransactions, TRANSACTION_SORTS} from "./transactionSort.js";
 
-// remembered while the app is open, so a filter change that briefly shows "no results" doesn't reset it
-let lastSort = DEFAULT_TRANSACTION_SORT;
+const PAGE = 50; // rows drawn at first; "Show more" adds the next batch (a long history stays quick to open)
 
-// onDeleted gets the deleted trade's position in the order shown (the page focuses the row now at that position),
-// so the index comes from the sorted list, not the loaded one
+// The trades to show, already filtered and sorted by the page. onDeleted gets the deleted trade's position in the
+// order shown (the page focuses the row now at that position).
 function TransactionList({transactions, onChanged, onDeleted, justAdded = null}) {
-    const [sort, setSort] = useState(lastSort);
-    const sortId = useId();
-    const shown = sortTransactions(transactions, sort);
-
-    const changeSort = (e) => {
-        lastSort = e.target.value;
-        setSort(lastSort);
-    };
+    const [limit, setLimit] = useState(PAGE);
+    // a just-saved trade may be far down a long list: draw up to it
+    const justAddedAt = justAdded === null ? -1 : transactions.findIndex((t) => t.id === justAdded);
+    const count = Math.min(transactions.length, Math.max(limit, justAddedAt + 1));
+    const visible = transactions.slice(0, count);
 
     return (
         <>
-            <div className="transaction-list-toolbar">
-                <label htmlFor={sortId} className="filter-label">Sort</label>
-                <select id={sortId} className="filter-select transaction-sort" value={sort} onChange={changeSort}>
-                    {TRANSACTION_SORTS.map((option) => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                </select>
-            </div>
             <div className="transaction-list">
-                {shown.map((t, i) => (
+                {visible.map((t, i) => (
                     <TransactionItem key={t.id} transaction={t} index={i} onChanged={onChanged}
                                      onDeleted={() => onDeleted(i)} justAdded={t.id === justAdded}/>
                 ))}
             </div>
+            {count < transactions.length && (
+                <button type="button" className="btn show-more" onClick={() => setLimit(count + PAGE)}>
+                    Show more ({transactions.length - count} left)
+                </button>
+            )}
         </>
     )
 }

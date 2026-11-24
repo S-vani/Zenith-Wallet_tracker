@@ -10,6 +10,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#060a12" />
     <meta name="color-scheme" content="dark" />
+    <!-- Before the first paint: the saved theme, the starting motion level and the last mood (the glow at the top of
+         the screen), so nothing flashes. Keep the level logic in step with src/motion/motionLevel.js and the mood
+         with src/motion/mood.js (18 hours = MOOD_MAX_AGE_MS). -->
+    <script>
+      (function () {
+        try {
+          var d = document.documentElement, ls = localStorage;
+          var t = ls.getItem("appTheme");
+          if (t !== "black" && t !== "daylight") t = "midnight";
+          d.setAttribute("data-theme", t);
+          var m = document.querySelector('meta[name="theme-color"]');
+          if (m) m.setAttribute("content", {midnight: "#040813", black: "#000000", daylight: "#f2f5fb"}[t]);
+          var mq = function (q) { return window.matchMedia && matchMedia(q).matches; };
+          var native = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+          d.setAttribute("data-motion", mq("(prefers-reduced-motion: reduce)") ? "reduced" : native ? "app"
+            : (mq("(max-width: 768px)") || mq("(hover: none) and (pointer: coarse)")) ? "lite" : "full");
+          var s = JSON.parse(ls.getItem("mood") || "null");
+          if (ls.getItem("hideAmounts") !== "yes" && s && Date.now() - s.at < 64800000) {
+            if (s.hue != null) d.style.setProperty("--light-hue", s.hue);
+            d.style.setProperty("--light-alpha", s.alpha);
+          }
+        } catch (e) { /* defaults */ }
+      })();
+    </script>
 
     <!-- Search engines and link previews. These are what Google, iMessage, Slack, etc. read before any JavaScript
          runs; usePageTitle() updates the title/description/canonical per page once the app has loaded. -->

@@ -1,0 +1,98 @@
+/* Design tokens. Three layers: primitive values (themes.css), semantic names (below, what every component uses) and
+   the legacy names the older CSS still uses (aliases at the bottom). Themes (themes.css) override only the semantic
+   values. Components must not use raw colours: use these.
+
+   Colour channels are also given as space separated numbers (--accent-rgb: 77 143 255) so a component can write a
+   translucent version with `rgb(var(--accent-rgb) / 0.35)` and still follow the theme. */
+
+/* registered so the zenith light's colour glides when the mood changes (a plain custom property would snap) */
+@property --light-hue {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 220;
+}
+
+@property --light-alpha {
+    syntax: "<number>";
+    inherits: true;
+    initial-value: 0.3;
+}
+
+:root {
+    color-scheme: dark;
+
+    /* semantic colours: Midnight (the default theme) */
+    --bg: #040813;
+    --bg-rgb: 4 8 19;
+    --surface: #0a1327;
+    --surface-rgb: 10 19 39;
+    --surface-2: #101c38;
+    --surface-2-rgb: 16 28 56;
+    --surface-3: #17284a;
+    --surface-sunken: #060b18;
+
+    --line-faint: rgb(130 170 255 / 0.05);
+    --line: rgb(130 170 255 / 0.1);
+    --line-strong: rgb(130 170 255 / 0.18);
+    --fill-faint: rgb(150 185 255 / 0.04);
+    --fill: rgb(150 185 255 / 0.08);
+    --fill-strong: rgb(150 185 255 / 0.14);
+    --sunken: rgb(0 0 0 / 0.25);
+    --edge-light: rgb(255 255 255 / 0.05);
+    --shadow-rgb: 0 0 0;
+
+    --text: #eaf0ff;
+    --text-soft: #c3d0ee;
+    --text-muted: #9fb0d0;
+    --text-subtle: #8393b4;
+    --placeholder: #5f6f93;
+
+    --accent: #4d8fff;
+    --accent-rgb: 77 143 255;
+    --accent-deep: #1f4fd1;
+    --accent-text: #8ac4ff;
+    --accent-fill: #17306a;
+    --accent-fill-2: #12224d;
+    --accent-line: rgb(77 143 255 / 0.4);
+    --cyan: #3dd6ff;
+    --violet: #7c6cff;
+    --violet-text: #c4b5fd;
+    --gold: #f2c46d;
+
+    --positive: #28d98a;
+    --positive-rgb: 40 217 138;
+    --positive-text: #86efac;
+    --negative: #ff5d73;
+    --negative-rgb: 255 93 115;
+    --negative-text: #fca5a5;
+    --warn: #f59e0b;
+    --warn-rgb: 245 158 11;
+    --warn-text: #fcd34d;
+
+    /* the page's ambient light (see ZenithLight in motion.css) */
+    --glow-1: #07101f;
+    --glow-2: #0f1f45;
+
+    /* shared, theme independent */
+    --radius: 1rem;
+    --nav-offset: 6.5rem;
+    --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --font-ui: "Manrope Variable", "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-display: "Fraunces Variable", "Fraunces", Georgia, "Times New Roman", serif;
+
+    /* the surfaces built from the above */
+    --card-bg: linear-gradient(150deg, var(--surface-2), var(--surface));
+    --card-border: var(--line);
+    --card-shadow: inset 0 1px 0 var(--edge-light), 0 0.75rem 2rem -1rem rgb(var(--shadow-rgb) / 0.75);
+    --accent-solid: linear-gradient(180deg, var(--accent), var(--accent-deep));
+}
+
+/* the names the older CSS files use, kept as aliases so they follow the theme */
+:root {
+    --surface-raised: var(--surface-3);
+    --border: var(--line);
+    --border-strong: var(--line-strong);
+    --accent-soft: var(--accent-text);
+    --accent-bg: linear-gradient(180deg, var(--accent-fill), var(--accent-fill-2));
+    --accent-border: var(--accent-line);
+}

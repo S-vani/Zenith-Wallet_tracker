@@ -79,7 +79,7 @@
 
 .reports-total {
     background: var(--card-bg);
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--line);
     border-radius: var(--radius);
     padding: 1rem 1.25rem;
     display: flex;
@@ -131,7 +131,7 @@
 .reports-table-wrap {
     overflow-x: auto;
     background: var(--card-bg);
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--line);
     border-radius: 1.25rem;
 }
 
@@ -147,7 +147,7 @@
     padding: 0.85rem 1rem;
     text-align: left;
     vertical-align: top;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--line-faint);
 }
 
 .reports-table thead th {
@@ -156,7 +156,7 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--text-subtle);
-    border-bottom-color: rgba(255, 255, 255, 0.07);
+    border-bottom-color: var(--line);
     white-space: nowrap;
 }
 
@@ -166,7 +166,7 @@
 }
 
 .reports-table tbody tr.has-warning {
-    background: rgba(245, 158, 11, 0.04);
+    background: rgb(var(--warn-rgb) / 0.04);
 }
 
 .reports-table .num {
@@ -215,15 +215,15 @@
 }
 
 .reports-flag-oversold {
-    color: #fca5a5;
-    border-color: rgba(248, 113, 113, 0.4);
+    color: var(--negative-text);
+    border-color: rgb(var(--negative-rgb) / 0.4);
 }
 
 .reports-flag-superficial,
 .reports-flag-acb,
 .reports-flag-interlisted {
-    color: #fcd34d;
-    border-color: rgba(245, 158, 11, 0.45);
+    color: var(--warn-text);
+    border-color: rgb(var(--warn-rgb) / 0.45);
 }
 
 .reports-flag-foreign {
@@ -242,7 +242,7 @@
     gap: 0.75rem;
     padding: 1rem;
     background: var(--card-bg);
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--line);
     border-radius: var(--radius);
     min-width: 0;
 }

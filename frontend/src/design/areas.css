@@ -1,0 +1,31 @@
+/* Area tints: every area of the app nudges the same navy a few degrees towards a neighbouring hue. Only the page's
+   ambient light, hairlines and the active-tab glow follow it (never card or text colours, so nothing gets harder to
+   read). <html data-area="..."> is set from the route (motion/mood.js), on html so the page light outside <main> follows it too. */
+:root {
+    --area-hue: 220;
+}
+
+[data-area="dashboard"] {
+    --area-hue: 220;
+}
+
+[data-area="search"] {
+    --area-hue: 205;
+}
+
+[data-area="transactions"] {
+    --area-hue: 232;
+}
+
+[data-area="holdings"] {
+    --area-hue: 212;
+}
+
+[data-area="xray"],
+[data-area="alerts"] {
+    --area-hue: 248;
+}
+
+[data-area="account"] {
+    --area-hue: 218;
+}

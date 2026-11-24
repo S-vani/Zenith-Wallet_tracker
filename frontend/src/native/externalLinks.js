@@ -30,7 +30,7 @@ export function openLinksInAppBrowser() {
         e.preventDefault();
         e.stopPropagation();
         browserPlugin()
-            .then(({Browser}) => Browser.open({url, toolbarColor: "#060a12"}))
+            .then(({Browser}) => Browser.open({url, toolbarColor: "#040813"}))
             .catch(() => window.open(url, "_blank")); // plugin missing: Safari is still better than nothing
     }, true);
 }

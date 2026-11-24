@@ -30,10 +30,10 @@
 
     font-size: 1.1rem;
     font-weight: 700;
-    color: #93c5fd;
+    color: var(--accent-text);
 
-    background: linear-gradient(180deg, #1d3461, #162344);
-    border: 0.05rem solid #2f4a7a;
+    background: linear-gradient(180deg, var(--accent-fill), var(--accent-fill-2));
+    border: 0.05rem solid var(--accent-line);
 }
 
 .user-header-info {
@@ -46,7 +46,7 @@
 .user-header-name {
     font-size: 1.3rem;
     font-weight: 700;
-    color: #f5f7ff;
+    color: var(--text);
     overflow-wrap: anywhere;
 }
 
@@ -68,11 +68,11 @@
 
     background: var(--card-bg);
 
-    border: 0.1rem solid #0f1725;
+    border: 0.1rem solid var(--surface);
     border-radius: 1.25rem;
 
-    box-shadow: 0 0 0 0.05rem #070b12,
-    0 0.5rem 2.5rem #000000cc;
+    box-shadow: 0 0 0 0.05rem var(--bg),
+    0 0.5rem 2.5rem rgb(var(--shadow-rgb) / 0.8);
 }
 
 .user-card-header {
@@ -86,7 +86,7 @@
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #c7d2e6;
+    color: var(--text-soft);
 }
 
 .user-field {
@@ -100,7 +100,7 @@
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #c7d2e6;
+    color: var(--text-soft);
 }
 
 .user-field-input {
@@ -111,11 +111,11 @@
 
     border-radius: 1rem;
 
-    border: 0.05rem solid #0f1725;
+    border: 0.05rem solid var(--surface);
 
-    background: linear-gradient(180deg, #0b1220, #070b14);
+    background: linear-gradient(180deg, var(--surface), var(--surface-sunken));
 
-    color: #f5f7ff;
+    color: var(--text);
 
     font-size: 0.95rem;
     font-weight: 500;
@@ -129,18 +129,18 @@
 }
 
 .user-field-input::placeholder {
-    color: #5a6785;
+    color: var(--placeholder);
 }
 
 .user-field-input:hover {
-    border-color: #1b2a44;
-    background: linear-gradient(180deg, #0d1526, #080c15);
+    border-color: var(--line-strong);
+    background: linear-gradient(180deg, var(--surface), var(--surface-sunken));
 }
 
 .user-field-input:focus {
-    border-color: #2f4a7a;
-    box-shadow: 0 0 0 0.25rem #2f4a7a33,
-    0 0 1.125rem #2f4a7a44;
+    border-color: var(--accent-line);
+    box-shadow: 0 0 0 0.25rem rgb(var(--accent-rgb) / 0.2),
+    0 0 1.125rem rgb(var(--accent-rgb) / 0.27);
     transform: translateY(-0.0625rem);
 }
 
@@ -167,15 +167,15 @@
 }
 
 .verify-badge.verified {
-    color: #22c55e;
-    background: rgba(34, 197, 94, 0.12);
-    border: 0.05rem solid rgba(34, 197, 94, 0.35);
+    color: var(--positive);
+    background: rgb(var(--positive-rgb) / 0.12);
+    border: 0.05rem solid rgb(var(--positive-rgb) / 0.35);
 }
 
 .verify-badge.unverified {
-    color: #f59e0b;
-    background: rgba(245, 158, 11, 0.12);
-    border: 0.05rem solid rgba(245, 158, 11, 0.35);
+    color: var(--warn);
+    background: rgb(var(--warn-rgb) / 0.12);
+    border: 0.05rem solid rgb(var(--warn-rgb) / 0.35);
 }
 
 .verify-row {
@@ -217,17 +217,17 @@
 }
 
 .user-logout-button:hover:not(:disabled) {
-    color: #fca5a5;
-    border-color: rgba(239, 68, 68, 0.4);
+    color: var(--negative-text);
+    border-color: rgb(var(--negative-rgb) / 0.4);
 }
 
 /* delete account: a faint red edge so it reads as destructive without shouting */
 .user-danger-card {
-    border-color: rgba(239, 68, 68, 0.22);
+    border-color: rgb(var(--negative-rgb) / 0.22);
 }
 
 .user-danger-card .user-card-title {
-    color: #fca5a5;
+    color: var(--negative-text);
 }
 
 .user-danger-card .user-field-hint a {
@@ -236,13 +236,13 @@
 
 .user-delete-button {
     align-self: flex-start;
-    color: #fca5a5;
-    border-color: rgba(239, 68, 68, 0.35);
+    color: var(--negative-text);
+    border-color: rgb(var(--negative-rgb) / 0.35);
 }
 
 .user-delete-button:hover:not(:disabled) {
-    background: rgba(239, 68, 68, 0.1);
-    border-color: rgba(239, 68, 68, 0.55);
+    background: rgb(var(--negative-rgb) / 0.1);
+    border-color: rgb(var(--negative-rgb) / 0.55);
 }
 
 .user-delete-confirm {
@@ -282,11 +282,11 @@
     display: flex;
     font-size: 0.85rem;
 
-    border: 0.05rem solid #0f1725;
+    border: 0.05rem solid var(--surface);
 
-    background: linear-gradient(180deg, #0f1f45, #0d1526);
+    background: linear-gradient(180deg, var(--glow-2), var(--surface));
 
-    color: #f5f7ff;
+    color: var(--text);
     font-weight: 500;
 
     width: 8rem;
@@ -305,12 +305,12 @@
 
 .verify-sent-text {
     font-size: 0.8rem;
-    color: #22c55e;
+    color: var(--positive);
 }
 
 .user-divider {
     height: 1px;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--fill);
     width: 100%;
 }
 
@@ -332,13 +332,13 @@
 
 .user-info-label {
     font-size: 0.85rem;
-    color: #9aa0a6;
+    color: var(--text-muted);
 }
 
 .user-info-value {
     font-size: 0.9rem;
     font-weight: 600;
-    color: #f5f7ff;
+    color: var(--text);
 }
 
 
@@ -350,11 +350,11 @@
 
     border-radius: 1rem;
 
-    border: 0.05rem solid #0f1725;
+    border: 0.05rem solid var(--surface);
 
-    background: linear-gradient(180deg, #0b1220, #070b14);
+    background: linear-gradient(180deg, var(--surface), var(--surface-sunken));
 
-    color: #f5f7ff;
+    color: var(--text);
 
     font-size: 0.95rem;
     font-weight: 500;
@@ -370,8 +370,8 @@
 
     appearance: none;
 
-    background-image: linear-gradient(45deg, transparent 50%, #6b7280 50%),
-    linear-gradient(135deg, #6b7280 50%, transparent 50%);
+    background-image: linear-gradient(45deg, transparent 50%, var(--text-subtle) 50%),
+    linear-gradient(135deg, var(--text-subtle) 50%, transparent 50%);
     background-position: calc(100% - 1.2rem) 50%,
     calc(100% - 0.85rem) 50%;
     background-size: 0.4rem 0.4rem,
@@ -380,20 +380,20 @@
 }
 
 .user-field-select:hover {
-    border-color: #1b2a44;
-    background-color: #0d1526;
+    border-color: var(--line-strong);
+    background-color: var(--surface);
 }
 
 .user-field-select:focus {
-    border-color: #2f4a7a;
-    box-shadow: 0 0 0 0.25rem #2f4a7a33,
-    0 0 1.125rem #2f4a7a44;
+    border-color: var(--accent-line);
+    box-shadow: 0 0 0 0.25rem rgb(var(--accent-rgb) / 0.2),
+    0 0 1.125rem rgb(var(--accent-rgb) / 0.27);
     transform: translateY(-0.0625rem);
 }
 
 .user-field-select option {
-    background: #0b1220;
-    color: #f5f7ff;
+    background: var(--surface);
+    color: var(--text);
 }
 
 @media (max-width: 768px) {
@@ -407,7 +407,7 @@
 }
 
 .user-field-hint.error-hint {
-    color: #fca5a5;
+    color: var(--negative-text);
 }
 
 .user-privacy-link {

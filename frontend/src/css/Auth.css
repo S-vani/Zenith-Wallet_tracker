@@ -57,7 +57,7 @@
 
 .password-toggle:hover {
     color: var(--text);
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--fill);
 }
 
 .password-toggle svg {
@@ -104,14 +104,14 @@
     font-size: 1.4rem;
     font-weight: 800;
     color: var(--positive);
-    background: rgba(34, 197, 94, 0.12);
-    border: 1px solid rgba(34, 197, 94, 0.35);
+    background: rgb(var(--positive-rgb) / 0.12);
+    border: 1px solid rgb(var(--positive-rgb) / 0.35);
 }
 
 .success-icon.error {
-    color: #f87171;
-    background: rgba(239, 68, 68, 0.12);
-    border-color: rgba(239, 68, 68, 0.35);
+    color: var(--negative-text);
+    background: rgb(var(--negative-rgb) / 0.12);
+    border-color: rgb(var(--negative-rgb) / 0.35);
 }
 
 .signup-success {
@@ -153,8 +153,8 @@
     gap: 0.65rem;
     padding: 0.75rem 1rem;
     border-radius: 0.625rem;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--line-strong);
+    background: var(--fill-faint);
     color: var(--text);
     font-size: 0.92rem;
     font-weight: 600;
@@ -162,8 +162,8 @@
 }
 
 .google-btn:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.24);
+    background: var(--fill);
+    border-color: var(--line-strong);
 }
 
 .google-btn svg {
@@ -186,7 +186,7 @@
     content: "";
     flex: 1;
     height: 1px;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--fill);
 }
 
 /* Forgot password: the brand sits just above the card (like log in / sign up) instead of each grid row

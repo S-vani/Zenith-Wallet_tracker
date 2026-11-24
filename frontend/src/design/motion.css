@@ -1,0 +1,96 @@
+/* Motion: durations, the zenith light, and the motion level switches.
+   Levels (<html data-motion>, motion/motionLevel.js): full (desktop), app (the iPhone app: no heavy effects),
+   lite (phone browser: no heavy effects), reduced (no movement). Anything expensive is marked data-fx="heavy" and is
+   hidden under lite/reduced. */
+:root {
+    --dur-1: 120ms;
+    --dur-2: 220ms;
+    --dur-3: 380ms;
+    --dur-4: 700ms;
+
+    /* the light's colour comes from the mood (motion/mood.js) or, when flat, from the area tint */
+    --light-hue: var(--area-hue, 220);
+    --light-alpha: 0.3;
+    --light-lum: 58%;
+    --light-gain: 1;
+}
+
+:root[data-theme="daylight"] {
+    --light-lum: 68%;
+    --light-gain: 0.55;
+}
+
+:root[data-theme="black"] {
+    --light-gain: 0.7;
+}
+
+/* the hue and strength glide when the mood or the area changes (the properties are registered in tokens.css) */
+html {
+    transition: --light-hue 1.6s ease, --light-alpha 1.6s ease;
+}
+
+/* ZenithLight: a soft light falling from the top edge of every screen. Pure CSS (no blur filter, which was expensive
+   on phones): three gradients on one fixed layer that only ever changes opacity. */
+body {
+    background-color: var(--bg);
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+        radial-gradient(120% 68% at 50% -14%, hsl(var(--light-hue) 90% var(--light-lum) / calc(var(--light-alpha) * var(--light-gain))), transparent 64%),
+        radial-gradient(55% 42% at 88% -4%, hsl(calc(var(--light-hue) + 30) 85% var(--light-lum) / calc(var(--light-alpha) * var(--light-gain) * 0.5)), transparent 70%),
+        radial-gradient(70% 50% at 8% 108%, var(--glow-2), transparent 70%),
+        radial-gradient(90% 60% at 50% 40%, var(--glow-1), transparent 80%);
+    animation: light-breathe 16s ease-in-out infinite alternate;
+}
+
+@keyframes light-breathe {
+    from {
+        opacity: 0.82;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* levels */
+html[data-motion="lite"] [data-fx="heavy"],
+html[data-motion="app"] [data-fx="heavy"],
+html[data-motion="reduced"] [data-fx] {
+    display: none !important;
+}
+
+html[data-motion="lite"] body::before,
+html[data-motion="reduced"] body::before {
+    animation: none;
+}
+
+html[data-motion="reduced"] *,
+html[data-motion="reduced"] *::before,
+html[data-motion="reduced"] *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+}
+
+/* the circular theme reveal (native/appearance.js): the old page stays, the new one is uncovered by an expanding circle */
+:root.theme-reveal::view-transition-old(root),
+:root.theme-reveal::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+}
+
+:root.theme-reveal::view-transition-old(root) {
+    z-index: 1;
+}
+
+:root.theme-reveal::view-transition-new(root) {
+    z-index: 2;
+}

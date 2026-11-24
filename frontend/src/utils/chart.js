@@ -1,11 +1,13 @@
 // Shared chart helpers so the dashboard, holdings and search charts behave the same
 
+// the chart tooltip's box, from the theme's tokens (so it follows Midnight / Black / Daylight)
 export const TOOLTIP_STYLE = {
-    background: "#0f1520",
-    border: "1px solid rgba(255,255,255,0.1)",
+    background: "var(--surface-2)",
+    border: "1px solid var(--line-strong)",
     borderRadius: "0.625rem",
     fontSize: "0.8rem",
-    color: "#f5f7ff",
+    color: "var(--text)",
+    boxShadow: "0 0.5rem 1.5rem rgb(var(--shadow-rgb) / 0.35)",
 };
 
 export const CHART_UP = "#22c55e";

@@ -2,8 +2,8 @@
 .analyst {
     --analyst-bull: var(--positive);
     --analyst-bear: var(--negative);
-    --analyst-neutral: #94a3c4;
-    --analyst-amber: #fbbf24;
+    --analyst-neutral: var(--text-subtle);
+    --analyst-amber: var(--warn-text);
 
     margin-top: 1rem;
     padding: 1.25rem;
@@ -12,7 +12,7 @@
     gap: 1.1rem;
 
     background: var(--card-bg);
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--line);
     border-radius: 1rem;
     color: var(--text);
     text-align: left;
@@ -36,8 +36,8 @@
 
 /* inner blocks sit a step darker than the panel, like the chart area */
 .analyst-card {
-    background: rgba(6, 10, 18, 0.35);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgb(var(--bg-rgb) / 0.35);
+    border: 1px solid var(--line);
     border-radius: 0.875rem;
     padding: 1rem 1.1rem;
 }
@@ -73,7 +73,7 @@
     box-sizing: content-box;
     border-radius: 0.5rem;
     color: var(--accent-soft);
-    background: rgba(59, 130, 246, 0.14);
+    background: rgb(var(--accent-rgb) / 0.14);
     border: 1px solid var(--accent-border);
 }
 
@@ -97,13 +97,13 @@
 }
 
 .analyst-engine.rules {
-    color: #cbd5e1;
-    background: rgba(148, 163, 196, 0.12);
-    border: 1px solid rgba(148, 163, 196, 0.28);
+    color: var(--text-soft);
+    background: var(--line);
+    border: 1px solid var(--line);
 }
 
 .analyst-engine.ai {
-    color: #c4b5fd;
+    color: var(--violet-text);
     background: rgba(139, 92, 246, 0.12);
     border: 1px solid rgba(139, 92, 246, 0.32);
 }
@@ -143,9 +143,9 @@
 .btn.analyst-refresh[aria-disabled="true"],
 .btn.analyst-refresh[aria-disabled="true"]:hover {
     cursor: not-allowed;
-    background: #121a2b;
-    border-color: rgba(255, 255, 255, 0.07);
-    color: #6b7790;
+    background: var(--surface-2);
+    border-color: var(--line);
+    color: var(--text-subtle);
     box-shadow: none;
     transform: none;
 }
@@ -168,9 +168,9 @@
     padding: 0.65rem 0.9rem;
     border-radius: 0.625rem;
     font-size: 0.85rem;
-    color: #fcd34d;
-    background: rgba(245, 158, 11, 0.08);
-    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: var(--warn-text);
+    background: rgb(var(--warn-rgb) / 0.08);
+    border: 1px solid rgb(var(--warn-rgb) / 0.3);
 }
 
 .analyst-notice svg {
@@ -181,7 +181,7 @@
 }
 
 .analyst-notice strong {
-    color: #fde68a;
+    color: var(--warn-text);
 }
 
 /* the short "not financial advice" line under the title; quieter than a notice, but always there */
@@ -198,7 +198,7 @@
     flex-shrink: 0;
     width: 0.95rem;
     height: 0.95rem;
-    color: #fcd34d;
+    color: var(--warn-text);
 }
 
 .analyst-error {
@@ -231,7 +231,7 @@
 }
 
 .analyst-skeleton .analyst-overview {
-    border-left-color: rgba(255, 255, 255, 0.08);
+    border-left-color: var(--line);
 }
 
 .analyst-sentiment {
@@ -269,21 +269,21 @@
 }
 
 .analyst-sentiment-badge.bullish {
-    color: #4ade80;
-    background: rgba(34, 197, 94, 0.12);
-    border: 1px solid rgba(34, 197, 94, 0.35);
+    color: var(--positive-text);
+    background: rgb(var(--positive-rgb) / 0.12);
+    border: 1px solid rgb(var(--positive-rgb) / 0.35);
 }
 
 .analyst-sentiment-badge.neutral {
-    color: #c7d2e8;
-    background: rgba(148, 163, 196, 0.12);
-    border: 1px solid rgba(148, 163, 196, 0.3);
+    color: var(--text-soft);
+    background: var(--line);
+    border: 1px solid var(--line);
 }
 
 .analyst-sentiment-badge.bearish {
-    color: #f87171;
-    background: rgba(239, 68, 68, 0.12);
-    border: 1px solid rgba(239, 68, 68, 0.35);
+    color: var(--negative-text);
+    background: rgb(var(--negative-rgb) / 0.12);
+    border: 1px solid rgb(var(--negative-rgb) / 0.35);
 }
 
 .analyst-confidence {
@@ -305,7 +305,7 @@
 .analyst-confidence-bars span {
     width: 0.25rem;
     border-radius: 1px;
-    background: rgba(255, 255, 255, 0.14);
+    background: var(--fill-strong);
 }
 
 .analyst-confidence-bars span:nth-child(1) {
@@ -333,7 +333,7 @@
     position: relative;
     height: 0.4rem;
     border-radius: 999px;
-    background: linear-gradient(90deg, rgba(239, 68, 68, 0.75), rgba(148, 163, 196, 0.45) 50%, rgba(34, 197, 94, 0.75));
+    background: linear-gradient(90deg, rgb(var(--negative-rgb) / 0.75), var(--line) 50%, rgb(var(--positive-rgb) / 0.75));
 }
 
 .analyst-gauge-marker {
@@ -343,7 +343,7 @@
     height: 0.85rem;
     border-radius: 50%;
     background: var(--text);
-    border: 2px solid #161b28;
+    border: 2px solid var(--surface);
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
     transform: translate(-50%, -50%);
     /* sweeps in from neutral to the score when the report opens (one small element, once) */
@@ -478,11 +478,11 @@
 }
 
 .analyst-insight.tone-positive .analyst-kind {
-    color: #4ade80;
+    color: var(--positive-text);
 }
 
 .analyst-insight.tone-negative .analyst-kind {
-    color: #f87171;
+    color: var(--negative-text);
 }
 
 .analyst-insight-title {
@@ -508,23 +508,23 @@
     flex-direction: column;
     gap: 0.6rem;
     --scenario-color: var(--analyst-neutral);
-    border-color: rgba(148, 163, 196, 0.18);
+    border-color: var(--line);
 }
 
 .analyst-scenario.bull {
     --scenario-color: var(--analyst-bull);
-    border-color: rgba(34, 197, 94, 0.25);
-    background: linear-gradient(180deg, rgba(34, 197, 94, 0.07), rgba(6, 10, 18, 0.35) 55%);
+    border-color: rgb(var(--positive-rgb) / 0.25);
+    background: linear-gradient(180deg, rgb(var(--positive-rgb) / 0.07), rgb(var(--bg-rgb) / 0.35) 55%);
 }
 
 .analyst-scenario.base {
-    background: linear-gradient(180deg, rgba(148, 163, 196, 0.07), rgba(6, 10, 18, 0.35) 55%);
+    background: linear-gradient(180deg, var(--line), rgb(var(--bg-rgb) / 0.35) 55%);
 }
 
 .analyst-scenario.bear {
     --scenario-color: var(--analyst-bear);
-    border-color: rgba(239, 68, 68, 0.25);
-    background: linear-gradient(180deg, rgba(239, 68, 68, 0.07), rgba(6, 10, 18, 0.35) 55%);
+    border-color: rgb(var(--negative-rgb) / 0.25);
+    background: linear-gradient(180deg, rgb(var(--negative-rgb) / 0.07), rgb(var(--bg-rgb) / 0.35) 55%);
 }
 
 .analyst-scenario-title {
@@ -537,7 +537,7 @@
 }
 
 .analyst-scenario.base .analyst-scenario-title {
-    color: #c7d2e8;
+    color: var(--text-soft);
 }
 
 .analyst-scenario-dot {
@@ -558,8 +558,8 @@
     gap: 0.4rem;
     padding: 0.6rem 0.7rem;
     border-radius: 0.6rem;
-    background: rgba(0, 0, 0, 0.22);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: var(--sunken);
+    border: 1px solid var(--line-faint);
 }
 
 .analyst-range {
@@ -647,7 +647,7 @@
     flex-direction: column;
     gap: 0.2rem;
     padding: 0.6rem 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid var(--line);
 }
 
 .analyst-watch-item:first-child {
@@ -695,8 +695,8 @@
     gap: 0.35rem;
     padding: 0.9rem 1rem;
     border-radius: 0.875rem;
-    background: rgba(239, 68, 68, 0.06);
-    border: 1px solid rgba(239, 68, 68, 0.22);
+    background: rgb(var(--negative-rgb) / 0.06);
+    border: 1px solid rgb(var(--negative-rgb) / 0.22);
     border-left: 3px solid var(--analyst-bear);
 }
 
@@ -704,7 +704,7 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    color: #fca5a5;
+    color: var(--negative-text);
 }
 
 .analyst-risk .analyst-section-title svg {
@@ -728,7 +728,7 @@
     gap: 0.35rem;
     padding: 0.9rem 1.1rem;
     border-radius: 0.875rem;
-    background: linear-gradient(180deg, rgba(29, 52, 97, 0.55), rgba(22, 35, 68, 0.45));
+    background: linear-gradient(180deg, var(--accent-fill), var(--surface-2));
     border: 1px solid var(--accent-border);
 }
 
@@ -746,11 +746,11 @@
 .analyst-details {
     display: flex;
     flex-direction: column;
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    border-top: 1px solid var(--line);
 }
 
 .analyst-details .analyst-disclosure {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    border-bottom: 1px solid var(--line);
 }
 
 .analyst-disclosure-toggle {
@@ -854,7 +854,7 @@
     align-items: baseline;
     gap: 1rem;
     padding: 0.4rem 0;
-    border-bottom: 1px dashed rgba(255, 255, 255, 0.07);
+    border-bottom: 1px dashed var(--line);
     font-size: 0.85rem;
 }
 
@@ -928,7 +928,7 @@
 }
 
 .analyst-disclaimer strong {
-    color: #fcd34d;
+    color: var(--warn-text);
 }
 
 .analyst-disclaimer a {

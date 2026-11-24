@@ -29,14 +29,14 @@
     height: 2rem;
     flex-shrink: 0;
     border-radius: 0.5rem;
-    box-shadow: 0 2px 10px rgba(59, 130, 246, 0.18);
+    box-shadow: 0 2px 10px rgb(var(--accent-rgb) / 0.18);
     transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .home-brand:hover .brand-mark,
 .home-brand:focus-visible .brand-mark {
     transform: translateY(-1px) rotate(-4deg);
-    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+    box-shadow: 0 6px 20px rgb(var(--accent-rgb) / 0.4);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -47,7 +47,7 @@
 }
 
 .brand-accent {
-    color: #93c5fd;
+    color: var(--accent-text);
 }
 
 .home-auth {
@@ -71,13 +71,13 @@
 
 .login-btn {
     background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: #d1d5db;
+    border: 1px solid var(--line-strong);
+    color: var(--text-soft);
 }
 
 .login-btn:hover {
-    border-color: rgba(59, 130, 246, 0.35);
-    color: #93c5fd;
+    border-color: rgb(var(--accent-rgb) / 0.35);
+    color: var(--accent-text);
 }
 
 /* the main action (sign up, log in, unlock): the same solid blue as .btn-primary */
@@ -85,12 +85,12 @@
     border: 1px solid transparent;
     background: var(--accent-solid);
     color: #fff;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0.5rem 1.25rem -0.5rem rgba(59, 130, 246, 0.7);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 0.5rem 1.25rem -0.5rem rgb(var(--accent-rgb) / 0.7);
 }
 
 .signup-btn:hover {
     transform: translateY(-1px);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 0.6rem 1.6rem -0.4rem rgba(59, 130, 246, 0.8);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 0.6rem 1.6rem -0.4rem rgb(var(--accent-rgb) / 0.8);
 }
 
 .signup-btn:active:not(:disabled) {
@@ -136,16 +136,16 @@
     font-size: clamp(2.2rem, 4vw, 3.4rem);
     font-weight: 900;
     line-height: 1.1;
-    color: #f5f7ff;
+    color: var(--text);
 }
 
 .hero-accent {
-    color: #3b82f6;
+    color: var(--accent);
 }
 
 .hero-subtitle {
     font-size: 1.05rem;
-    color: #9aa0a6;
+    color: var(--text-muted);
     max-width: 32rem;
     line-height: 1.6;
 }
@@ -159,14 +159,14 @@
 
 .hero-link-btn {
     background: transparent;
-    color: #9aa0a6;
+    color: var(--text-muted);
     font-size: 0.9rem;
     font-weight: 600;
     transition: color 0.15s ease;
 }
 
 .hero-link-btn:hover {
-    color: #93c5fd;
+    color: var(--accent-text);
 }
 
 /* "See how it works" is a button (opens the demo video) but keeps the text-link look */
@@ -192,7 +192,7 @@ button.hero-link-btn {
     gap: 1.5rem;
     margin-top: 1.5rem;
     padding-top: 1.5rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    border-top: 1px solid var(--line);
 }
 
 .hero-stat {
@@ -204,11 +204,11 @@ button.hero-link-btn {
 .hero-stat-value {
     font-size: 1.35rem;
     font-weight: 700;
-    color: #f5f7ff;
+    color: var(--text);
 }
 
 .hero-stat-value.positive {
-    color: #22c55e;
+    color: var(--positive);
 }
 
 .hero-stat-label {
@@ -223,7 +223,7 @@ button.hero-link-btn {
     align-self: center; /* an empty box has no baseline of its own */
     width: 1px;
     height: 2rem;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--fill);
 }
 
 /* Hero visual / preview card */
@@ -238,13 +238,13 @@ button.hero-link-btn {
     width: 100%;
     max-width: 24rem;
     background: var(--card-bg);
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--line);
     border-radius: 1.25rem;
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.35);
+    box-shadow: 0 1.5rem 3rem rgb(var(--shadow-rgb) / 0.35);
 }
 
 .preview-card-header {
@@ -264,8 +264,8 @@ button.hero-link-btn {
 .range-pill {
     font-size: 0.7rem;
     font-weight: 600;
-    color: #93c5fd;
-    background: #1d3461;
+    color: var(--accent-text);
+    background: var(--accent-fill);
     border-radius: 0.4rem;
     padding: 0.2rem 0.5rem;
 }
@@ -273,7 +273,7 @@ button.hero-link-btn {
 .preview-value {
     font-size: 1.9rem;
     font-weight: 700;
-    color: #f5f7ff;
+    color: var(--text);
 }
 
 .preview-change {
@@ -282,11 +282,11 @@ button.hero-link-btn {
 }
 
 .preview-change.positive {
-    color: #22c55e;
+    color: var(--positive);
 }
 
 .preview-change.negative {
-    color: #ef4444;
+    color: var(--negative);
 }
 
 .preview-chart {
@@ -300,7 +300,7 @@ button.hero-link-btn {
     flex-direction: column;
     gap: 0.65rem;
     padding-top: 0.75rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    border-top: 1px solid var(--line);
 }
 
 .preview-holding-row {
@@ -314,7 +314,7 @@ button.hero-link-btn {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: #d1d5db;
+    color: var(--text-soft);
     font-weight: 600;
 }
 
@@ -326,27 +326,27 @@ button.hero-link-btn {
 }
 
 .ticker-dot.aapl {
-    background: #93c5fd;
+    background: var(--accent-text);
 }
 
 .ticker-dot.nvda {
-    background: #22c55e;
+    background: var(--positive);
 }
 
 .ticker-dot.btc {
-    background: #f59e0b;
+    background: var(--warn);
 }
 
 .preview-holding-value {
-    color: #9aa0a6;
+    color: var(--text-muted);
 }
 
 .preview-holding-change.positive {
-    color: #22c55e;
+    color: var(--positive);
 }
 
 .preview-holding-change.negative {
-    color: #ef4444;
+    color: var(--negative);
 }
 
 /* Feature cards */
@@ -385,7 +385,7 @@ button.hero-link-btn {
 .feature-card {
     flex: 1;
     background: var(--card-bg);
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--line);
     border-radius: 1rem;
     padding: 1.5rem;
     display: flex;
@@ -395,7 +395,7 @@ button.hero-link-btn {
 }
 
 .feature-card:hover {
-    border-color: rgba(59, 130, 246, 0.3);
+    border-color: rgb(var(--accent-rgb) / 0.3);
 }
 
 /* the icon sits on a tinted tile */
@@ -405,9 +405,9 @@ button.hero-link-btn {
     width: 2.5rem;
     height: 2.5rem;
     border-radius: 0.7rem;
-    background: rgba(59, 130, 246, 0.12);
-    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.25);
-    color: #60a5fa;
+    background: rgb(var(--accent-rgb) / 0.12);
+    box-shadow: inset 0 0 0 1px rgb(var(--accent-rgb) / 0.25);
+    color: var(--accent-text);
 }
 
 .feature-icon svg {
@@ -423,12 +423,12 @@ button.hero-link-btn {
 .feature-card h3 {
     font-size: 1.05rem;
     font-weight: 700;
-    color: #f5f7ff;
+    color: var(--text);
 }
 
 .feature-card p {
     font-size: 0.85rem;
-    color: #9aa0a6;
+    color: var(--text-muted);
     line-height: 1.6;
 }
 
@@ -441,7 +441,7 @@ button.hero-link-btn {
     font-size: 0.8rem;
     color: var(--text-subtle);
     padding-top: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid var(--line);
 }
 
 .footer-brand {

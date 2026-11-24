@@ -1,25 +1,40 @@
-import {useEffect, useRef, useState} from "react";
-import {Link, useLocation} from "react-router-dom";
+import {useCallback, useEffect, useMemo, useRef, useState} from "react";
+import {Link, useLocation, useSearchParams} from "react-router-dom";
 import {getTransactions} from "../services/api";
 import useRefreshKey from "../native/useRefreshKey.js";
 import TransactionList from "../Transactions/TransactionList";
 import TransactionCreate from "../Transactions/TransactionCreate.jsx"
-import TransactionFilter from "../Transactions/TransactionFilter.jsx"
+import FilterBar from "../Transactions/FilterBar.jsx";
+import {labelFor} from "../Transactions/filterLabels.js";
+import {applyFilters, bestRelaxation, EMPTY_FILTERS, filtersFromSearch, filtersToSearch} from "../Transactions/filterModel.js";
+import {DEFAULT_TRANSACTION_SORT, sortTransactions, TRANSACTION_SORTS} from "../Transactions/transactionSort.js";
+import {ACCOUNT_TYPES} from "../utils/accounts.js";
+import {useUser} from "../context/UserContext.jsx";
 import TransactionSymbolSearch from "../Transactions/TransactionSymbolSearch.jsx";
 import usePageTitle from "../utils/usePageTitle.js";
 import useDialog from "../Transactions/useDialog.js";
 import useSheetDrag from "../native/useSheetDrag.js";
 
 import '../css/Transaction.css'
+import '../css/Filters.css'
 
-const EMPTY_FILTERS = {symbol: "", action: "", account_type: "", start_date: "", end_date: ""};
+const ACCOUNT_VALUES = ACCOUNT_TYPES.map((a) => a.value);
 
 // Every trade, with filters, sorting and the add-trade dialog.
 function TransactionsPage() {
     usePageTitle("Transactions");
 
     const [transactions, setTransactions] = useState([]);
-    const [filters, setFilters] = useState(EMPTY_FILTERS);
+    const {currency} = useUser();
+    // the filters live in the address (?action=BUY&acct=TFSA...), so Back, reloads and shared links restore them
+    const [params, setParams] = useSearchParams();
+    const {filters, sort: urlSort} = useMemo(() => filtersFromSearch(params.toString(), ACCOUNT_VALUES), [params]);
+    const sort = TRANSACTION_SORTS.some((o) => o.value === urlSort) ? urlSort : DEFAULT_TRANSACTION_SORT;
+    const setView = useCallback((nextFilters, nextSort) => {
+        setParams(filtersToSearch(nextFilters, nextSort), {replace: true});
+    }, [setParams]);
+    const changeFilters = useCallback((next) => setView(next, sort), [setView, sort]);
+    const changeSort = useCallback((next) => setView(filters, next), [setView, filters]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [step, setStep] = useState("closed");
@@ -27,10 +42,8 @@ function TransactionsPage() {
     const [scan, setScan] = useState(null); // {id, prefill, notes} when the trade was read from a screenshot
     const [reloadKey, setReloadKey] = useState(0);
     const refreshKey = useRefreshKey(); // app only: pull to refresh / coming back to the app
-    const [filtersOpen, setFiltersOpen] = useState(false); // only matters on phones, where filters start collapsed
     const dialogRef = useRef(null);
     const addButtonRef = useRef(null);
-    const filterToggleRef = useRef(null);
     const headingRef = useRef(null);
     const listSectionRef = useRef(null);
     const focusAfterDelete = useRef(null); // position of a just-deleted trade, until the reloaded list is shown
@@ -56,9 +69,10 @@ function TransactionsPage() {
     }, []);
 
     useEffect(() => {
-        let ignore = false; // drop responses for filters the user has already changed
+        let ignore = false;
 
-        getTransactions(filters)
+        // every trade, once: the filters work on this list in the browser (Transactions/filterModel.js)
+        getTransactions({})
             .then((data) => {
                 if (ignore) return;
                 setTransactions(data);
@@ -70,23 +84,19 @@ function TransactionsPage() {
         return () => {
             ignore = true;
         };
-    }, [filters, reloadKey, refreshKey]);
-
-    const changeFilters = (newFilters) => {
-        setLoading(true);
-        setFilters(newFilters);
-    };
+    }, [reloadKey, refreshKey]);
 
     const reload = () => {
         setLoading(true);
         setReloadKey((k) => k + 1);
     };
 
-    // the clicked "Clear" button disappears with the filters, so focus would fall to <body>
-    const clearFilters = () => {
-        changeFilters(EMPTY_FILTERS);
-        filterToggleRef.current?.focus();
-    };
+    const clearFilters = () => changeFilters(EMPTY_FILTERS);
+
+    // what is shown: the filters applied, then the sort
+    const shown = useMemo(() => sortTransactions(applyFilters(transactions, filters), sort), [transactions, filters, sort]);
+    const relax = useMemo(() => (shown.length === 0 ? bestRelaxation(transactions, filters, labelFor) : null),
+        [shown, transactions, filters]);
 
     // after a delete, focus the trade that took its place (or the one before it, if it was last), else the heading
     const deleted = (index) => {
@@ -128,8 +138,6 @@ function TransactionsPage() {
         }
     };
 
-    const hasFilters = Object.values(filters).some(Boolean);
-    const activeFilterCount = Object.values(filters).filter(Boolean).length;
     const modalOpen = step !== "closed";
 
     // Tab stays in the dialog, Esc asks to close it, the page and nav behind it are inert, and focus goes back to
@@ -157,13 +165,23 @@ function TransactionsPage() {
                 <button type="button" className="btn" onClick={reload}>Try again</button>
             </div>
         );
-    } else if (transactions.length === 0) {
-        content = hasFilters ? (
+    } else if (shown.length === 0 && transactions.length > 0) {
+        content = (
             <div className="state-message">
-                <strong>No transactions match these filters</strong>
-                <button className="btn" onClick={clearFilters}>Clear filters</button>
+                <strong>No trades match</strong>
+                {relax && (
+                    <span>Removing “{relax.pill.label}” would show {relax.count} {relax.count === 1 ? "trade" : "trades"}.</span>
+                )}
+                <div className="state-actions">
+                    {relax && <button className="btn btn-primary" onClick={() => changeFilters(relax.pill.off(filters))}>
+                        Remove “{relax.pill.label}”
+                    </button>}
+                    <button className="btn" onClick={clearFilters}>Clear all filters</button>
+                </div>
             </div>
-        ) : (
+        );
+    } else if (transactions.length === 0) {
+        content = (
             <div className="state-message">
                 <strong>No transactions yet</strong>
                 Log your first buy to start tracking your portfolio.
@@ -171,7 +189,7 @@ function TransactionsPage() {
             </div>
         );
     } else {
-        content = <TransactionList transactions={transactions} onChanged={reload} onDeleted={deleted}
+        content = <TransactionList transactions={shown} onChanged={reload} onDeleted={deleted}
                                    justAdded={justAdded}/>;
     }
 
@@ -191,32 +209,17 @@ function TransactionsPage() {
             </header>
 
             <div className="transactions-layout">
-                {/* the sidebar comes first in the DOM because phones show it above the list, so Tab and screen
-                    readers meet it in the order it's seen; on desktop the grid still puts it on the right */}
-                <aside className="transactions-sidebar">
+                <div className="transactions-toolbar">
                     <button className="btn btn-primary transaction-button-add" ref={addButtonRef}
                             onClick={() => setStep("search")}>
                         <span aria-hidden="true">+</span> Add transaction
                     </button>
+                </div>
 
-                    <div className={`filter-add-section${filtersOpen ? " open" : ""}`}>
-                        <div className="filter-heading">
-                            <h2 className="filter-title">
-                                <button className="filter-toggle" ref={filterToggleRef}
-                                        onClick={() => setFiltersOpen(!filtersOpen)} aria-expanded={filtersOpen}>
-                                    Filters{activeFilterCount > 0 && <span className="filter-count">{activeFilterCount}</span>}
-                                    <span className="filter-chevron" aria-hidden="true">▾</span>
-                                </button>
-                            </h2>
-                            {hasFilters && (
-                                <button className="filter-clear" onClick={clearFilters}>
-                                    Clear all
-                                </button>
-                            )}
-                        </div>
-                        <TransactionFilter filters={filters} onFiltered={changeFilters}/>
-                    </div>
-                </aside>
+                {transactions.length > 0 && (
+                    <FilterBar trades={transactions} shown={shown} filters={filters} onChange={changeFilters}
+                               sort={sort} onSort={changeSort} currency={currency}/>
+                )}
 
                 <section className={`transactions-list-section${loading ? " is-refreshing" : ""}`}
                          ref={listSectionRef}>

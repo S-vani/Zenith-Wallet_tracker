@@ -9,10 +9,10 @@ html.native {
     --nav-bar-height: 2.75rem; /* 44pt, UIKit's bar height */
     --ios-blue: #0a84ff;
     --ios-separator: rgba(84, 84, 88, 0.6);
-    --ios-grouped-bg: #121a2b; /* a flat inset-grouped surface instead of the website's gradient cards */
+    --ios-grouped-bg: var(--surface-2); /* a flat inset-grouped surface instead of the website's gradient cards */
 
     --card-bg: var(--ios-grouped-bg);
-    --card-border: rgba(255, 255, 255, 0.06);
+    --card-border: var(--line-faint);
     --card-shadow: none;
     --radius: 0.9rem;
 }
@@ -62,10 +62,10 @@ html.native.has-titlebar body::after {
 }
 
 .native-titlebar.frosted {
-    background: rgba(8, 12, 22, 0.72);
+    background: rgb(var(--bg-rgb) / 0.72);
     -webkit-backdrop-filter: saturate(180%) blur(20px);
     backdrop-filter: saturate(180%) blur(20px);
-    border-bottom-color: rgba(255, 255, 255, 0.1);
+    border-bottom-color: var(--line-strong);
 }
 
 .native-titlebar-title {
@@ -166,11 +166,11 @@ html.native .transaction-symbol-item-wrapper:not(.selected)::after {
 }
 
 html.native .transaction-symbol-item-wrapper:not(.selected):active {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--fill);
 }
 
 html.native .btn-primary:disabled {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--fill);
     color: var(--text-subtle);
 }
 
@@ -218,8 +218,8 @@ html.native .legal-layout.page-enter {
 @media (max-width: 768px) {
     html.native .navbar-links {
         padding-top: 0.3rem;
-        border-top: 0.5px solid rgba(255, 255, 255, 0.12);
-        background: rgba(8, 12, 22, 0.75);
+        border-top: 0.5px solid var(--line-strong);
+        background: rgb(var(--bg-rgb) / 0.75);
         -webkit-backdrop-filter: saturate(180%) blur(20px);
         backdrop-filter: saturate(180%) blur(20px);
     }
@@ -273,7 +273,7 @@ html.native .holding-item:active,
 html.native .transaction-item:active,
 html.native .search-result-item:active,
 html.native .user-row-button:active {
-    background-color: rgba(255, 255, 255, 0.06);
+    background-color: var(--fill);
 }
 
 /* the main action: iOS's flat filled button instead of the website's glowing gradient */
@@ -409,7 +409,7 @@ html.native .modal-header::before {
     height: 0.3rem;
     margin: -0.55rem auto 0.25rem;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.28);
+    background: var(--fill-strong);
 }
 
 /* ---------- toasts: a compact pill at the top, like iOS banners ---------- */
@@ -424,7 +424,7 @@ html.native .toaster {
 html.native .toast {
     border-radius: 999px;
     padding: 0.55rem 1rem;
-    background: rgba(28, 34, 48, 0.92);
+    background: rgb(var(--surface-2-rgb) / 0.92);
     -webkit-backdrop-filter: blur(20px);
     backdrop-filter: blur(20px);
 }
@@ -552,7 +552,7 @@ html.native .signup-form-card .preview-label {
 /* the Appearance picker: two big options with a colour swatch */
 .user-theme-picker {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     width: 100%;
 }
 
@@ -567,12 +567,16 @@ html.native .signup-form-card .preview-label {
 .theme-swatch {
     width: 1rem;
     height: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.35);
+    border: 1px solid var(--line-strong);
     border-radius: 50%;
 }
 
 .theme-swatch-midnight {
     background: #0b1424;
+}
+
+.theme-swatch-daylight {
+    background: #f2f5fb;
 }
 
 .theme-swatch-black {
@@ -602,7 +606,7 @@ html.native[data-theme="black"] body::before {
 html.native[data-theme="black"] .chart-wrapper-dashboard,
 html.native[data-theme="black"] .chart-wrapper {
     background: #1c1c1e;
-    border-color: rgba(255, 255, 255, 0.06);
+    border-color: var(--line);
 }
 
 html.native[data-theme="black"] .native-titlebar.frosted,
@@ -613,7 +617,7 @@ html.native[data-theme="black"] .navbar-links {
 html.native[data-theme="black"] .transaction-create-box,
 html.native[data-theme="black"] .modal-header {
     background: #1c1c1e;
-    border-color: rgba(255, 255, 255, 0.08);
+    border-color: var(--line);
 }
 
 html.native[data-theme="black"] .app-lock {
@@ -672,7 +676,7 @@ html.native .segmented {
 
 html.native .segmented.has-thumb::before {
     background: rgba(118, 118, 128, 0.42);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 2px 6px rgb(var(--shadow-rgb) / 0.25);
 }
 
 html.native .segmented button.active {
@@ -807,7 +811,7 @@ html.native .transaction-expanded {
 
 html.native .btn:disabled {
     border-color: transparent;
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--fill);
     color: var(--text-subtle);
     opacity: 1;
 }
@@ -889,4 +893,20 @@ html.native .user-logout-actions {
 
 html.native .user-page > .user-page-title {
     order: -1;
+}
+
+/* Daylight in the app: iOS's light-mode separators and segmented control (white thumb), softer shadows */
+html.native[data-theme="daylight"] {
+    --ios-separator: rgb(60 60 67 / 0.2);
+    --ios-grouped-bg: #ffffff;
+    --card-shadow: none; /* themes.css gives Daylight cards a shadow; the app uses flat grouped cells */
+}
+
+html.native[data-theme="daylight"] .segmented {
+    background: rgb(118 118 128 / 0.12);
+}
+
+html.native[data-theme="daylight"] .segmented.has-thumb::before {
+    background: #fff;
+    box-shadow: 0 1px 4px rgb(var(--shadow-rgb) / 0.18);
 }

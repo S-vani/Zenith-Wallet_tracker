@@ -1,0 +1,539 @@
+/* The Transactions filter system (Transactions/FilterBar.jsx). One full-width bar above the list; on phones the
+   chips scroll sideways and the Filters panel is a bottom sheet. Colours come from the design tokens. */
+
+/* the page is one column now: toolbar, filter bar, list (the old right-hand filter column is gone) */
+.transactions-layout {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.transactions-layout > * {
+    grid-column: 1;
+    grid-row: auto;
+}
+
+.transactions-toolbar {
+    display: flex;
+}
+
+.transactions-toolbar .transaction-button-add {
+    width: auto;
+    padding: 0 1.4rem;
+}
+
+.fbar {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.fbar-row {
+    position: relative;
+    display: flex;
+    gap: 0.6rem;
+    align-items: stretch;
+}
+
+/* ---- search ---- */
+.fsearch {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+}
+
+.fsearch-icon {
+    position: absolute;
+    left: 0.9rem;
+    color: var(--text-subtle);
+    pointer-events: none;
+}
+
+.fsearch-input {
+    width: 100%;
+    height: 2.75rem;
+    padding: 0 2.6rem 0 2.6rem;
+    border-radius: 0.9rem;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.95rem;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.fsearch-input::placeholder {
+    color: var(--placeholder);
+}
+
+.fsearch-input:hover {
+    border-color: var(--line-strong);
+}
+
+.fsearch-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 0.2rem rgb(var(--accent-rgb) / 0.2);
+}
+
+.fsearch-key {
+    position: absolute;
+    right: 0.8rem;
+    min-width: 1.4rem;
+    padding: 0.05rem 0.4rem;
+    border-radius: 0.4rem;
+    border: 1px solid var(--line);
+    background: var(--fill-faint);
+    color: var(--text-subtle);
+    font: inherit;
+    font-size: 0.72rem;
+    text-align: center;
+    pointer-events: none;
+}
+
+.fsearch-input:focus ~ .fsearch-key {
+    opacity: 0;
+}
+
+@media (hover: none) {
+    .fsearch-key {
+        display: none;
+    }
+}
+
+/* ---- sort + Filters buttons ---- */
+.fsort select,
+.fpanel-button {
+    height: 2.75rem;
+    border-radius: 0.9rem;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: border-color 0.18s ease, background-color 0.18s ease;
+}
+
+.fsort select {
+    height: 100%;
+    padding: 0 0.8rem;
+}
+
+.fpanel-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0 1rem;
+    font-weight: 600;
+}
+
+.fsort select:hover,
+.fpanel-button:hover {
+    border-color: var(--line-strong);
+}
+
+.fpanel-button.on,
+.fpanel-button[aria-expanded="true"] {
+    border-color: var(--accent-line);
+    background: var(--accent-fill);
+    color: var(--accent-text);
+}
+
+.fpanel-badge {
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.35rem;
+    display: inline-grid;
+    place-items: center;
+    border-radius: 1rem;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    animation: fpop 0.28s var(--spring-snappy, cubic-bezier(0.2, 1.4, 0.4, 1)) both;
+}
+
+/* ---- chips ---- */
+.fchips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.fchips-sep {
+    width: 1px;
+    height: 1.2rem;
+    background: var(--line);
+    margin: 0 0.2rem;
+}
+
+.fchip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 2.1rem;
+    padding: 0 0.85rem;
+    border-radius: 1.1rem;
+    border: 1px solid var(--line);
+    background: var(--fill-faint);
+    color: var(--text-soft);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.fchip:hover {
+    border-color: var(--line-strong);
+    background: var(--fill);
+}
+
+.fchip:active {
+    transform: scale(0.96);
+}
+
+.fchip.on {
+    border-color: var(--accent-line);
+    background: var(--accent-fill);
+    color: var(--accent-text);
+}
+
+/* a chip that would show nothing: dimmed, still usable */
+.fchip.dim {
+    opacity: 0.45;
+}
+
+.fchip-count {
+    min-width: 1.1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-subtle);
+    font-variant-numeric: tabular-nums;
+}
+
+.fchip.on .fchip-count {
+    color: var(--accent-text);
+}
+
+/* ---- pills ---- */
+.fpills {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.fpill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    height: 1.9rem;
+    padding: 0 0.7rem;
+    border-radius: 1rem;
+    border: 1px solid var(--accent-line);
+    background: var(--accent-fill);
+    color: var(--accent-text);
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    animation: fpop 0.28s var(--spring-snappy, cubic-bezier(0.2, 1.4, 0.4, 1)) both;
+}
+
+.fpill span {
+    font-size: 1rem;
+    line-height: 1;
+    opacity: 0.8;
+}
+
+.fpill:hover span {
+    opacity: 1;
+}
+
+.fpills-clear,
+.fpanel-clear,
+.fpanel-done {
+    background: none;
+    border: none;
+    color: var(--accent-text);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.3rem 0.4rem;
+}
+
+.fpanel-clear:disabled {
+    color: var(--text-subtle);
+    cursor: default;
+}
+
+/* ---- summary ---- */
+.fsummary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1.1rem;
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.fsummary strong {
+    color: var(--text);
+    font-weight: 700;
+}
+
+.fsummary .rolling {
+    color: var(--text);
+    font-weight: 600;
+}
+
+/* ---- the advanced panel: a popover on wide screens, a bottom sheet on phones ---- */
+.fpanel {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    width: min(24rem, 100%);
+    padding: 1rem 1.1rem 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    border-radius: 1.1rem;
+    border: 1px solid var(--line-strong);
+    background: var(--surface-2);
+    box-shadow: 0 1.2rem 3rem rgb(var(--shadow-rgb) / 0.45);
+    transform-origin: top right;
+    animation: fpanel-in 0.2s var(--ease-out, ease-out) both;
+}
+
+.fpanel-grabber {
+    display: none;
+}
+
+.fpanel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.fpanel-group {
+    border: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.fpanel-group legend {
+    padding: 0;
+    margin-bottom: 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-subtle);
+    float: left;
+    width: 100%;
+}
+
+.fpanel-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    clear: both;
+}
+
+.fpanel-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+    clear: both;
+}
+
+.fpanel-pair label {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.fpanel-pair input {
+    height: 2.5rem;
+    padding: 0 0.7rem;
+    border-radius: 0.7rem;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.9rem;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.fpanel-pair input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 0.2rem rgb(var(--accent-rgb) / 0.2);
+}
+
+.fpanel-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.show-more {
+    align-self: center;
+    margin: 1rem auto 0;
+    display: block;
+}
+
+.state-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.6rem;
+}
+
+.toast-action {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: var(--accent-text);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0.2rem 0.4rem;
+}
+
+/* ---- rows ease in when the set changes (transform/opacity only; lite/reduced levels turn it off below) ---- */
+.transaction-list .transaction-item-wrapper,
+.transaction-list > * {
+    animation: frow-in 0.28s var(--ease-out, ease-out) both;
+}
+
+html[data-motion="lite"] .transaction-list > *,
+html[data-motion="reduced"] .transaction-list > * {
+    animation: none;
+}
+
+@keyframes fpop {
+    from {
+        opacity: 0;
+        transform: scale(0.85);
+    }
+}
+
+@keyframes fpanel-in {
+    from {
+        opacity: 0;
+        transform: translateY(-0.4rem) scale(0.97);
+    }
+}
+
+@keyframes frow-in {
+    from {
+        opacity: 0;
+        transform: translateY(0.4rem);
+    }
+}
+
+@keyframes fsheet-in {
+    from {
+        transform: translateY(100%);
+    }
+}
+
+/* ---- phones ---- */
+@media (max-width: 640px) {
+    .transactions-toolbar {
+        display: none; /* the "+" in the navigation bar / tab bar flow covers it in the app; the button stays on web */
+    }
+
+    html:not(.native) .transactions-toolbar {
+        display: flex;
+    }
+
+    .fbar-row {
+        flex-wrap: wrap;
+    }
+
+    .fsearch {
+        flex-basis: 100%;
+    }
+
+    .fsort {
+        flex: 1;
+    }
+
+    .fsort select {
+        width: 100%;
+    }
+
+    .fpanel-label {
+        display: inline;
+    }
+
+    /* chips scroll sideways with a soft fade at the edge instead of wrapping to many rows */
+    .fchips {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scroll-snap-type: x proximity;
+        margin: 0 -1rem;
+        padding: 0.1rem 1rem;
+        scrollbar-width: none;
+        -webkit-mask-image: linear-gradient(90deg, transparent, #000 1rem, #000 calc(100% - 1.5rem), transparent);
+        mask-image: linear-gradient(90deg, transparent, #000 1rem, #000 calc(100% - 1.5rem), transparent);
+    }
+
+    .fchips::-webkit-scrollbar {
+        display: none;
+    }
+
+    .fchip {
+        scroll-snap-align: start;
+        flex-shrink: 0;
+    }
+
+    .fpanel {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        top: auto;
+        width: auto;
+        max-height: 85vh;
+        overflow-y: auto;
+        padding-bottom: calc(1.2rem + env(safe-area-inset-bottom, 0px));
+        border-radius: 1.4rem 1.4rem 0 0;
+        border-bottom: none;
+        z-index: 200; /* above the tab bar */
+        box-shadow: 0 0 0 100vmax rgb(0 0 0 / 0.45); /* dims the page behind the sheet */
+        transform-origin: bottom;
+        animation: fsheet-in 0.32s var(--ease-out, ease-out) both;
+    }
+
+    .fpanel-grabber {
+        display: block;
+        width: 2.5rem;
+        height: 0.3rem;
+        margin: -0.2rem auto 0;
+        border-radius: 1rem;
+        background: var(--line-strong);
+    }
+}

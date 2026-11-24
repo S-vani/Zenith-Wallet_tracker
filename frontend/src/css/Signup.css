@@ -10,13 +10,13 @@
     width: 100%;
     max-width: 24rem;
     background: var(--card-bg);
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--line);
     border-radius: 1.25rem;
     padding: 2rem;
     display: flex;
     flex-direction: column;
     gap: 1.75rem;
-    box-shadow: 0 1.5rem 3rem rgba(0, 0, 0, 0.35);
+    box-shadow: 0 1.5rem 3rem rgb(var(--shadow-rgb) / 0.35);
 }
 
 .signup-form-header {
@@ -28,12 +28,12 @@
 .signup-form-header h2 {
     font-size: 1.6rem;
     font-weight: 700;
-    color: #f5f7ff;
+    color: var(--text);
 }
 
 .signup-form-header p {
     font-size: 0.85rem;
-    color: #9aa0a6;
+    color: var(--text-muted);
     line-height: 1.5;
 }
 
@@ -54,27 +54,27 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: #6b7280;
+    color: var(--text-subtle);
 }
 
 .signup-field input {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: var(--fill-faint);
+    border: 1px solid var(--line-strong);
     border-radius: 0.625rem;
     padding: 0.7rem 0.9rem;
     font-size: 0.9rem;
-    color: #f5f7ff;
+    color: var(--text);
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .signup-field input::placeholder {
-    color: #6b7280;
+    color: var(--text-subtle);
 }
 
 .signup-field input:focus {
     outline: none;
-    border-color: rgba(59, 130, 246, 0.5);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    border-color: rgb(var(--accent-rgb) / 0.5);
+    box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 0.15);
 }
 
 .signup-submit-btn {
@@ -120,9 +120,9 @@
     justify-content: center;
     gap: 0.4rem;
     font-size: 0.85rem;
-    color: #9aa0a6;
+    color: var(--text-muted);
     padding-top: 1rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    border-top: 1px solid var(--line);
 }
 
 .signup-page-wrapper {
@@ -139,8 +139,8 @@
     gap: 3rem;
     width: 50%;
     padding: 3rem 4rem;
-    background: linear-gradient(160deg, #131722, #0d1017);
-    border-left: 1px solid rgba(255, 255, 255, 0.06);
+    background: linear-gradient(160deg, var(--surface), var(--surface-sunken));
+    border-left: 1px solid var(--line);
 }
 
 .signup-page-brand {
@@ -157,7 +157,7 @@
     font-size: 2.2rem;
     font-weight: 800;
     line-height: 1.25;
-    color: #f5f7ff;
+    color: var(--text);
     max-width: 26rem;
 }
 
@@ -183,13 +183,13 @@
 .signup-benefits h3 {
     font-size: 1rem;
     font-weight: 700;
-    color: #f5f7ff;
+    color: var(--text);
     margin-bottom: 0.3rem;
 }
 
 .signup-benefits p {
     font-size: 0.85rem;
-    color: #9aa0a6;
+    color: var(--text-muted);
     line-height: 1.55;
     max-width: 22rem;
 }
@@ -202,10 +202,10 @@
     -webkit-appearance: none;
     -moz-appearance: none;
 
-    background-color: rgba(255, 255, 255, 0.03);
+    background-color: var(--fill-faint);
     background-image:
-        linear-gradient(45deg, transparent 50%, #9aa0a6 50%),
-        linear-gradient(135deg, #9aa0a6 50%, transparent 50%);
+        linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+        linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
     background-position:
         calc(100% - 1rem) 50%,
         calc(100% - 0.7rem) 50%;
@@ -214,13 +214,13 @@
         0.35rem 0.35rem;
     background-repeat: no-repeat;
 
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--line-strong);
     border-radius: 0.625rem;
     padding: 0.7rem 2.5rem 0.7rem 0.9rem;
 
     font-size: 0.9rem;
     font-family: inherit;
-    color: #f5f7ff;
+    color: var(--text);
 
     cursor: pointer;
 
@@ -231,24 +231,24 @@
 }
 
 .signup-field select:hover {
-    border-color: rgba(255, 255, 255, 0.2);
-    background-color: rgba(255, 255, 255, 0.05);
+    border-color: var(--line-strong);
+    background-color: var(--fill-faint);
 }
 
 .signup-field select:focus {
     outline: none;
-    border-color: rgba(59, 130, 246, 0.5);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    border-color: rgb(var(--accent-rgb) / 0.5);
+    box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 0.15);
 }
 
 .signup-field select option {
-    background-color: #1e2433;
-    color: #f5f7ff;
+    background-color: var(--surface-2);
+    color: var(--text);
     padding: 0.7rem;
 }
 
 .signup-field select option:checked {
-    background-color: #2563eb;
+    background-color: var(--accent-deep);
     color: #ffffff;
 }
 

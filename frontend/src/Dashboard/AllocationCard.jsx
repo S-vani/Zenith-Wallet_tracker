@@ -102,13 +102,13 @@ function AllocationCard({currency, data, error = null, onRetry, unavailable = fa
                                         outerRadius="100%"
                                         startAngle={90}
                                         endAngle={-270}
-                                        stroke="#161b28"
+                                        style={{stroke: "var(--surface)"}}
                                         strokeWidth={2}
                                         isAnimationActive={false}
                                     />
                                     <Tooltip
                                         contentStyle={TOOLTIP_STYLE}
-                                        itemStyle={{color: "#f5f7ff"}}
+                                        itemStyle={{color: "var(--text)"}}
                                         separator=": "
                                         formatter={(value, name, item) => [
                                             `${formatMoney(value, currency)} (${formatWeight(item?.payload?.weight)})`,

@@ -49,25 +49,25 @@
     height: 2.75rem;
     padding: 0 2.25rem 0 0.9rem;
     border-radius: 0.75rem;
-    border: 1px solid #1b2a44;
+    border: 1px solid var(--line-strong);
     color: var(--text);
     font-size: 0.95rem;
     cursor: pointer;
     appearance: none;
     /* the arrow is drawn here because appearance: none removes the native one */
-    background: linear-gradient(45deg, transparent 50%, #9aa0a6 50%) calc(100% - 1.15rem) 50% / 0.35rem 0.35rem no-repeat,
-    linear-gradient(135deg, #9aa0a6 50%, transparent 50%) calc(100% - 0.8rem) 50% / 0.35rem 0.35rem no-repeat,
-    linear-gradient(180deg, #0b1220, #070b14);
+    background: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%) calc(100% - 1.15rem) 50% / 0.35rem 0.35rem no-repeat,
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%) calc(100% - 0.8rem) 50% / 0.35rem 0.35rem no-repeat,
+    linear-gradient(180deg, var(--surface), var(--surface-sunken));
 }
 
 .import-select:focus-visible {
     outline: none;
-    border-color: #3b5b94;
-    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.18);
+    border-color: var(--accent-line);
+    box-shadow: 0 0 0 0.2rem rgb(var(--accent-rgb) / 0.18);
 }
 
 .import-select option {
-    background: #05070d;
+    background: var(--surface-sunken);
     color: var(--text);
 }
 
@@ -81,22 +81,22 @@
     text-align: center;
     cursor: pointer;
 
-    border: 2px dashed #22355a;
+    border: 2px dashed var(--line-strong);
     border-radius: 1rem;
-    background: rgba(59, 130, 246, 0.04);
+    background: rgb(var(--accent-rgb) / 0.04);
     transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .import-drop:hover,
 .import-drop.is-dragging {
     border-color: var(--accent);
-    background: rgba(59, 130, 246, 0.1);
+    background: rgb(var(--accent-rgb) / 0.1);
 }
 
 /* the real input is visually hidden inside the label, so show its keyboard focus on the box */
 .import-drop:focus-within {
     border-color: var(--accent-soft);
-    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
+    box-shadow: 0 0 0 0.2rem rgb(var(--accent-rgb) / 0.25);
 }
 
 .import-drop.is-busy {
@@ -215,11 +215,11 @@
 }
 
 .import-row.is-error td {
-    background: rgba(248, 113, 113, 0.04);
+    background: rgb(var(--negative-rgb) / 0.04);
 }
 
 .import-row.is-duplicate td {
-    background: rgba(245, 158, 11, 0.04);
+    background: rgb(var(--warn-rgb) / 0.04);
 }
 
 .import-cell-include input {
@@ -242,13 +242,13 @@
 }
 
 .import-action.is-buy {
-    color: #86efac;
-    background: rgba(34, 197, 94, 0.12);
+    color: var(--positive-text);
+    background: rgb(var(--positive-rgb) / 0.12);
 }
 
 .import-action.is-sell {
-    color: #fca5a5;
-    background: rgba(239, 68, 68, 0.12);
+    color: var(--negative-text);
+    background: rgb(var(--negative-rgb) / 0.12);
 }
 
 .import-symbol {
@@ -271,15 +271,15 @@
 }
 
 .import-status.is-ok {
-    color: #86efac;
+    color: var(--positive-text);
 }
 
 .import-status.is-duplicate {
-    color: #fcd34d;
+    color: var(--warn-text);
 }
 
 .import-status.is-error {
-    color: #fca5a5;
+    color: var(--negative-text);
 }
 
 .import-message {
@@ -326,11 +326,11 @@
     }
 
     .import-row.is-error {
-        background: rgba(248, 113, 113, 0.04);
+        background: rgb(var(--negative-rgb) / 0.04);
     }
 
     .import-row.is-duplicate {
-        background: rgba(245, 158, 11, 0.04);
+        background: rgb(var(--warn-rgb) / 0.04);
     }
 
     .import-table td,
