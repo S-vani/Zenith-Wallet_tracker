@@ -126,11 +126,18 @@ def test_device_moves_to_the_last_account_signed_in(client, make_user, run, push
 
 
 # ---------------------------------------------------------------------------------------------------- daily
+def _morning():
+    """14:00 UTC (9:00 or 10:00 in Toronto) on the next day: always after the trades the test just made (a fixed date
+    stops working the day the real clock passes it)."""
+    return (datetime.now(timezone.utc) + timedelta(days=1)).replace(hour=14, minute=0, second=0, microsecond=0)
+
+
+
 def test_daily_briefing_once_per_day(client, make_user, buy, run, market, pushes):
     owner = make_user()
     buy(owner, "AAPL", 2, 100)
     market.previous_closes["AAPL"] = 80.0
-    morning = datetime(2026, 11, 24, 14, 0, tzinfo=timezone.utc)  # 9:00 in Toronto
+    morning = _morning()  # 9:00 in Toronto
     run(alerts_service.run_daily, morning)
     run(alerts_service.run_daily, morning + timedelta(hours=2))  # same Toronto day: nothing new
     briefings = [i for i in inbox(client, owner)["items"] if i["kind"] == "briefing"]
@@ -142,17 +149,17 @@ def test_daily_briefing_once_per_day(client, make_user, buy, run, market, pushes
 def test_no_briefing_before_8_or_when_turned_off(client, make_user, buy, run, pushes):
     owner = make_user()
     buy(owner, "AAPL", 1, 100)
-    assert run(alerts_service.run_daily, datetime(2026, 11, 24, 11, 0, tzinfo=timezone.utc)) == 0  # 6:00 Toronto
+    assert run(alerts_service.run_daily, _morning() - timedelta(hours=3)) == 0  # 6:00 Toronto
     client.put("/notifications/settings", headers=owner.headers,
                json={"daily_briefing": False, "holding_events": False, "push": True})
-    run(alerts_service.run_daily, datetime(2026, 11, 24, 14, 0, tzinfo=timezone.utc))
+    run(alerts_service.run_daily, _morning())
     assert [i for i in inbox(client, owner)["items"] if i["kind"] == "briefing"] == []
 
 
 def test_earnings_tomorrow_event_is_sent_once(client, make_user, buy, run, monkeypatch, pushes):
     owner = make_user()
     buy(owner, "AAPL", 1, 100)
-    morning = datetime(2026, 11, 24, 14, 0, tzinfo=timezone.utc)
+    morning = _morning()
 
     async def fake_profile(symbol):
         return {"earnings_date": morning.date() + timedelta(days=1), "ex_dividend_date": None}
